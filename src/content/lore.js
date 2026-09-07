@@ -1,16 +1,25 @@
 import { Sound } from "../audio.js";
 
-/* ====================== THE TWO CREATORS (CANON) ======================
-   Every system in this game was built by one of two entities.
+/* ======================== THE CREATORS (CANON) ========================
+   Every system in this game was built by one of these entities, and each of
+   them owns a whole loop rather than a feature — see docs/PARALLEL-LOOPS.md.
+
    THE ARTIFICER built: acts, stats, XP, the shop, the boss ladder, the timer.
-   SLOP-GOBLIN built: the buddy, the turret, the honey pot, the mutators,
-   the chaos events, and the fact that all of them are wired into each other.
-   They both know they are inside a game. They both know you are outside it.
+   SLOP-GOBLIN built: the buddy, the honey pot, the mutators, the chaos
+     events, and the fact that all of them are wired into each other.
+   THE CRAB built: the defense lane, because something is getting in and the
+     other two will not treat that as real.
+   THE UNDERSTUDY built: nothing. They keep playing while you are away, and
+     would like it noted.
+
+   They all know they are inside a game. They all know you are outside it.
 ===================================================================== */
 
 export const Cast = {
   goblin:{ id:'goblin', name:'SLOP-GOBLIN', color:'#c9ff2f', speak(){ Sound.goblinSpeak(); } },
-  artificer:{ id:'artificer', name:'THE ARTIFICER', color:'#2fe1ff', speak(){ Sound.artificerSpeak(); } }
+  artificer:{ id:'artificer', name:'THE ARTIFICER', color:'#2fe1ff', speak(){ Sound.artificerSpeak(); } },
+  crab:{ id:'crab', name:'THE CRAB', color:'#ff7a2f', speak(){ Sound.crabSpeak(); } },
+  understudy:{ id:'understudy', name:'THE UNDERSTUDY', color:'#7a3cff', speak(){ Sound.understudySpeak(); } }
 };
 
 // Barks: reactive one-liners, keyed by event. The two argue across the same bar.
@@ -96,6 +105,19 @@ export const Barks = {
       "every goo you earn secretly fills my pot. every single one. he knows",
       "there's no lose state. i removed it. he was FURIOUS",
       "you are reading a text box in a game about tapping shapes. hi"
+    ],
+    crab:[
+      "something is getting in. bottom of the screen. i have raised this",
+      "the goblin has been feeding them. i have told him. i will tell him again",
+      "turret is holding. turret is one turret. do the arithmetic",
+      "he counts acts. i count what comes through. only one of those goes up",
+      "you tapped one yourself. noted. that is the first help i have had"
+    ],
+    understudy:[
+      "i know every trial. all fourteen. i could run them right now if asked",
+      "no notes on your form. genuinely. i would just also like a turn",
+      "i wait in the wings. that is the whole job so far. i am very good at it",
+      "the crab talks to me. mostly about the perimeter. i listen properly"
     ]
   }
 };

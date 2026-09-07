@@ -53,6 +53,12 @@ export const Sound = {
   /* --- narrative voices: each creator has a signature timbre --- */
   goblinSpeak(){ this.blip(180+Math.random()*80,0.05,'sawtooth',0.07); setTimeout(()=>this.blip(140+Math.random()*60,0.04,'sawtooth',0.05),55); },
   artificerSpeak(){ this.blip(520,0.05,'sine',0.07); setTimeout(()=>this.blip(700,0.05,'sine',0.06),60); },
+  // Two short dry clacks, falling. Chitinous rather than musical — the Crab is
+  // the only voice here that is not trying to persuade you of anything.
+  crabSpeak(){ this.blip(320,0.022,'square',0.09); setTimeout(()=>this.blip(240,0.022,'square',0.07),70); },
+  // A rehearsed little three-note phrase, always identical. The Understudy has
+  // practised this.
+  understudySpeak(){ [440,554,660].forEach((f,i)=> setTimeout(()=>this.blip(f,0.035,'triangle',0.05), i*45)); },
   bossAppear(){ [110,98,87,73].forEach((f,i)=> setTimeout(()=>this.blip(f,0.3,'sawtooth',0.16), i*140)); },
   bossHit(){ this.blip(240,0.07,'square',0.16); setTimeout(()=>this.blip(160,0.09,'sawtooth',0.12),50); },
   bossDown(){ [523,659,784,1046,1318].forEach((f,i)=> setTimeout(()=>this.blip(f,0.16,'square',0.16), i*110)); },

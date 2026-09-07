@@ -29,10 +29,14 @@
     <div id="dialogueText">Press PLAY. I will explain as we go. Try to ignore the other one.</div>
   </div>
 
-  <div id="favorRow">
-    <div id="favorLabelL" class="arcade">GOB</div>
-    <div id="favorTrack"><div id="favorMark"></div></div>
-    <div id="favorLabelR" class="arcade">ART</div>
+  <!-- Standing with each creator. Four independent bars rather than one
+       two-ended slider: the old shape could only rank two parties against
+       each other, and could not show that you have neglected someone. -->
+  <div id="standingRow">
+    <div class="standing"><span class="standingTag arcade">ART</span><div class="standingTrack"><div class="standingFill" id="standingArtificer"></div></div></div>
+    <div class="standing"><span class="standingTag arcade">GOB</span><div class="standingTrack"><div class="standingFill" id="standingGoblin"></div></div></div>
+    <div class="standing"><span class="standingTag arcade">CRB</span><div class="standingTrack"><div class="standingFill" id="standingCrab"></div></div></div>
+    <div class="standing"><span class="standingTag arcade">UND</span><div class="standingTrack"><div class="standingFill" id="standingUnderstudy"></div></div></div>
   </div>
 
   <div id="hud">

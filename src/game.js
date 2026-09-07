@@ -25,7 +25,10 @@ const potHarvestBtn=$('potHarvestBtn'), potDoneBtn=$('potDoneBtn');
 const potBtn=$('potBtn'), potFill=$('potFill');
 const dialogueEl=$('dialogue'), dialogueWho=$('dialogueWho'), dialogueText=$('dialogueText');
 const actNameEl=$('actName'), questNameEl=$('questName');
-const favorMark=$('favorMark');
+const standingFills={
+  artificer:$('standingArtificer'), goblin:$('standingGoblin'),
+  crab:$('standingCrab'), understudy:$('standingUnderstudy')
+};
 const heroLvlEl=$('heroLvl'), xpFill=$('xpFill'), statsMiniEl=$('statsMini');
 const bossRow=$('bossRow'), bossNameEl=$('bossName'), bossHpNum=$('bossHpNum'), bossHpFill=$('bossHpFill');
 const storyOverlay=$('storyOverlay'), storyTitle=$('storyTitle'), storySub=$('storySub'), storySpeech=$('storySpeech');
@@ -54,7 +57,15 @@ export const Game = {
   // --- narrative / RPG state ---
   actIdx:0, actRound:0, boss:null, ngPlus:0,
   hero:{ level:1, xp:0, xpNext:120, reflex:1, wit:1, grit:1, points:0 },
-  favor:0,              // -100 goblin .. +100 artificer
+  /* Standing, not a slider. One axis could rank two parties against each
+     other; it cannot say which of four loops you are actually investing in,
+     which is the choice the game is now about. Each value is 0..100 and each
+     one powers its owner's loop — so "who am I siding with" and "what am I
+     playing" are the same question. See docs/PARALLEL-LOOPS.md. */
+  standing:{ artificer:0, goblin:0, crab:0, understudy:0 },
+  // The cast is reachable through the chassis so tests and the console can ask
+  // who exists without importing content directly.
+  cast: Cast,
   barkT:9000, lastSpeaker:null,
   codexSeen:[],
   rafId:null,
@@ -71,21 +82,69 @@ export const Game = {
     this.lastSpeaker = whoId;
     this.barkT = force ? 12000 : 9000;
   },
-  // Who comments is itself a function of favor: the winning side talks more.
-  bark(pairSet){
-    if(!pairSet) return;
-    if(Array.isArray(pairSet)){ const p = pick(pairSet); this.say(p.who, p.line); return; }
-    const goblinBias = 0.5 - (this.favor/260);
-    const whoId = Math.random() < goblinBias ? 'goblin' : 'artificer';
-    const pool = pairSet[whoId];
-    if(pool && pool.length) this.say(whoId, pick(pool));
+  /* Who comments is a weighted draw over standing, so the character you have
+     invested in talks most while the others stay audible — the arguing is the
+     texture, and silencing the side you neglected would remove the only thing
+     that tells you that you neglected them. Only speakers this bark set has
+     lines for are eligible, so a two-hander stays a two-hander. The +1 floor
+     keeps the draw uniform at the start of a run, when all standing is 0. */
+  bark(barkSet){
+    if(!barkSet) return;
+    if(Array.isArray(barkSet)){ const p = pick(barkSet); this.say(p.who, p.line); return; }
+    const ids = Object.keys(barkSet).filter(id => Cast[id] && barkSet[id] && barkSet[id].length);
+    if(!ids.length) return;
+    const weights = ids.map(id => 1 + (this.standing[id]||0)/25);
+    let roll = Math.random() * weights.reduce((a,b)=>a+b, 0);
+    let whoId = ids[ids.length-1];
+    for(let i=0;i<ids.length;i++){ roll -= weights[i]; if(roll<=0){ whoId=ids[i]; break; } }
+    this.say(whoId, pick(barkSet[whoId]));
   },
-  shiftFavor(delta){
-    this.favor = Math.max(-100, Math.min(100, this.favor+delta));
-    favorMark.style.left = (50 + this.favor/2.2)+'%';
+
+  /* Siding with someone costs a little standing with everyone else. Without
+     the bleed, standing would only ever accumulate and every run would end
+     with all four maxed — which would make the central choice free, and so
+     not a choice. */
+  shiftFavor(whoId, delta){
+    if(!Cast[whoId] || !delta) return;
+    this.standing[whoId] = Math.max(0, Math.min(100, (this.standing[whoId]||0) + delta));
+    if(delta > 0){
+      const bleed = delta * 0.3;
+      Object.keys(this.standing).forEach(id=>{
+        if(id !== whoId) this.standing[id] = Math.max(0, this.standing[id] - bleed);
+      });
+    }
+    this.updateStandingUI();
   },
-  favorGooBonus(){ return this.favor<0 ? 1 + (-this.favor/100)*0.5 : 1; },
-  favorXpBonus(){ return this.favor>0 ? 1 + (this.favor/100)*0.5 : 1; },
+
+  standingOf(whoId){ return this.standing[whoId] || 0; },
+
+  /* Each character's standing powers the loop they built. Half again at full
+     standing is deliberately modest on its own — the committed build is meant
+     to be made by the threshold unlocks each loop grants, not by these
+     multipliers, so that a player who never thinks about favor can still
+     finish the campaign. */
+  favorGooBonus(){ return 1 + (this.standingOf('goblin')/100)*0.5; },
+  favorXpBonus(){ return 1 + (this.standingOf('artificer')/100)*0.5; },
+  favorDefenseBonus(){ return 1 + (this.standingOf('crab')/100)*0.5; },
+  favorIdleBonus(){ return 1 + (this.standingOf('understudy')/100)*0.5; },
+
+  /* The leader, for the hero sheet and anywhere else that wants to name your
+     allegiance. Null while nobody is meaningfully ahead — being uncommitted is
+     a legitimate way to play and should read as such rather than as a tie. */
+  leadingPatron(){
+    let best=null, bestVal=0;
+    Object.keys(this.standing).forEach(id=>{
+      if(this.standing[id] > bestVal){ bestVal=this.standing[id]; best=id; }
+    });
+    return bestVal >= 25 ? best : null;
+  },
+
+  updateStandingUI(){
+    Object.keys(this.standing).forEach(id=>{
+      const el = standingFills[id];
+      if(el) el.style.width = this.standing[id] + '%';
+    });
+  },
 
   renderSpeechInto(el, lines){
     el.innerHTML = '';
@@ -223,7 +282,7 @@ export const Game = {
       b.innerHTML='<div class="shopItemTop"><span style="color:#fff02f">'+s.label+'</span><span>'+this.hero[s.id]+' → '+(this.hero[s.id]+1)+'</span></div><div class="shopItemDesc">'+s.desc+'</div>';
       b.addEventListener('click', ()=>{
         this.hero[s.id]++; this.hero.points--;
-        Sound.upgrade(); this.shiftFavor(+6);
+        Sound.upgrade(); this.shiftFavor('artificer', 6);
         FX.stamp(s.label+' UP!', '#7a3cff','#fff02f');
         this.updateHeroUI();
         if(this.hero.points>0){ this.openLevelUp(); }
@@ -240,7 +299,15 @@ export const Game = {
   },
   renderSheet(){
     const h=this.hero, a=this.act();
-    const fav = this.favor<-25?'SLOP-GOBLIN':this.favor>25?'THE ARTIFICER':'BALANCED';
+    const patron = this.leadingPatron();
+    const favName = patron ? Cast[patron].name : 'UNALIGNED';
+    const favColor = patron ? Cast[patron].color : '#f5f2ff';
+    // Every patron gets a line, including the ones on zero — the sheet is
+    // where you find out who you have been ignoring.
+    const standingRows = Object.keys(this.standing).map(id=>
+      '<span style="color:'+Cast[id].color+'">'+Cast[id].name+'</span> '+
+      Math.round(this.standing[id])
+    ).join('<br>');
     sheetBody.innerHTML =
       '<div style="font-family:\'Press Start 2P\',monospace;font-size:9px;color:#fff02f;margin-bottom:8px;">LEVEL '+h.level+'  ·  XP '+h.xp+'/'+h.xpNext+'</div>'+
       StatDefs.map(s=>'<div style="margin-bottom:6px;"><b style="color:#2fe1ff">'+s.label+' '+h[s.id]+'</b><br><span style="opacity:0.65;font-size:11px;">'+s.desc+'</span></div>').join('')+
@@ -249,8 +316,15 @@ export const Game = {
       'Unspent points: <b style="color:#fff02f">'+h.points+'</b><br>'+
       'Boss damage per win: <b>'+this.bossDamage()+'</b><br>'+
       'Current act: <b>'+a.n+' — '+a.title+'</b><br>'+
-      'Allegiance: <b style="color:'+(this.favor<0?'#c9ff2f':'#2fe1ff')+'">'+fav+'</b><br>'+
-      '<span style="opacity:0.6">goo x'+this.favorGooBonus().toFixed(2)+' · xp x'+this.favorXpBonus().toFixed(2)+'</span>'+
+      'Allegiance: <b style="color:'+favColor+'">'+favName+'</b>'+
+      '</div>'+
+      '<hr style="border-color:#241d33;margin:10px 0;">'+
+      '<div style="font-size:11px;line-height:1.6;">'+
+      '<b style="color:#fff02f">STANDING</b><br>'+standingRows+
+      '<br><span style="opacity:0.6">goo x'+this.favorGooBonus().toFixed(2)+
+      ' · xp x'+this.favorXpBonus().toFixed(2)+
+      ' · def x'+this.favorDefenseBonus().toFixed(2)+
+      ' · idle x'+this.favorIdleBonus().toFixed(2)+'</span>'+
       '</div>';
     if(h.points>0){
       const b=document.createElement('button');
@@ -376,7 +450,8 @@ export const Game = {
     this.pausedState=null; this.pausedRemain=null;
     this.actIdx=0; this.actRound=0; this.boss=null;
     this.hero={ level:1, xp:0, xpNext:120, reflex:1, wit:1, grit:1, points:0 };
-    this.favor=0; this.codexSeen=[];
+    this.standing={ artificer:0, goblin:0, crab:0, understudy:0 };
+    this.codexSeen=[];
     if(!keepNg) this.ngPlus=0;
     startScreen.classList.add('hidden');
     victoryOverlay.classList.add('hidden');
@@ -384,7 +459,7 @@ export const Game = {
   },
 
   refreshAllUI(){
-    this.shiftFavor(0);
+    this.updateStandingUI();
     this.updateHUD(); this.updateMutatorChip(); this.updateBuddyUI();
     this.updateRerollUI(); this.updatePotUI(); this.updateHeroUI();
   },
@@ -473,7 +548,7 @@ export const Game = {
       b.style.borderColor=m.color; b.style.color=m.color;
       b.innerHTML = m.label + '<div class="draftCardSub" style="color:#f5f2ff">'+m.flavor+'</div>';
       b.addEventListener('click', ()=>{
-        Sound.select(); this.shiftFavor(-8);
+        Sound.select(); this.shiftFavor('goblin', 8);
         this.applyMutator(m);
         draftOverlay.classList.add('hidden');
         this.say('goblin', 'excellent choice. you are becoming one of us');
@@ -548,9 +623,9 @@ export const Game = {
     if(wonCount>0){
       this.score += Math.round(wonCount*(100+this.combo*20)*mult);
       this.gainXp(28*wonCount);
-      this.shiftFavor(+3);
+      this.shiftFavor('artificer', 3);
     }else{
-      this.shiftFavor(-2);
+      this.shiftFavor('goblin', 2);
     }
     this.meter = Math.min(100, this.meter + wonCount*10*this.meterMult());
     if(this.meter>=100){ this.meter=0; this.megaPending=true; FX.stamp('METER FULL!','#ff2f9e','#fff02f'); }
@@ -576,7 +651,7 @@ export const Game = {
     const cost=this.rerollCost();
     if(this.goo<cost){ Sound.deny(); return; }
     this.goo -= cost; this.rerollsThisRound++;
-    this.shiftFavor(-3);
+    this.shiftFavor('goblin', 3);
     this.lanes.forEach(lane=>{
       if(lane.result!==null) return;
       const def=this.pickModule();
@@ -665,7 +740,7 @@ export const Game = {
     this.score+=Math.round(10*appetite);
     this.addGoo(2*gm*appetite);
     this.meter=Math.min(100,this.meter+3*this.meterMult());
-    this.shiftFavor(-1);
+    this.shiftFavor('goblin', 1);
     if(b.feeds%6===0){
       b.level++;
       FX.stamp('BUDDY LV'+b.level+'!','#fff02f','#c9ff2f'); FX.confetti(60,40,16);
@@ -717,7 +792,7 @@ export const Game = {
     this.state='potgame';
     this.potGame={ drops:[], spawnT:300, jarX:200,
       bubbles:Array.from({length:6},()=>({ x:Math.random()*400, y:280+Math.random()*20, r:3+Math.random()*4, speed:0.01+Math.random()*0.02 })) };
-    Sound.potOpen(); this.shiftFavor(-4);
+    Sound.potOpen(); this.shiftFavor('goblin', 4);
     this.bark(Barks.potOpen);
     this.updatePotUI();
     potOverlay.classList.remove('hidden');
@@ -821,7 +896,8 @@ export const Game = {
         for(const en of d.enemies){
           if(hits>=hitCount) break;
           if(!en.alive) continue;
-          en.hp-=this.turret.dmg;
+          // Crab standing is what makes the perimeter hold — his loop, his bonus.
+          en.hp -= this.turret.dmg * this.favorDefenseBonus();
           d.projectiles.push({ x1:tur.x, y1:tur.y, x2:en.x, y2:en.y, t:0 });
           hits++;
           if(en.hp<=0){
@@ -865,6 +941,10 @@ export const Game = {
         this.addGoo(3*this.gooMult()*this.comboGooMult());
         this.score+=5;
         this.buddy.hunger=Math.min(1,this.buddy.hunger+0.05);
+        // Manually popping a blob is helping hold the line. Kept small and
+        // fractional because kills are frequent — a whole point each would max
+        // his standing inside one act and make the choice meaningless.
+        this.shiftFavor('crab', 0.4);
         Sound.pop(true);
         if(Math.random()<0.25) FX.stamp('POP!','#c9ff2f','#2fe1ff');
         this.updateHUD();
@@ -895,7 +975,9 @@ export const Game = {
     if(this.goo<cost){ Sound.deny(); return; }
     this.goo-=cost; this.shopLevels[id]=lvl+1;
     if(id==='secondturret') this.turrets.push({x:560,y:50,fireT:0});
-    this.shiftFavor(+4);
+    // Buying from someone's shelf is siding with them. The Workshop is
+    // nominally the Artificer's, but three of its items are not his.
+    this.shiftFavor(item.owner || 'artificer', 4);
     Sound.upgrade();
     FX.stamp(item.label+' LV'+(lvl+1)+'!', item.color, '#fff02f');
     this.noteCodex('WORKSHOP: '+item.label);
@@ -938,7 +1020,7 @@ export const Game = {
     if(!this.potReady()) this.pot.brew=Math.min(this.pot.brewMax, this.pot.brew+dt*0.0004);
     this.updatePotUI();
 
-    // idle chatter: the two creators fill silence, weighted by favor
+    // idle chatter: the creators fill silence, weighted by standing
     if(this.state!=='boot' && this.state!=='story' && this.state!=='victory'){
       this.barkT-=dt;
       if(this.barkT<=0){ this.barkT=9000+Math.random()*7000; this.bark(Barks.idle); }
@@ -1051,7 +1133,10 @@ turretUpgradeBtn.addEventListener('click', ()=>{
     Game.goo-=cost; Game.turret.level++;
     Game.turret.fireInterval=Math.max(300,Game.turret.fireInterval-120);
     Game.turret.dmg+=1;
-    FX.stamp('TURRET LV'+Game.turret.level+'!','#2fe1ff','#c9ff2f');
+    // The turret is the Crab's. Spending on it is the clearest way to side
+    // with him, and for now the main way his standing moves at all.
+    Game.shiftFavor('crab', 5);
+    FX.stamp('TURRET LV'+Game.turret.level+'!','#ff7a2f','#2fe1ff');
     Sound.upgrade(); Game.updateHUD();
   }else Sound.deny();
 });
@@ -1067,7 +1152,7 @@ potHarvestBtn.addEventListener('click', ()=>{ Sound.ensure(); Game.harvestPot();
 potDoneBtn.addEventListener('click', ()=>{ Game.closePotGame(); });
 
 $('draftSkipBtn').addEventListener('click', ()=>{
-  Sound.select(); Game.shiftFavor(+8);
+  Sound.select(); Game.shiftFavor('artificer', 8);
   draftOverlay.classList.add('hidden');
   Game.say('artificer','Refused. Good. That is one less variable between you and the gate.');
   Game.continueModuleRound();
@@ -1125,5 +1210,5 @@ $('settingsBtn').addEventListener('click', ()=>{
 $('settingsCloseBtn').addEventListener('click', ()=>{ settingsOverlay.classList.add('hidden'); Game.resumeAfterMenu(); });
 
 Game.updateHUD(); Game.updateMutatorChip(); Game.updateBuddyUI();
-Game.updateRerollUI(); Game.updatePotUI(); Game.updateHeroUI(); Game.shiftFavor(0);
+Game.updateRerollUI(); Game.updatePotUI(); Game.updateHeroUI(); Game.updateStandingUI();
 Game.renderDefense();

@@ -54,11 +54,22 @@
   #dialogue.speak{ animation: dialogueIn 0.35s ease; }
   @keyframes dialogueIn{ from{ transform:translateX(-6px); opacity:0.3; } to{ transform:translateX(0); opacity:1; } }
 
-  #favorRow{ display:flex; align-items:center; gap:6px; margin-bottom:6px; }
-  #favorLabelL{ font-family:'Press Start 2P',monospace; font-size:7px; color:var(--goblin); }
-  #favorLabelR{ font-family:'Press Start 2P',monospace; font-size:7px; color:var(--artificer); }
-  #favorTrack{ flex:1; height:7px; border-radius:4px; background:linear-gradient(90deg,#2a3a10,#0f2630); position:relative; overflow:hidden; }
-  #favorMark{ position:absolute; top:-2px; width:5px; height:11px; border-radius:2px; background:var(--ink); left:50%; transition:left 0.4s ease; }
+  /* Standing with the four creators. Each bar is independent and starts empty,
+     so a neglected patron reads as neglected rather than as "losing" — being
+     uncommitted is a legitimate way to play. */
+  #standingRow{ display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+  .standing{ flex:1; display:flex; align-items:center; gap:3px; min-width:0; }
+  .standingTag{ font-size:6px; opacity:0.7; white-space:nowrap; }
+  .standingTrack{ flex:1; height:5px; border-radius:3px; background:#1a1522; overflow:hidden; min-width:0; }
+  .standingFill{ height:100%; width:0%; transition:width 0.4s ease; }
+  .standing:nth-child(1) .standingTag{ color:var(--artificer); }
+  .standing:nth-child(1) .standingFill{ background:var(--artificer); }
+  .standing:nth-child(2) .standingTag{ color:var(--goblin); }
+  .standing:nth-child(2) .standingFill{ background:var(--goblin); }
+  .standing:nth-child(3) .standingTag{ color:var(--orange); }
+  .standing:nth-child(3) .standingFill{ background:var(--orange); }
+  .standing:nth-child(4) .standingTag{ color:var(--violet); }
+  .standing:nth-child(4) .standingFill{ background:var(--violet); }
 
   /* ---------- hero sheet ---------- */
   #hud{ display:flex; align-items:center; justify-content:space-between; padding:2px 4px 4px; font-size:12px; gap:6px; }

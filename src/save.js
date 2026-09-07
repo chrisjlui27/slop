@@ -53,7 +53,7 @@ export const Save = {
       meter: g.meter, megaPending: g.megaPending,
       chaosLevel: g.chaosLevel,
       actIdx: g.actIdx, actRound: g.actRound, ngPlus: g.ngPlus,
-      favor: g.favor,
+      standing: Object.assign({}, g.standing),
       hero: Object.assign({}, g.hero),
       buddy: { level: g.buddy.level, feeds: g.buddy.feeds },
       turret: Object.assign({}, g.turret),
@@ -99,7 +99,12 @@ export const Save = {
     g.meter = d.meter||0; g.megaPending = !!d.megaPending;
     g.chaosLevel = [0,1,2].indexOf(d.chaosLevel) >= 0 ? d.chaosLevel : 1;
     g.actIdx = d.actIdx|0; g.actRound = d.actRound|0; g.ngPlus = d.ngPlus|0;
-    g.favor = Math.max(-100, Math.min(100, d.favor||0));
+    // Keys are taken from the live object, not the save, so a patron added
+    // after this save was written starts at 0 rather than arriving undefined.
+    Object.keys(g.standing).forEach(id=>{
+      const v = d.standing ? d.standing[id] : 0;
+      g.standing[id] = Math.max(0, Math.min(100, v || 0));
+    });
     if(d.hero) Object.assign(g.hero, d.hero);
     if(d.buddy){ g.buddy.level = d.buddy.level||1; g.buddy.feeds = d.buddy.feeds||0; }
     if(d.turret) Object.assign(g.turret, d.turret);

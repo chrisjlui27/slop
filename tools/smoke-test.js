@@ -103,10 +103,30 @@ setTimeout(() => {
   check("addGoo credits goo", G.goo === 10);
   check("addGoo skims into the honey pot", G.pot.brew > 0);
 
-  const favBefore = G.favor;
-  G.shiftFavor(-20);
-  check("favor shifts toward goblin", G.favor < favBefore);
-  check("goblin favor raises goo multiplier", G.favorGooBonus() > 1);
+  // Standing: four independent axes, each powering its owner's loop.
+  G.standing = { artificer: 0, goblin: 0, crab: 0, understudy: 0 };
+  G.shiftFavor("goblin", 20);
+  check("standing rises for the named patron", G.standing.goblin === 20);
+  check("goblin standing raises goo multiplier", G.favorGooBonus() > 1);
+  check("standing does not leak across patrons", G.favorXpBonus() === 1);
+
+  // Siding with someone must cost standing elsewhere, or the choice is free.
+  G.standing.crab = 10;
+  G.shiftFavor("artificer", 10);
+  check("siding with one patron bleeds the others", G.standing.crab < 10);
+  check("bleed floors at zero", G.standing.understudy === 0);
+
+  G.shiftFavor("crab", 500);
+  check("standing clamps at 100", G.standing.crab === 100);
+  check("crab standing raises defense multiplier", G.favorDefenseBonus() > 1);
+
+  // An unknown speaker must be ignored rather than creating a phantom patron.
+  G.shiftFavor("nobody", 50);
+  check("unknown patron is rejected", G.standing.nobody === undefined);
+
+  // Every patron has a voice and a colour, or the dialogue bar breaks on them.
+  const castOk = Object.keys(G.standing).every(id => G.cast[id] && G.cast[id].name && G.cast[id].color);
+  check("every patron has a cast entry", castOk);
 
   console.log(
     failures === 0
