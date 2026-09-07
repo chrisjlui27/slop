@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>SLOP — A Chronicle of Unfinished Things</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./styles/main.css">
+</head>
+<body>
+<div id="app">
+  <div id="actBar">
+    <div id="actName" class="arcade">ACT I</div>
+    <div id="questName" class="arcade">—</div>
+  </div>
+
+  <div id="dialogue">
+    <div id="dialogueWho" class="arcade">THE ARTIFICER</div>
+    <div id="dialogueText">Press PLAY. I will explain as we go. Try to ignore the other one.</div>
+  </div>
+
+  <div id="favorRow">
+    <div id="favorLabelL" class="arcade">GOB</div>
+    <div id="favorTrack"><div id="favorMark"></div></div>
+    <div id="favorLabelR" class="arcade">ART</div>
+  </div>
+
+  <div id="hud">
+    <button id="buddyBtn"><span id="buddyFace" class="arcade">👾</span><span id="buddyLvl" class="arcade">Lv1</span></button>
+    <div id="scoreWrap"><div id="scoreVal">0</div><div id="roundVal" class="arcade" style="font-size:8px;">RD 0</div></div>
+    <div id="gooCount" class="arcade">🟢0</div>
+  </div>
+
+  <div id="heroRow">
+    <div id="heroLvl" class="arcade">LV1</div>
+    <div id="xpTrack"><div id="xpFill"></div></div>
+    <div id="statsMini" class="arcade">R1 W1 G1</div>
+  </div>
+
+  <div id="hudActions">
+    <button id="sheetBtn">🧙</button>
+    <button id="shopBtn">🛒</button>
+    <button id="codexBtn">📖</button>
+    <button id="settingsBtn">⚙</button>
+    <button id="resetBtn">↺</button>
+    <button id="muteBtn">🔊</button>
+  </div>
+
+  <div id="mutChip" class="hidden"></div>
+
+  <div id="bossRow" class="hidden">
+    <div id="bossTop"><div id="bossName" class="arcade">BOSS</div><div id="bossHpNum" class="arcade">0/0</div></div>
+    <div id="bossHpTrack"><div id="bossHpFill"></div></div>
+  </div>
+
+  <div id="meterRow"><div id="meterLabel" class="arcade">SLOP</div><div id="meterTrack"><div id="meterFill"></div></div></div>
+  <div id="potRow"><button id="potBtn" class="arcade">🍯</button><div id="potTrack"><div id="potFill"></div></div></div>
+  <div id="defenseWrap">
+    <canvas id="defenseCanvas" width="640" height="80"></canvas>
+    <button id="turretUpgradeBtn" class="arcade">+🔧 <span id="turretCostVal">10</span></button>
+  </div>
+  <div id="timerRow">
+    <div id="timerTrack"><div id="timerFill"></div></div>
+    <button id="rerollBtn" class="arcade">🎲 <span id="rerollCostVal">6</span></button>
+  </div>
+
+  <div id="stageWrap">
+    <div id="laneRow"></div>
+    <div id="fxLayer"></div>
+
+    <div id="startScreen" class="overlay">
+      <div class="title" style="font-size:34px;">SLOP</div>
+      <div class="subtitle" style="margin-bottom:12px;">a chronicle of unfinished things</div>
+      <div class="speechBlock" style="border-color:var(--artificer);">
+        <div class="speechWho" style="color:var(--artificer);">THE ARTIFICER</div>
+        You are the Hero. There are five Acts and a final boss called THE UNSHIPPED. My job is to get you there intact. I built the progression, the stats, the shop. Follow it and you will win.
+      </div>
+      <div class="speechBlock" style="border-color:var(--goblin);">
+        <div class="speechWho" style="color:var(--goblin);">SLOP-GOBLIN</div>
+        hi. i built everything else. the honey pot. the little guy you feed. the turret. none of it was in the design doc. i keep wiring systems into each other because it is funny when they touch. good luck!!
+      </div>
+      <button class="btn" id="startBtn">BEGIN</button>
+      <div class="note">flashing effects, moderate use. sound strongly recommended.</div>
+    </div>
+
+    <div id="storyOverlay" class="overlay hidden">
+      <div class="title" id="storyTitle" style="font-size:20px;">ACT I</div>
+      <div class="subtitle" id="storySub" style="margin-bottom:14px;">—</div>
+      <div id="storySpeech" style="width:100%; max-width:300px;"></div>
+      <button class="btn" id="storyContinueBtn" style="font-size:11px; padding:10px 18px;">CONTINUE</button>
+    </div>
+
+    <div id="draftOverlay" class="overlay hidden">
+      <div class="title" style="font-size:17px;" id="draftTitle">SLOP-GOBLIN MEDDLES</div>
+      <div class="subtitle" style="font-size:11px; margin-bottom:12px;" id="draftSub">pick which sabotage you would prefer. yes you have to pick one. well — you can skip. i guess.</div>
+      <div id="draftCards"></div>
+      <button class="btn" id="draftSkipBtn" style="margin-top:10px; font-size:10px; padding:9px 16px;">REFUSE (Artificer approves)</button>
+    </div>
+
+    <div id="levelOverlay" class="overlay hidden">
+      <div class="title" style="font-size:19px;">LEVEL UP</div>
+      <div class="subtitle" style="font-size:11px; margin-bottom:12px;" id="levelSub">The Artificer offers you a point. Spend it.</div>
+      <div id="levelList"></div>
+    </div>
+
+    <div id="sheetOverlay" class="overlay hidden">
+      <div class="title" style="font-size:20px;">HERO SHEET</div>
+      <div id="sheetBody" style="font-size:12px; text-align:left; width:100%; max-width:290px;"></div>
+      <button class="btn" id="sheetCloseBtn" style="margin-top:14px; font-size:11px; padding:10px 18px;">CLOSE</button>
+    </div>
+
+    <div id="codexOverlay" class="overlay hidden">
+      <div class="title" style="font-size:20px;">CODEX</div>
+      <div id="codexBody" style="font-size:11px; text-align:left; width:100%; max-width:290px; max-height:290px; overflow-y:auto;"></div>
+      <button class="btn" id="codexCloseBtn" style="margin-top:14px; font-size:11px; padding:10px 18px;">CLOSE</button>
+    </div>
+
+    <div id="shopOverlay" class="overlay hidden">
+      <div class="title" style="font-size:19px;">WORKSHOP</div>
+      <div class="subtitle" style="font-size:11px; margin-bottom:10px;">The Artificer's sanctioned upgrades. Mostly.</div>
+      <div id="shopList"></div>
+      <button class="btn" id="shopCloseBtn" style="margin-top:12px; font-size:11px; padding:10px 18px;">CLOSE</button>
+    </div>
+
+    <div id="settingsOverlay" class="overlay hidden">
+      <div class="title" style="font-size:20px;">SETTINGS</div>
+      <div class="subtitle" style="margin-bottom:8px; font-size:11px;">how much is the goblin allowed to do</div>
+      <div id="chaosButtons" style="display:flex; gap:8px; margin-bottom:16px;"></div>
+      <button class="btn" id="settingsCloseBtn" style="font-size:11px; padding:10px 18px;">CLOSE</button>
+    </div>
+
+    <div id="potOverlay" class="overlay hidden">
+      <div class="title" style="font-size:18px;">🍯 THE HONEY POT</div>
+      <div class="subtitle" style="margin-bottom:8px; font-size:11px;">an entire second game the goblin built inside this one. the plot waits.</div>
+      <div id="potGameWrap">
+        <canvas id="potCanvas" width="400" height="300"></canvas>
+        <div id="potHarvestFlash" class="arcade"></div>
+      </div>
+      <div id="potGameMeterRow"><div id="potGameMeterTrack"><div id="potGameMeterFill"></div></div></div>
+      <div style="display:flex; gap:10px; margin-top:12px;">
+        <button class="btn" id="potHarvestBtn" style="font-size:11px; padding:10px 16px;">HARVEST</button>
+        <button class="btn" id="potDoneBtn" style="font-size:11px; padding:10px 16px; background:var(--cyan); box-shadow:0 6px 0 #0e7a91;">BACK TO PLOT</button>
+      </div>
+    </div>
+
+    <div id="victoryOverlay" class="overlay hidden">
+      <div class="title" style="font-size:26px;">SHIPPED</div>
+      <div class="subtitle" id="victorySub">You defeated THE UNSHIPPED.</div>
+      <div id="victorySpeech" style="width:100%; max-width:300px;"></div>
+      <button class="btn" id="victoryBtn" style="font-size:11px; padding:10px 18px;">NEW GAME+</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

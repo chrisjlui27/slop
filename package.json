@@ -1,0 +1,25 @@
+{
+  "name": "slop",
+  "version": "1.0.0",
+  "description": "A browser CRPG hiding inside a WarioWare-style microgame chassis, narrated by two creators who disagree about what it is for.",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "build": "node tools/build.js",
+    "check": "node tools/check-graph.js",
+    "test": "npm run check && npm run build && node tools/smoke-test.js",
+    "start": "npm run dev"
+  },
+  "keywords": [
+    "game",
+    "microgame",
+    "crpg",
+    "canvas",
+    "vanilla-js"
+  ],
+  "license": "MIT",
+  "private": true,
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}
