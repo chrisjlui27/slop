@@ -1,7 +1,21 @@
 /* ============================== AUDIO ============================== */
 export const Sound = {
   ctx:null, muted:false,
-  ensure(){ if(!this.ctx){ try{ this.ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } },
+  /* Call from inside a user gesture. Creating the context is only half the job
+     on mobile: Android hands back a context in the 'suspended' state, and
+     backgrounding an installed PWA suspends it again — so a player who takes a
+     phone call mid-run comes back to a silent game. resume() is therefore not a
+     one-time unlock but something every gesture re-asserts. It returns a
+     promise that rejects when called outside a gesture; that is expected and
+     harmless, hence the swallow. */
+  ensure(){
+    if(!this.ctx){
+      try{ this.ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){}
+    }
+    if(this.ctx && this.ctx.state === 'suspended'){
+      try{ this.ctx.resume(); }catch(e){}
+    }
+  },
   blip(freq, dur, type, vol){
     if(this.muted || !this.ctx) return;
     try{

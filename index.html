@@ -2,9 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<!-- viewport-fit=cover lets the layout paint under a notch and cutout; main.css
+     pays that back with env(safe-area-inset-*) padding on #app. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>SLOP — A Chronicle of Unfinished Things</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#08060c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="./icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./styles/main.css">
 </head>
@@ -80,6 +89,8 @@
         <div class="speechWho" style="color:var(--goblin);">SLOP-GOBLIN</div>
         hi. i built everything else. the honey pot. the little guy you feed. the turret. none of it was in the design doc. i keep wiring systems into each other because it is funny when they touch. good luck!!
       </div>
+      <button class="btn hidden" id="continueBtn" style="background:var(--acid); box-shadow:0 6px 0 #7fa81c; margin-bottom:6px;">CONTINUE</button>
+      <div id="continueMeta" class="note hidden" style="margin-top:0; margin-bottom:12px; opacity:0.6;"></div>
       <button class="btn" id="startBtn">BEGIN</button>
       <div class="note">flashing effects, moderate use. sound strongly recommended.</div>
     </div>
@@ -154,5 +165,16 @@
 </div>
 
 <script type="module" src="./src/main.js"></script>
+<script>
+  /* Registration is deliberately outside the module graph and guarded on every
+     side: a failed service worker must cost the offline install prompt and
+     nothing else. On http:// (anything but localhost) the API is absent, which
+     is why this is a capability check rather than a try/catch. */
+  if ('serviceWorker' in navigator) {
+    addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
+</script>
 </body>
 </html>

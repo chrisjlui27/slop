@@ -269,3 +269,71 @@
   #potGameMeterTrack{ height:6px; border-radius:4px; background:#1a1522; overflow:hidden; }
   #potGameMeterFill{ height:100%; width:0%; background:linear-gradient(90deg, var(--orange), var(--yellow)); transition:width 0.25s ease; }
   #potHarvestBtn:disabled{ opacity:0.35; box-shadow:none; cursor:default; }
+
+  /* ============================================================
+     PHONE HARDENING
+     ------------------------------------------------------------
+     Everything below exists because the target is an installed
+     Android PWA, not a desktop tab. Kept as one block so it can be
+     read (or reverted) as a single decision.
+     ============================================================ */
+
+  html, body{
+    /* Pull-to-refresh is a run-ender: there is no save mid-round, and the
+       gesture is easy to trigger while tapping near the top of the stage.
+       `contain` keeps the scroll inside the page and stops the reload. */
+    overscroll-behavior-y: contain;
+    /* Chrome's double-tap-to-zoom costs ~300ms on every button. The canvases
+       already opt out with touch-action:none; this covers the DOM chrome. */
+    touch-action: manipulation;
+    -webkit-user-select: none;
+  }
+
+  #app{
+    /* viewport-fit=cover in index.html paints under the notch and the gesture
+       bar; this pays it back so no HUD row ends up beneath either. */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+    margin-top: calc(10px + env(safe-area-inset-top));
+    /* The width is deliberately NOT bounded by viewport height. #stageWrap is
+       aspect-ratio 1/1, so width sets the stage's height, and an earlier
+       attempt to keep the square above the fold with
+       `min(94vw, 480px, calc(100dvh - reserve))` collapsed #app to 40px on a
+       short viewport — a far worse failure than the scrolling it prevented.
+       Measured on a 375x812 phone the HUD stack is 370px and the whole board
+       fits without help, so the clamp bought nothing on the target device. If
+       short screens need addressing later, shrink the chrome; do not couple
+       width to height. */
+    width: min(94vw, 480px);
+  }
+
+  /* Android's touch target floor is 48dp. These were sized for a mouse: the
+     six HUD glyphs came out around 26x20, which is a miss-tap generator on a
+     phone. Grow the hit box without growing the glyph, so the layout holds. */
+  #hudActions button{
+    min-width: 42px; min-height: 42px;
+    padding: 8px 10px; font-size: 15px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  #turretUpgradeBtn, #rerollBtn, #potBtn{
+    min-height: 38px; padding-top: 8px; padding-bottom: 8px;
+  }
+  .btn{ min-height: 48px; }
+
+  /* A tap that lands on a button should look like it landed, immediately —
+     :active is the only affordance a touch screen gets, since there is no
+     hover state to telegraph it. */
+  #hudActions button:active,
+  #turretUpgradeBtn:active,
+  #rerollBtn:active,
+  #potBtn:active{ transform: translateY(1px); filter: brightness(1.4); }
+
+  @media (prefers-reduced-motion: reduce){
+    /* The background hue-cycle and the mutator quake run forever, unprompted.
+       On a phone held close to the face that is a genuine problem for some
+       players; the round-driven effects still play. */
+    body{ animation: none; }
+    #stageWrap.mut-quake{ animation: none; }
+    #mutChip:not(.hidden){ animation: none; }
+  }

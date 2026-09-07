@@ -5,6 +5,7 @@ import { Cast, Barks, Acts } from "./content/lore.js";
 import { Mutators } from "./content/mutators.js";
 import { ShopItems } from "./content/shop.js";
 import { StatDefs } from "./content/stats.js";
+import { Save } from "./save.js";
 
 /* ============================== CHASSIS ============================== */
 export const $ = id => document.getElementById(id);
@@ -176,6 +177,9 @@ export const Game = {
   },
   triggerVictory(){
     this.state='victory';
+    // The run is finished. Leaving the save in place would offer to resume a
+    // completed campaign one round before its own ending.
+    Save.clear();
     Sound.victory();
     FX.confetti(240,240,60);
     victorySub.textContent = 'You defeated THE UNSHIPPED at level '+this.hero.level+'.';
@@ -356,7 +360,10 @@ export const Game = {
     }
   },
 
-  start(keepNg){
+  /* start() used to be one block. It is split so resumeRun() can reuse the
+     reset without inheriting the Act I opening scene that follows it — a
+     player continuing an Act IV run should not be read the prologue again. */
+  resetState(keepNg){
     this.clearMutator();
     this.score=0; this._lastScore=0; this._lastGoo=0; this.round=0; this.combo=0; this.goo=0;
     this.history=[]; this.mutatorRoundsLeft=0; this.meter=0; this.megaPending=false; this.bonus=null;
@@ -374,15 +381,67 @@ export const Game = {
     startScreen.classList.add('hidden');
     victoryOverlay.classList.add('hidden');
     bossRow.classList.add('hidden');
+  },
+
+  refreshAllUI(){
     this.shiftFavor(0);
     this.updateHUD(); this.updateMutatorChip(); this.updateBuddyUI();
     this.updateRerollUI(); this.updatePotUI(); this.updateHeroUI();
-    this.startAct();
+  },
+
+  ensureLoop(){
     if(!this.rafId){ this.lastT = performance.now(); this.rafId = requestAnimationFrame(t=>this.loop(t)); }
+  },
+
+  start(keepNg){
+    this.resetState(keepNg);
+    Save.clear();   // beginning a run abandons whatever was in progress
+    this.refreshAllUI();
+    this.startAct();
+    this.ensureLoop();
+  },
+
+  /* Picks a stored run back up at the round boundary it was saved on. Returns
+     false when there is nothing to resume, so the caller can fall through to a
+     normal start. */
+  resumeRun(){
+    const d = Save.read();
+    if(!d) return false;
+    this.resetState(true);
+    Save.apply(this, d);
+
+    // startAct() would re-run the act's opening scene, so the two things it
+    // does that still matter — the header and the boss bar — are done directly.
+    const a = this.act();
+    actNameEl.textContent = a.n + (this.ngPlus ? ' (NG+'+this.ngPlus+')' : '');
+    questNameEl.textContent = a.quest.toUpperCase();
+    if(this.boss){
+      bossRow.classList.remove('hidden');
+      bossNameEl.textContent = this.boss.name;
+      this.updateBossUI();
+    }
+    this.refreshAllUI();
+    this.say('goblin', 'oh you came back. i kept your stuff. most of it. the little guy got hungry again, that part is not my fault');
+    this.ensureLoop();
+    this.nextRound();
+    return true;
+  },
+
+  /* The only place a save is written. `round` at the top of nextRound() is
+     exactly "rounds completed", which is what makes the snapshot atomic: every
+     other candidate hook (a shop purchase during a paused round, a pot
+     harvest) fires when round is mid-flight and would resume one trial ahead
+     of where the player actually was. The cost of this restraint is that goo
+     spent after the last boundary is refunded rather than kept — consistent,
+     and never in the player's disfavour. */
+  saveNow(){
+    if(this.state==='boot' || this.state==='victory') return;
+    Save.write(this);
   },
 
   nextRound(){
     this.finishingRound = false;
+    this.saveNow();
     if(this.hero.points>0 && this.openLevelUp()) return;
     const a=this.act();
     if(this.actRound >= a.rounds && !this.boss){ this.startBoss(); return; }
@@ -944,6 +1003,24 @@ window.addEventListener('pointerup', e=>{
 });
 
 $('startBtn').addEventListener('click', ()=>{ Sound.ensure(); Game.start(false); });
+
+/* Resume is offered rather than automatic. Dropping a player straight back
+   into Act IV mid-boss on app launch takes the choice away, and BEGIN has to
+   stay reachable — it is the only way to abandon a run you are stuck on. */
+(function offerResume(){
+  const btn = $('continueBtn'), meta = $('continueMeta');
+  const saved = Save.read();
+  if(!saved) return;
+  meta.textContent = Save.describe(saved);
+  btn.classList.remove('hidden');
+  meta.classList.remove('hidden');
+  btn.addEventListener('click', ()=>{
+    Sound.ensure();
+    // A save can go stale between paint and tap (another tab starting a run),
+    // so a failed resume falls through to a fresh one rather than dead-ending.
+    if(!Game.resumeRun()) Game.start(false);
+  });
+})();
 $('victoryBtn').addEventListener('click', ()=>{ Game.ngPlus++; Game.start(true); });
 resetBtn.addEventListener('click', ()=>{ Sound.ensure(); Game.start(false); });
 muteBtn.addEventListener('click', ()=>{ Sound.muted=!Sound.muted; muteBtn.textContent=Sound.muted?'🔇':'🔊'; });
