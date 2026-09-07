@@ -337,3 +337,28 @@
     #stageWrap.mut-quake{ animation: none; }
     #mutChip:not(.hidden){ animation: none; }
   }
+
+  /* An overlay taller than the stage was losing its own top. `justify-content:
+     center` on a scroll container pushes overflow past the start edge, where
+     no scrollbar can reach it — so the title screen's SLOP wordmark was
+     unreachable rather than merely below the fold. `safe` degrades the
+     centring to flex-start exactly when overflow happens, which is the only
+     case that was broken. Unsupported browsers ignore the keyword and keep
+     the old behaviour. */
+  .overlay{ justify-content: safe center; }
+
+  /* The title screen is the tallest overlay — two speech blocks and, once a
+     run exists, two buttons. Tightened so it fits a 353px stage without
+     relying on the scroll it can now actually perform. */
+  #startScreen .speechBlock{ font-size:11px; line-height:1.3; padding:6px 9px; margin-bottom:7px; }
+  #startScreen .title{ font-size:26px !important; }
+  #startScreen .subtitle{ font-size:11px; margin-bottom:8px; }
+  #startScreen .note{ margin-top:8px; font-size:9px; }
+  /* Trimmed to bring BEGIN above the fold once CONTINUE is also present. The
+     narrators' intro text is authored content and is not shortened to make
+     layout easier; the padding around it is. Tap targets stay at the 48px
+     floor — they are the reason for the squeeze, not a place to pay for it. */
+  #startScreen{ padding:12px; }
+  #startScreen .speechBlock{ font-size:10px; line-height:1.28; margin-bottom:5px; }
+  #startScreen .title{ font-size:22px !important; }
+  #startScreen .subtitle{ margin-bottom:6px; }
