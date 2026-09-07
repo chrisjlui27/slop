@@ -48,6 +48,17 @@ crashes in the act/boss ladder that manual play will not.
 
 `npm run check:shell` runs without Node and should be run before every deploy.
 
+## Skills
+
+Three repeated workflows are encoded in `.claude/skills/` — use them rather
+than reconstructing the steps:
+
+| Skill | For |
+|---|---|
+| `add-microgame` | Adding a microgame. **Three files change now, not two** — the docs predate the offline cache. |
+| `voice-check` | Writing or auditing any character dialogue. |
+| `ship` | The pre-deploy checklist and push. |
+
 ## The one rule that shapes everything
 
 **The chassis catches everything a microgame throws.** `Game.safeLane()` wraps
