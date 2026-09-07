@@ -54,12 +54,18 @@ export const TowerTypes = [
 ];
 
 export const EnemyTypes = {
-  drip:     { id:'drip',     name:'DRIP',     hp:3,  speed:0.030, r:11, color:'#c9ff2f', breach:4,  goo:1 },
-  runner:   { id:'runner',   name:'RUNNER',   hp:2,  speed:0.064, r:8,  color:'#fff02f', breach:3,  goo:1 },
-  lump:     { id:'lump',     name:'LUMP',     hp:13, speed:0.017, r:17, color:'#7a3cff', breach:11, goo:3 },
+  /* `breach` is how much integrity one of these takes on the way through.
+     Tuned down from a first pass where an unattended perimeter did not merely
+     lose ground but entered a death spiral: leaks outpaced regeneration, every
+     breach reset integrity to half, and the next breach followed a wave later.
+     A loop nobody is obliged to play must not bill the main economy every
+     thirty seconds. */
+  drip:     { id:'drip',     name:'DRIP',     hp:3,  speed:0.030, r:11, color:'#c9ff2f', breach:3,  goo:1 },
+  runner:   { id:'runner',   name:'RUNNER',   hp:2,  speed:0.064, r:8,  color:'#fff02f', breach:2,  goo:1 },
+  lump:     { id:'lump',     name:'LUMP',     hp:13, speed:0.017, r:17, color:'#7a3cff', breach:7,  goo:3 },
   // Dies into two drips. The reason a lone high-damage tower at the front is
   // not a complete answer.
-  splitter: { id:'splitter', name:'SPLITTER', hp:6,  speed:0.034, r:13, color:'#ff2f9e', breach:5,  goo:2, splits:'drip', splitCount:2 }
+  splitter: { id:'splitter', name:'SPLITTER', hp:6,  speed:0.034, r:13, color:'#ff2f9e', breach:4,  goo:2, splits:'drip', splitCount:2 }
 };
 
 /* Waves are generated rather than listed. The perimeter runs for as long as a
@@ -72,10 +78,10 @@ export function waveComposition(n) {
   const spawns = [];
   const push = (type, count) => { for (let i = 0; i < count; i++) spawns.push(type); };
 
-  push('drip', 3 + Math.floor(n * 0.8));
-  if (n >= 3) push('runner', 1 + Math.floor((n - 3) * 0.55));
-  if (n >= 5) push('lump', 1 + Math.floor((n - 5) * 0.28));
-  if (n >= 7) push('splitter', 1 + Math.floor((n - 7) * 0.34));
+  push('drip', 2 + Math.floor(n * 0.5));
+  if (n >= 3) push('runner', 1 + Math.floor((n - 3) * 0.4));
+  if (n >= 5) push('lump', 1 + Math.floor((n - 5) * 0.22));
+  if (n >= 7) push('splitter', 1 + Math.floor((n - 7) * 0.25));
 
   // Shuffled so a wave is not three neat blocks — a lump arriving mid-runner
   // is what forces a tower to be somewhere other than the front.
@@ -87,10 +93,15 @@ export function waveComposition(n) {
 }
 
 /* Health scaling is separate from composition so the curve can be tuned
-   without touching what turns up. Kept gentle: the perimeter is meant to be
-   survivable while ignored for a while, and only genuinely demanding if you
-   have been spending your goo elsewhere the whole run. */
-export function waveHpMult(n) { return 1 + n * 0.13; }
+   without touching what turns up.
+
+   Both curves were measurably too steep on the first pass: a player who never
+   opened the perimeter breached around wave 5, roughly two minutes in, which
+   made the Crab's loop mandatory rather than optional and punished people who
+   had not yet found the screen. Softened until an untouched perimeter survives
+   to roughly wave 11 — long enough to discover it, short enough that ignoring
+   it forever still costs. */
+export function waveHpMult(n) { return 1 + n * 0.09; }
 
 /* Gap between spawns within a wave, and the rest between waves. Both shrink
    with wave number, but floor out well above zero — a perimeter that becomes

@@ -299,7 +299,7 @@ export const Defense = {
     // Clean waves restore real integrity; leaky ones barely patch it. That gap
     // is what makes paying attention worth anything.
     const clean = d.waveLeaks === 0;
-    d.perimeter = Math.min(d.perimeterMax, d.perimeter + (clean ? 10 : 3));
+    d.perimeter = Math.min(d.perimeterMax, d.perimeter + (clean ? 14 : 5));
     g.addGoo((4 + d.wave) * g.gooMult());
     g.shiftFavor('crab', clean ? 2.5 : 1);
     Sound.waveClear();
@@ -312,9 +312,24 @@ export const Defense = {
     // The only real loss in the game, and it is kept inside the Crab's own
     // economy: goo, integrity and his regard. The Act ladder is untouched,
     // because the Artificer removed death and that has not been reversed.
-    const lost = Math.round(g.goo * 0.25);
+    // A share of goo, but capped. A never-tended perimeter settles into
+    // breaching about once a wave, and a pure percentage made that a tax that
+    // grew with your wealth — so the richer you got, the more an optional loop
+    // charged you for ignoring it. The cap keeps a breach meaningful when you
+    // are poor and survivable when you are not.
+    const lost = Math.min(Math.round(g.goo * 0.18), 20 + d.wave * 3);
     g.goo = Math.max(0, g.goo - lost);
     d.perimeter = Math.round(d.perimeterMax * 0.5);
+
+    // The wave is over — they are through, there is nothing left to hold — and
+    // the line re-forms before the next one. Without this a breach was not an
+    // event but a treadmill: integrity reset to half, the same unstoppable wave
+    // was still on the board, and the next breach followed a wave later. The
+    // pause is what converts an unattended perimeter from a running tax into an
+    // occasional, survivable cost.
+    d.enemies = [];
+    d.queue = [];
+    d.restT = 9000;
     g.shiftFavor('crab', -8);
     Sound.crabBreach();
     FX.shake(true); FX.chroma();
