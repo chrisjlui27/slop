@@ -22,6 +22,7 @@ const SHELL = [
   'styles/main.css',
   'src/main.js',
   'src/game.js',
+  'src/save.js',
   'src/audio.js',
   'src/fx.js',
   'src/content/lore.js',

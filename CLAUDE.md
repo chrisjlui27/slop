@@ -9,17 +9,44 @@ WarioWare-style microgame chassis with a narrative layer on top. Vanilla JS,
 ES modules, zero runtime dependencies. No framework, no TypeScript, no CSS
 preprocessor. Keep it that way unless explicitly asked.
 
+## Where this is going
+
+**The delivery target is an installed Android app** — a PWA on GitHub Pages,
+added to the home screen, opening fullscreen and running offline. Same route
+as the sibling project `eldritch-garden`. See `DEPLOY.md`.
+
+That target, not "a web page", is what settles design arguments now:
+
+- **Touch is the only input.** No hover states, no keyboard, no right-click.
+  Interactive targets are 44px or larger; the HUD glyph row had to grow once
+  already for this.
+- **The app gets killed.** Android reclaims backgrounded processes whenever it
+  likes, which is why there is now a save system (see below).
+- **Portrait, one thumb.** The layout is a single column capped at 480px and
+  measured against 375x812. Do not add a second column or a landscape mode.
+- **It has to work with the radio off.** Anything the game loads at runtime
+  must be in `sw.js`'s `SHELL`, or it is missing offline.
+
 ## Commands
 
 ```bash
-npm run dev     # serve at localhost:8000 (ES modules need http://, not file://)
-npm run build   # bundle src/ + styles/ into dist/slop.html (single portable file)
-npm test        # build, then drive a full campaign in jsdom
+npm run dev         # serve at localhost:8000 (ES modules need http://, not file://)
+npm run dev:win     # same, via PowerShell — no Node or Python needed
+npm run build       # bundle src/ + styles/ into dist/slop.html (single portable file)
+npm run check:shell # verify sw.js SHELL matches what is on disk
+npm test            # build, then drive a full campaign in jsdom
 ```
 
-Always run `npm test` before declaring work finished. It boots the built game
-and plays through all five acts to the victory screen, so it catches broken
-chassis wiring, missing DOM ids, and crashes in the act/boss ladder.
+**Neither Node nor Python is installed on the current development machine.**
+`npm run dev`, `build`, `check` and `test` therefore cannot run here. This is
+the single biggest gap in the workflow: `npm test` is the real verification
+and it is unavailable, so changes have to be checked by driving the game in a
+browser against `npm run dev:win` instead. If you install Node, go back to
+running `npm test` before declaring anything finished — it plays all five acts
+to the victory screen and catches broken chassis wiring, missing DOM ids and
+crashes in the act/boss ladder that manual play will not.
+
+`npm run check:shell` runs without Node and should be run before every deploy.
 
 ## The one rule that shapes everything
 
@@ -41,6 +68,8 @@ have to be.
 | Add dialogue, an Act, or a boss | `src/content/lore.js` — see `docs/LORE.md` |
 | Add a mutator / shop item / stat | `src/content/mutators.js`, `shop.js`, `stats.js` |
 | Change round flow, scoring, economy | `src/game.js` — see `docs/ARCHITECTURE.md` |
+| Change what survives closing the app | `src/save.js` |
+| Change how it installs or caches | `manifest.webmanifest`, `sw.js` — see `DEPLOY.md` |
 | Change sounds | `src/audio.js` |
 | Change screen effects | `src/fx.js` |
 | Change layout or styling | `styles/main.css`, `index.html` |
@@ -81,8 +110,13 @@ voices wrong is the most common way to damage this project.
 - Comments explain *why*, not *what*. The codebase has a lot of unusual
   decisions (the crash-as-feature, the favor-weighted dialogue, the pot pausing
   the plot) — those deserve comments. `// increment counter` does not.
-- Never use `localStorage`/`sessionStorage`. There is no save system by design;
-  a run is a session.
+- **There is now a save system.** This reverses the original rule, which was
+  "never use `localStorage`; a run is a session." That held up in a browser
+  tab and did not survive the move to an installed Android app, where closing
+  the app for a phone call and discarding an hour of progress were the same
+  gesture. All storage access goes through `src/save.js` — do not call
+  `localStorage` directly from anywhere else, and keep `sessionStorage`
+  unused.
 
 ## Gotchas
 
@@ -96,3 +130,19 @@ voices wrong is the most common way to damage this project.
   *round* pauses. That asymmetry is intentional.
 - **There is no lose state.** No lives, no game over. Failing a round costs
   momentum (combo, boss regen), never progress. Do not add a fail state.
+- **`sw.js`'s `SHELL` is a contract too.** Every file the game fetches at
+  runtime must be listed, or the app is broken offline while looking fine
+  online. The install handler swallows per-entry failures deliberately, so
+  nothing tells you — `npm run check:shell` is what tells you. Add a module,
+  add the line.
+- **Bump `CACHE` in `sw.js` for any shell change.** Modules are cache-first
+  with no background refresh, which is unusual on purpose: refreshing one
+  module in the background would let the next load pair it with siblings from
+  the previous generation. The cache is one indivisible generation, and the
+  constant is the only thing that retires it.
+- **The save schema is an explicit field list**, not a walk of `Game`. A new
+  chassis field is absent from saves until someone adds it to
+  `Save.snapshot()` on purpose — so the failure mode of forgetting is a value
+  that resets, never a corrupted run. Saves are written at exactly one place,
+  the top of `nextRound()`, where `round` means "rounds completed". Do not add
+  a second write site without reading the comment there first.

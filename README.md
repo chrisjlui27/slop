@@ -15,7 +15,14 @@ npm run dev      # http://localhost:8000
 ```
 
 ES modules require `http://`, so opening `index.html` directly won't work
-during development. For a version that runs from anywhere with no server:
+during development. On a machine with no Node or Python, use the PowerShell
+server instead — it needs nothing installed:
+
+```bash
+npm run dev:win  # http://localhost:8000
+```
+
+For a version that runs from anywhere with no server:
 
 ```bash
 npm run build    # → dist/slop.html, one self-contained file
@@ -24,6 +31,17 @@ npm run build    # → dist/slop.html, one self-contained file
 ```bash
 npm test         # builds, then plays a full campaign in jsdom
 ```
+
+## Put it on your phone
+
+SLOP is a PWA. Served over HTTPS it installs to an Android home screen and runs
+fullscreen and offline, with no store and no wrapper. `DEPLOY.md` has the
+GitHub Pages steps.
+
+A run now survives closing the app — Android kills backgrounded processes
+whenever it likes, and the title screen offers CONTINUE when there is something
+to come back to. The save is a between-rounds snapshot, so resuming replays the
+trial you were in the middle of.
 
 ## The game
 
@@ -57,11 +75,15 @@ also nudges the FAVOR meter toward one narrator or the other — Goblin side pay
 
 ```
 CLAUDE.md              instructions for Claude Code — read first
+DEPLOY.md              getting it onto an Android home screen
 index.html             DOM skeleton (every id here is a contract)
+manifest.webmanifest   PWA identity: name, icons, fullscreen, portrait
+sw.js                  offline cache — SHELL must list every runtime file
 styles/main.css        all presentation
 src/
   main.js              entry point
   game.js              the chassis: round flow, economy, all subsystems
+  save.js              what survives closing the app
   audio.js             one blip() primitive, ~30 named cues
   fx.js                shake, chroma, glitch bars, stamps, confetti
   modules/             14 microgames, one file each, fully isolated
@@ -77,6 +99,8 @@ docs/
 tools/
   build.js             ~100-line bundler → dist/slop.html
   smoke-test.js        boots the build, plays a whole campaign
+  serve.ps1            dependency-free dev server (no Node, no Python)
+  check-shell.ps1      verifies sw.js SHELL against what is on disk
 ```
 
 ## The core design bet

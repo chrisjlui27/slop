@@ -9,8 +9,12 @@ index.html          DOM skeleton — every element the chassis binds to
       └ src/game.js         THE CHASSIS — round flow, economy, all subsystems
           ├ src/audio.js    Sound: one blip() primitive + ~30 named cues
           ├ src/fx.js       FX: shake, chroma, glitch bars, stamps, confetti
+          ├ src/save.js     the only code that touches localStorage
           ├ src/modules/    14 microgames, each fully isolated
           └ src/content/    Acts, dialogue, mutators, shop, stats — pure data
+
+sw.js                 offline cache, registered from index.html
+manifest.webmanifest  install identity — outside the module graph entirely
 ```
 
 ## The chassis
@@ -90,6 +94,34 @@ Acts are data in `content/lore.js`: `{ n, title, quest, rounds, boss, open,
 close }`. The chassis reads `rounds` to know when to open the boss gate and
 `boss.hp/regen/final` to build the encounter. Adding a sixth act requires no
 chassis change.
+
+## Persistence
+
+`src/save.js` owns every `localStorage` access in the codebase. It exists
+because the delivery target became an installed Android app, where the OS ends
+backgrounded processes on its own schedule; the original "a run is a session"
+rule was correct for a browser tab and untenable on a phone.
+
+Three decisions shape it:
+
+- **Between rounds only.** A save is written at exactly one place — the top of
+  `nextRound()`, where `round` is precisely "rounds completed". Every other
+  hook (a shop purchase during a paused round, a pot harvest) fires while a
+  round is in flight, and resuming from one would put the player a trial ahead
+  of where they actually were.
+- **No live round is serialised.** Lanes, the running microgame, the defense
+  lane's in-flight blobs and the pot minigame are all absent. Storing them
+  would mean every microgame had to describe its own state, which is exactly
+  the burden `safeLane()` exists to keep off module authors. Resuming replays
+  the interrupted trial.
+- **The schema is an explicit field list**, not a walk of `Game`. Adding a
+  chassis field does not silently add it to saves. The failure mode of
+  forgetting is therefore a value that resets to its initial state, never a
+  half-restored run.
+
+Time-based state — the GLAZED buff, the buddy's hunger clock, ambient bark
+timers — is deliberately not restored. A buddy that starved for nine hours
+while the app was closed would be a punishment for closing the app.
 
 ## Timing
 
