@@ -15,8 +15,8 @@ npm run dev      # http://localhost:8000
 ```
 
 ES modules require `http://`, so opening `index.html` directly won't work
-during development. On a machine with no Node or Python, use the PowerShell
-server instead — it needs nothing installed:
+during development. `npm run dev` needs Python; where that is missing, the
+PowerShell server needs nothing installed:
 
 ```bash
 npm run dev:win  # http://localhost:8000

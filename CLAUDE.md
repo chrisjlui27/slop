@@ -37,16 +37,13 @@ npm run check:shell # verify sw.js SHELL matches what is on disk
 npm test            # build, then drive a full campaign in jsdom
 ```
 
-**Neither Node nor Python is installed on the current development machine.**
-`npm run dev`, `build`, `check` and `test` therefore cannot run here. This is
-the single biggest gap in the workflow: `npm test` is the real verification
-and it is unavailable, so changes have to be checked by driving the game in a
-browser against `npm run dev:win` instead. If you install Node, go back to
-running `npm test` before declaring anything finished — it plays all five acts
-to the victory screen and catches broken chassis wiring, missing DOM ids and
-crashes in the act/boss ladder that manual play will not.
+**Always run `npm test` before declaring work finished.** It plays all five
+acts to the victory screen and catches broken chassis wiring, missing DOM ids
+and crashes in the act/boss ladder that manual play will not.
 
-`npm run check:shell` runs without Node and should be run before every deploy.
+Python is *not* installed, so `npm run dev` fails — use `npm run dev:win`,
+which needs nothing beyond PowerShell. `npm run check:shell` also runs without
+Node, and should be run before every deploy.
 
 ## Skills
 

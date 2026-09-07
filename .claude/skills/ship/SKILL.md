@@ -30,10 +30,14 @@ which is a broken build rather than a stale one.
 Skip the bump only when the change touched nothing in `SHELL` — a doc, a
 comment in a tool script.
 
-**3. Play it.**
+**3. Run the campaign test, then play it.**
 
-`npm test` is the real verification and it cannot run here — neither Node nor
-Python is installed. So actually open the game:
+```bash
+npm test
+```
+
+It plays all five acts to victory in jsdom. Then open the game — Python is not
+installed, so use the PowerShell server:
 
 ```bash
 npm run dev:win

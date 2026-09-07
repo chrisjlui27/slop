@@ -50,8 +50,13 @@ npm run check:shell
 
 This is the check that catches a missed `SHELL` entry. It runs without Node.
 
-Then play it. Node and Python are not installed on this machine, so `npm test`
-is unavailable and the browser is the only real verification:
+Then run the campaign test, which is the real verification:
+
+```bash
+npm test
+```
+
+Then play it. Python is not installed, so use the PowerShell server:
 
 ```bash
 npm run dev:win
