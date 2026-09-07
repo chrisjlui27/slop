@@ -10,7 +10,7 @@
 
    Bump CACHE on every deploy that touches any shell file. Forget and phones
    keep running the previous build until they evict it themselves. */
-const CACHE = 'slop-v5';
+const CACHE = 'slop-v6';
 
 const SHELL = [
   '.',

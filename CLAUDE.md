@@ -158,6 +158,12 @@ voices wrong is the most common way to damage this project.
 - **DOM ids are a contract.** `game.js` resolves ~70 ids at boot via `$()`. If
   you remove an element from `index.html`, the game breaks at startup. The
   smoke test catches this.
+- **Instructions are DOM, not canvas.** A microgame declares `hint` (a string,
+  or a function of `g` when the ask changes mid-round) and the chassis renders
+  it. Never `fillText` an instruction: canvas text is scaled down with the
+  canvas — 13px in a 480-wide board is about 9.5px on a phone. Under 40
+  characters so it stays one line in a double round; `npm test` enforces both
+  the presence and the length.
 - **`dist/` is generated.** Never edit `dist/slop.html` by hand; it is
   overwritten by every build and is gitignored.
 - **Everything runs on one rAF loop.** The buddy, turret lane, and honey pot

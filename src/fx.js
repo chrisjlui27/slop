@@ -96,13 +96,21 @@ export const FX = {
       setTimeout(()=> d.remove(), 1300);
     }
   },
-  verbBanner(text, color){
+  /* `ms` lets the caller shorten the slam. The banner is opaque over the middle
+     of the board while the round clock is already running, so a fixed 600ms is
+     14% of an early round and 44% of a late one — by Act VIII nearly half of
+     every trial was spent looking at a word instead of the game. The verb also
+     persists in the lane label for the whole round, so shortening this costs
+     no information at all; it was always juice, never the source. */
+  verbBanner(text, color, ms){
+    const dur = Math.max(220, Math.min(600, ms || 600));
     const d = document.createElement('div');
     d.className = 'verbBanner arcade';
     d.textContent = text;
     d.style.setProperty('--bannerColor', color || this.rand());
+    d.style.animationDuration = (dur/1000) + 's';
     this.layer.appendChild(d);
-    setTimeout(()=> d.remove(), 600);
+    setTimeout(()=> d.remove(), dur);
   },
   rand(){ return this.palette[Math.floor(Math.random()*this.palette.length)]; },
   chaosEvent(){

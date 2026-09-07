@@ -7,6 +7,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'dodge', verb:'DODGE!', color:'#2fe1ff',
+  hint:'tap a lane — not the one it lands in',
   init(g){
     g.local.laneX = [g.W/6, g.W/2, g.W*5/6];
     g.local.hazardLane = Math.floor(Math.random()*3);

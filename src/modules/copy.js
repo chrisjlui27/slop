@@ -7,6 +7,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'copy', verb:'COPY!', color:'#ff2f9e',
+  hint:g=>g.local.phase==='show' ? 'watch the order' : 'now repeat it',
   init(g){
     const colors = ['#ff2f9e','#c9ff2f','#2fe1ff','#fff02f'];
     g.local.pads = [
@@ -46,8 +47,6 @@ export default {
       c.globalAlpha = (i===activePad || i===l.flash) ? 1 : 0.55;
       c.fill(); c.globalAlpha = 1;
     });
-    c.fillStyle='#f5f2ff'; c.font='12px sans-serif'; c.textAlign='center';
-    c.fillText(l.phase==='show' ? 'watch...' : 'repeat it', g.W/2, 26);
   },
   onDown(g,x,y){
     const l=g.local;

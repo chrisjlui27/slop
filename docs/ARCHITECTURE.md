@@ -41,6 +41,7 @@ manifest.webmanifest  install identity — outside the module graph entirely
 ```js
 {
   id, verb, color,          // identity + the banner shown when it starts
+  hint,                     // string | (g)=>string — the instruction band
   surviveOnTimeout?,        // true = running out the clock is a WIN
   init(g), update(g, dt), render(g),
   onDown(g,x,y), onMove(g,x,y), onUp(g,x,y), cleanup(g)
@@ -51,6 +52,13 @@ manifest.webmanifest  install identity — outside the module graph entirely
 480×480 regardless of on-screen size — the chassis scales pointer coordinates
 for you. Write to `g.local`, never to module-level variables (the same module
 object can be instantiated in two lanes at once).
+
+**The chassis owns the instruction.** Modules declare `hint` and the chassis
+draws it, in DOM, in the same place every time, then fades it out so the board
+comes back clean. This used to be each module's own `fillText`, which put the
+instruction at seven different heights across the pool, left four modules with
+none at all, and rendered all of them at roughly 9.5px on a phone — canvas text
+is scaled down with the canvas, DOM text is not.
 
 ### Crash-as-feature
 

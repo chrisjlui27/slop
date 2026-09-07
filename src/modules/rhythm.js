@@ -11,6 +11,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'rhythm', verb:'KEEP TIME!', color:'#ff2f9e',
+  hint:g=>'tap each one on the line · '+g.local.notes.filter(n=>!n.hit).length+' left',
   init(g){
     const l=g.local;
     l.line = g.W - 110;
@@ -52,10 +53,6 @@ export default {
       c.fillStyle = n.missed ? '#4a2a3a' : '#ff2f9e';
       c.beginPath(); c.arc(n.x, g.H/2, 20, 0, Math.PI*2); c.fill();
     });
-
-    const left = l.notes.filter(n=>!n.hit).length;
-    c.fillStyle='#f5f2ff'; c.font='13px sans-serif'; c.textAlign='center';
-    c.fillText('tap each one on the line · '+left+' left', g.W/2, g.H-40);
   },
   onDown(g){
     const l=g.local;

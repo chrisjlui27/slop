@@ -10,6 +10,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'stack', verb:'DROP IT!', color:'#ff7a2f',
+  hint:'tap when it lines up',
   init(g){
     const l=g.local;
     l.baseW = Math.max(66, 132 - g.round*3);
@@ -54,9 +55,6 @@ export default {
       c.strokeStyle='#ff7a2f55'; c.lineWidth=2;
       c.beginPath(); c.moveTo(l.x, l.y+34); c.lineTo(l.x, g.H/2+72); c.stroke();
     }
-
-    c.fillStyle='#f5f2ff'; c.font='13px sans-serif'; c.textAlign='center';
-    c.fillText('tap when it lines up', g.W/2, g.H-40);
   },
   onDown(g){
     const l=g.local;

@@ -7,6 +7,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'swipe', verb:'SWIPE!', color:'#ff2f9e',
+  hint:g=>'swipe '+g.local.dir,
   init(g){
     const dirs=['up','down','left','right'];
     g.local.dir = dirs[Math.floor(Math.random()*4)];
@@ -23,8 +24,6 @@ export default {
     c.fillStyle='#ff2f9e';
     c.beginPath(); c.moveTo(60,0); c.lineTo(-20,-40); c.lineTo(-20,40); c.closePath(); c.fill();
     c.restore();
-    c.fillStyle='#f5f2ff'; c.font='13px sans-serif'; c.textAlign='center';
-    c.fillText('swipe '+l.dir, cx, cy+120);
   },
   onDown(g,x,y){ g.local.start={x,y}; },
   onUp(g,x,y){

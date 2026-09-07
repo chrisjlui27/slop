@@ -7,6 +7,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'count', verb:'COUNT!', color:'#ff7a2f',
+  hint:g=>g.local.phase==='show' ? 'count the GREEN ones' : 'tap how many there were',
   init(g){
     g.local.correct = 2 + Math.floor(Math.random()*4);
     g.local.decoys = 1 + Math.floor(Math.random()*3);
@@ -29,11 +30,7 @@ export default {
         c.beginPath(); c.arc(it.x,it.y,18,0,Math.PI*2);
         c.fillStyle = it.good ? '#c9ff2f' : '#ff2f9e'; c.fill();
       });
-      c.fillStyle='#f5f2ff'; c.font='13px sans-serif'; c.textAlign='center';
-      c.fillText('count the GREEN ones', g.W/2, 26);
     }else{
-      c.fillStyle='#f5f2ff'; c.font='13px sans-serif'; c.textAlign='center';
-      c.fillText('how many green?', g.W/2, g.H/2-60);
       l.answers.forEach(a=>{
         c.fillStyle='#ff7a2f'; c.beginPath(); c.arc(a.x,a.y,38,0,Math.PI*2); c.fill();
         c.fillStyle='#0c0a15'; c.font='bold 22px sans-serif'; c.fillText(a.n, a.x, a.y+2);

@@ -7,6 +7,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'smash', verb:'SMASH!', color:'#ff2f9e',
+  hint:g=>'tap the button fast · '+Math.max(0,g.local.target-g.local.taps)+' to go',
   init(g){
     g.local.target = 8 + Math.min(10, Math.floor(g.round/2));
     g.local.taps = 0;

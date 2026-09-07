@@ -7,6 +7,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'stop', verb:'STOP!', color:'#7a3cff',
+  hint:'tap anywhere to stop the marker',
   init(g){
     g.local.pos = 0; g.local.dir = 1;
     g.local.speed = 0.0011 + Math.min(0.0012, g.round*0.00004);
@@ -30,8 +31,6 @@ export default {
     c.fillStyle='#c9ff2f'; c.fillRect(x0+l.zoneStart*tw, trackY-14, (l.zoneEnd-l.zoneStart)*tw, 28);
     const nx = x0 + l.pos*tw;
     c.fillStyle='#fff02f'; c.fillRect(nx-4, trackY-24, 8, 48);
-    c.fillStyle='#f5f2ff'; c.font='13px sans-serif'; c.textAlign='center';
-    c.fillText('tap anywhere to STOP', g.W/2, trackY+60);
   },
   onDown(g){
     const l=g.local;

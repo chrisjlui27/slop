@@ -11,6 +11,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'weigh', verb:'HEAVIER!', color:'#7a3cff',
+  hint:'tap the side with more',
   init(g){
     const l=g.local;
     // Difficulty is the closeness of the two totals, not the speed of
@@ -46,9 +47,6 @@ export default {
         c.beginPath(); c.arc(d.x,d.y,11,0,Math.PI*2); c.fill();
       });
     });
-
-    c.fillStyle='#f5f2ff'; c.font='13px sans-serif'; c.textAlign='center';
-    c.fillText('tap the side with more', g.W/2, g.H-40);
   },
   onDown(g,x){
     const l=g.local;

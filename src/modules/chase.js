@@ -10,6 +10,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'chase', verb:'CATCH IT!', color:'#fff02f',
+  hint:'drag onto it — it runs',
   init(g){
     const l=g.local;
     l.tx = g.W/2 + (Math.random()-0.5)*160;
@@ -47,8 +48,6 @@ export default {
     c.beginPath(); c.arc(l.tx,l.ty,l.r,0,Math.PI*2); c.fill();
     c.fillStyle='#0c0a15'; c.font='16px sans-serif'; c.textAlign='center'; c.textBaseline='middle';
     c.fillText('!', l.tx, l.ty+1);
-    c.fillStyle='#f5f2ff'; c.font='13px sans-serif'; c.textBaseline='alphabetic';
-    c.fillText('drag onto it. it runs', g.W/2, g.H-40);
   },
   onDown(g,x,y){ this.onMove(g,x,y); },
   onMove(g,x,y){

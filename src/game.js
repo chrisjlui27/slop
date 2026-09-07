@@ -405,9 +405,39 @@ export const Game = {
     }
   },
 
+  /* A module's `hint` may be a string or a function of `g`, because several
+     of them change what they are asking for mid-round — swipe names a
+     direction, copy switches from "watch" to "repeat", rhythm counts down.
+     Written through safeLane like everything else module-authored, and only
+     touched when the text actually changes so this is not a DOM write every
+     frame. */
+  updateHint(lane){
+    const def = lane.def;
+    if(!def) return;
+    let text = '';
+    if(typeof def.hint === 'function') text = this.safeLane(lane, ()=> def.hint(lane.g)) || '';
+    else if(def.hint) text = def.hint;
+    if(text === lane.hintText) return;
+    lane.hintText = text;
+    lane.hintEl.textContent = text;
+    lane.hintEl.classList.toggle('hidden', !text);
+    /* Re-trigger the read-then-fade animation on every change. No edge of the
+       board is free for all 22 modules — falling-object games own the top,
+       sort's bins and stop's track own the bottom — so instead of fighting for
+       space the band earns its place only while it is needed and then gets out
+       of the way. A hint that changes mid-round (rhythm counting down, peel
+       warning about speed, trace switching to "stay on the line") re-shows
+       itself, which is exactly when it is worth reading again. */
+    lane.hintEl.classList.remove('show');
+    void lane.hintEl.offsetWidth;
+    lane.hintEl.classList.add('show');
+  },
+
   /* ---------------- core chassis ---------------- */
+  // Returns whatever the module code returned, so callers that need a value —
+  // `hint`, which can be a function — get one. Every other caller ignores it.
   safeLane(lane, fn){
-    try{ fn(); }
+    try{ return fn(); }
     catch(e){
       console.warn('[chassis caught]', e);
       if(lane.result===null){
@@ -468,13 +498,26 @@ export const Game = {
 
   createLanes(count){
     laneRow.innerHTML = '';
+    // Halves the width available to each hint, so the band needs to know.
+    laneRow.classList.toggle('double', count > 1);
     this.lanes = [];
     for(let i=0;i<count;i++){
       const wrap=document.createElement('div'); wrap.className='laneWrap';
       const label=document.createElement('div'); label.className='laneLabel arcade';
       const canvas=document.createElement('canvas'); canvas.width=480; canvas.height=480; canvas.className='laneCanvas';
-      wrap.appendChild(label); wrap.appendChild(canvas); laneRow.appendChild(wrap);
-      const lane={ canvas, ctx:canvas.getContext('2d'), labelEl:label, def:null, g:null, result:null };
+      /* The hint is DOM, not canvas, and the chassis owns it. Modules used to
+         draw their own instruction with fillText, which put it at seven
+         different heights across the pool, left four modules with none at all,
+         and rendered every one of them at 13px inside a 480-wide canvas shown
+         at 353 — about 9.5px on screen, below what anyone can read on a phone
+         mid-round. DOM text is sized in real pixels and cannot be shrunk by
+         the canvas scale. It is absolutely positioned so it overlays rather
+         than displaces the canvas, which would otherwise squash every circle
+         in the game. */
+      const hint=document.createElement('div'); hint.className='laneHint';
+      wrap.appendChild(label); wrap.appendChild(canvas); wrap.appendChild(hint);
+      laneRow.appendChild(wrap);
+      const lane={ canvas, ctx:canvas.getContext('2d'), labelEl:label, hintEl:hint, hintText:null, def:null, g:null, result:null };
       canvas.addEventListener('pointerdown', e=> this.onDown(lane, e));
       this.lanes.push(lane);
     }
@@ -661,12 +704,21 @@ export const Game = {
       this.safeLane(lane, ()=> def.init(lane.g));
       lane.labelEl.textContent = def.verb;
       lane.labelEl.style.color = def.color;
+      // Painted before the first frame, so the instruction is on screen while
+      // the banner is still slamming rather than one frame later.
+      lane.hintText = null;
+      this.updateHint(lane);
     });
 
     this.state='playing';
     this.deadline = performance.now()+this.timeLimit;
-    if(isDouble){ FX.verbBanner('DOUBLE SLOP!!','#ff2f9e'); FX.shake(true); Sound.chaos(); }
-    else{ FX.verbBanner(this.lanes[0].def.verb, this.lanes[0].def.color); FX.shake(false); Sound.blip(520,0.06,'square',0.1); }
+    /* The banner never takes more than a fifth of the round it is announcing.
+       At the old fixed 600ms a late-Act trial spent 44% of its clock behind an
+       opaque word; the verb stays in the lane label regardless, so this loses
+       nothing but the obstruction. */
+    const bannerMs = Math.round(Math.min(600, this.timeLimit*0.2));
+    if(isDouble){ FX.verbBanner('DOUBLE SLOP!!','#ff2f9e', bannerMs); FX.shake(true); Sound.chaos(); }
+    else{ FX.verbBanner(this.lanes[0].def.verb, this.lanes[0].def.color, bannerMs); FX.shake(false); Sound.blip(520,0.06,'square',0.1); }
     this.updateHUD();
     const chaosInterval=[8,5,3][this.chaosLevel];
     if(this.round % chaosInterval === 0) FX.chaosEvent();
@@ -1185,6 +1237,7 @@ export const Game = {
         if(lane.result!==null) return;
         this.safeLane(lane, ()=> lane.def.update(lane.g,dt));
         this.safeLane(lane, ()=> lane.def.render(lane.g));
+        this.updateHint(lane);
       });
       if(remain<=0){
         this.lanes.forEach(lane=>{
@@ -1373,6 +1426,19 @@ tdReinforceBtn.addEventListener('click', ()=>{
 });
 
 tdDoneBtn.addEventListener('click', ()=>{ Sound.ensure(); Game.closeDefense(); });
+
+/* The standing row is four coloured bars behind three-letter codes, which is a
+   perfectly good glance-gauge once you know what it is and completely opaque
+   until then. Rather than spend HUD width explaining itself, it opens the hero
+   sheet — which already names every patron in their own colour and lists what
+   their standing actually does. The cryptic thing gets a way to be asked. */
+$('standingRow').addEventListener('click', ()=>{
+  Sound.ensure();
+  if(menuGuard()) return;
+  Sound.menuOpen();
+  Game.pauseForMenu(); Game.renderSheet();
+  sheetOverlay.classList.remove('hidden');
+});
 
 companyBtn.addEventListener('click', ()=>{
   Sound.ensure();

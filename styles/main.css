@@ -663,3 +663,85 @@
      and the authored copy are the two things this layout exists to protect. */
   #startScreen .note{ margin-top:5px; line-height:1.3; }
   #ledgerLine{ margin-bottom:2px; }
+
+  /* ============================================================
+     READABILITY PASS
+     ------------------------------------------------------------
+     Measured, not guessed. Two findings drove most of this:
+
+     1. Module instructions were drawn with fillText at 13px inside a
+        480-wide canvas displayed at 353 — about 9.5px on screen, and
+        at seven different heights across the pool, with four modules
+        having no instruction at all.
+     2. Several HUD labels sit at 6-7px in Press Start 2P, which is a
+        5x7 pixel font: below ~8px its glyphs stop resolving at all.
+     ============================================================ */
+
+  /* The instruction band. DOM rather than canvas so its size is in real
+     pixels, and absolute so it overlays the canvas instead of displacing it —
+     in flow it would shorten every lane and squash every circle in the game.
+     Bottom edge because that is where most modules already put their text, so
+     it covers the least gameplay. */
+  .laneHint{
+    position:absolute; left:0; right:0; bottom:0; z-index:2;
+    padding:6px 8px; text-align:center;
+    font-size:12px; line-height:1.25; color:#f5f2ff;
+    background:linear-gradient(180deg, rgba(8,6,12,0) 0%, rgba(8,6,12,0.86) 42%);
+    pointer-events:none;
+    text-shadow:0 1px 3px rgba(0,0,0,0.95);
+  }
+  /* Two lanes share the width in a double round, so the text has to get out of
+     its own way rather than wrap into three lines. */
+  #laneRow.double .laneHint{ font-size:10px; padding:5px 4px; }
+
+  /* The verb is the primary instruction and persists for the whole round —
+     the banner only flashes it. 9px was smaller than the hint explaining it. */
+  .laneLabel{ font-size:11px; padding:4px 2px; }
+
+  /* HUD labels that carry meaning, lifted above the pixel font's floor. */
+  .standingTag{ font-size:8px; opacity:0.95; }
+  #meterLabel{ font-size:8px; opacity:0.7; }
+  #heroRow{ font-size:8px; }
+  #buddyLvl{ font-size:8px; opacity:0.85; }
+  #actBar{ font-size:9px; opacity:0.95; }
+  #roundVal{ font-size:9px !important; opacity:0.75; }
+  #gooCount{ font-size:11px; }
+  #turretUpgradeBtn, #rerollBtn{ font-size:9px; }
+  #dialogueWho{ font-size:9px; }
+  #bossTop{ font-size:9px; }
+
+  /* Lifted off dead centre. Most modules put their action in the middle of the
+     board, which is exactly where the banner was landing — so for its whole
+     duration the player was looking at the announcement instead of the thing
+     it announced. Duration is now capped per-round in game.js as well. */
+  .verbBanner{ top:31%; font-size:26px; }
+  #laneRow.double .verbBanner{ font-size:19px; }
+
+  /* The band reads, then leaves. An instruction is worth screen space for the
+     first second of a round and is clutter over the board for the rest of it —
+     which is also why it can sit at the bottom edge without permanently
+     covering sort's bins or stop's track. Any change to the text restarts
+     this, so a hint that updates mid-round shows itself again. */
+  .laneHint{ opacity:0; }
+  .laneHint.show{ animation: hintRead 1.9s ease forwards; }
+  @keyframes hintRead{
+    0%{ opacity:0; transform:translateY(6px); }
+    9%{ opacity:1; transform:translateY(0); }
+    68%{ opacity:1; }
+    100%{ opacity:0; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    /* No slide, and it stays put — a player who has asked for less motion
+       should not have the instruction animate away from them either. */
+    .laneHint.show{ animation:none; opacity:1; }
+  }
+
+  /* Tappable, because it opens the hero sheet that explains it. Given a real
+     touch height rather than the 13px the bars alone needed — a control the
+     player is meant to find has to be findable by a thumb. */
+  #standingRow{
+    min-height:30px; padding:2px 4px; margin-left:-4px; margin-right:-4px;
+    border-radius:8px; cursor:pointer;
+    transition: background 0.15s ease;
+  }
+  #standingRow:active{ background:#15111f; }

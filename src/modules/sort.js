@@ -7,6 +7,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'sort', verb:'SORT!', color:'#2fe1ff',
+  hint:'drag it into the matching bin',
   init(g){
     const colors = ['#ff2f9e','#c9ff2f','#2fe1ff'];
     g.local.itemColor = colors[Math.floor(Math.random()*colors.length)];

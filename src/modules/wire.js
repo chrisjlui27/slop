@@ -13,6 +13,7 @@ const COLORS = ['#c9ff2f','#2fe1ff','#ff2f9e','#fff02f'];
 
 export default {
   id:'wire', verb:'CONNECT!', color:'#c9ff2f',
+  hint:'drag each colour to its match',
   init(g){
     const l=g.local;
     const pool = COLORS.slice().sort(()=>Math.random()-0.5).slice(0,2);
@@ -43,9 +44,6 @@ export default {
       c.fillStyle=p.col;
       c.beginPath(); c.arc(p.x,p.y,26,0,Math.PI*2); c.fill();
     });
-
-    c.fillStyle='#f5f2ff'; c.font='13px sans-serif'; c.textAlign='center';
-    c.fillText('drag each colour to its match', g.W/2, g.H-40);
   },
   onDown(g,x,y){
     const l=g.local;

@@ -7,6 +7,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'hold', verb:'HOLD!', color:'#7a3cff',
+  hint:'hold, then release inside the zone',
   init(g){
     g.local.charge=0; g.local.holding=false; g.local.done=false;
     g.local.rate = 0.7 + Math.min(0.4, g.round*0.02);
@@ -30,8 +31,6 @@ export default {
     c.fillStyle='#c9ff2f'; c.fillRect(x-22, zy0, 44, zy1-zy0);
     const fy = y1 - l.charge*h;
     c.fillStyle='#7a3cff'; c.fillRect(x-14, fy, 28, y1-fy);
-    c.fillStyle='#f5f2ff'; c.font='13px sans-serif'; c.textAlign='center';
-    c.fillText('hold, release in the zone', g.W/2, y1+34);
   },
   onDown(g){ g.local.holding=true; },
   onUp(g){

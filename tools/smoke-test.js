@@ -87,6 +87,14 @@ function runChecks() {
     typeof m.init !== "function" || typeof m.render !== "function");
   check("every microgame has id, verb, colour, init and render", shapeBad.length === 0);
 
+  // The hint is the chassis-drawn instruction band, and since modules stopped
+  // drawing their own it is the only thing telling the player what is being
+  // asked. A missing or empty one is a silent readability regression, so it is
+  // part of the contract now.
+  const hintless = mods.filter(m => !m.hint).map(m => m.id);
+  check("every microgame declares a hint: " + (hintless.join(", ") || "none missing"),
+    hintless.length === 0);
+
   // Module-scope mutable state breaks DOUBLE SLOP, where one module object
   // runs in two lanes at once. Two independent `local` objects must stay
   // independent after both have been initialised and driven.
@@ -101,6 +109,7 @@ function runChecks() {
   };
 
   const broken = [];
+  const badHint = [];
   const leaky = [];
   mods.forEach(m => {
     try {
@@ -116,6 +125,16 @@ function runChecks() {
       if (m.onMove) { m.onMove(a, 250, 250); m.onMove(b, 110, 390); }
       if (m.onUp) { m.onUp(a, 260, 260); m.onUp(b, 120, 400); }
       if (m.cleanup) { m.cleanup(a); m.cleanup(b); }
+      // Dynamic hints read g.local, so they are driven in every state the
+      // module passed through above — a hint that throws or goes blank
+      // mid-round leaves the player with no instruction at all.
+      [a, b].forEach(gg => {
+        const h = typeof m.hint === "function" ? m.hint(gg) : m.hint;
+        if (typeof h !== "string" || !h.trim()) badHint.push(m.id + " (empty hint)");
+        // 40 chars is one line at the width a DOUBLE SLOP lane gets. Longer wraps
+        // to two, which pushes the band up over the board it is explaining.
+        else if (h.length > 40) badHint.push(m.id + " (hint too long: " + h.length + ")");
+      });
       if (Object.keys(a.local).length === 0) leaky.push(m.id + " (no g.local state)");
     } catch (e) {
       broken.push(m.id + ": " + e.message);
@@ -123,6 +142,7 @@ function runChecks() {
   });
   check("no microgame throws when driven: " + (broken[0] || "none"), broken.length === 0);
   check("every microgame keeps its state on g.local", leaky.length === 0);
+  check("hints stay valid and short: " + (badHint[0] || "all"), badHint.length === 0);
 
   // ---- winnability ----
   // "Does not throw" is not "is a game". The chassis awards a throwing module

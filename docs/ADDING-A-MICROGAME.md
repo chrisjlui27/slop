@@ -15,6 +15,7 @@ export default {
   id: 'yourgame',            // unique, lowercase, matches the filename
   verb: 'DO IT!',            // the banner slammed on screen when it starts
   color: '#c9ff2f',          // banner + lane label colour
+  hint: 'tap the big one',   // the instruction. REQUIRED — see below
 
   init(g) {
     // Called once when the round starts. Put ALL state on g.local.
@@ -73,6 +74,26 @@ That is it. The chassis picks it up immediately, avoids repeating it too soon,
 and includes it in double-lane rounds and rerolls automatically.
 
 ## Rules
+
+**Write the hint, don't draw it.** The chassis renders `hint` into a band at
+the bottom of the lane and fades it out about two seconds in, so the player
+reads it and then gets a clean board. Do **not** call `fillText` for your
+instruction: canvas text is scaled down with the canvas (13px in a 480-wide
+board is ~9.5px on a phone, which nobody can read mid-round), and every module
+that drew its own put it at a different height. The band is DOM, sized in real
+pixels, in the same place every time.
+
+Keep it **under 40 characters** — that is one line at the width a lane gets in
+a DOUBLE SLOP round. `npm test` enforces this.
+
+If what you are asking for changes mid-round, make `hint` a function of `g`:
+
+```js
+hint: g => g.local.phase === 'show' ? 'watch the order' : 'now repeat it',
+```
+
+The band re-shows itself whenever the text changes, which is exactly when it is
+worth reading again.
 
 **The canvas is always 480×480.** `g.W` and `g.H` are always 480 no matter how
 big the lane renders on screen. Pointer coordinates are pre-scaled to match, so

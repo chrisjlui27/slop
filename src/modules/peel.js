@@ -11,6 +11,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'peel', verb:'PEEL IT!', color:'#c9ff2f',
+  hint:g=>g.local.torn>0 ? 'too fast — slower' : 'drag the tab down, slowly',
   init(g){
     const l=g.local;
     l.y = 96;
@@ -38,9 +39,6 @@ export default {
 
     c.strokeStyle='#c9ff2f66'; c.lineWidth=2;
     c.beginPath(); c.moveTo(g.W/2-70, l.goal); c.lineTo(g.W/2+70, l.goal); c.stroke();
-
-    c.fillStyle='#f5f2ff'; c.font='13px sans-serif'; c.textAlign='center';
-    c.fillText(l.torn>0 ? 'too fast — slower' : 'drag the tab down, slowly', g.W/2, g.H-40);
   },
   onDown(g,x,y){
     const l=g.local;

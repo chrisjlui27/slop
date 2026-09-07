@@ -7,6 +7,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'mirror', verb:'MIRROR!', color:'#2fe1ff',
+  hint:'tap the mirrored spot',
   init(g){
     g.local.px = 40+Math.random()*(g.W/2-80);
     g.local.py = 60+Math.random()*(g.H-120);
@@ -17,8 +18,6 @@ export default {
     c.clearRect(0,0,g.W,g.H);
     c.strokeStyle='#22203a'; c.beginPath(); c.moveTo(g.W/2,0); c.lineTo(g.W/2,g.H); c.stroke();
     c.beginPath(); c.arc(l.px,l.py,22,0,Math.PI*2); c.fillStyle='#2fe1ff'; c.fill();
-    c.fillStyle='#f5f2ff'; c.font='13px sans-serif'; c.textAlign='center';
-    c.fillText('tap the mirror spot', g.W/2, 26);
   },
   onDown(g,x,y){
     const l=g.local;

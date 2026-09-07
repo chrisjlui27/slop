@@ -17,6 +17,13 @@ phone loses signal.
 Follow the contract in `docs/ADDING-A-MICROGAME.md`. The rules that actually
 bite:
 
+- **`hint` is required, and you write it rather than draw it.** The chassis
+  renders it into a band at the bottom of the lane and fades it out after about
+  two seconds. Never `fillText` an instruction: canvas text shrinks with the
+  canvas (~9.5px on a phone) and every module that drew its own put it
+  somewhere different. Keep it under 40 characters so it stays one line in a
+  double round — `npm test` enforces that. Make it a function of `g` if the ask
+  changes mid-round.
 - The canvas is always 480x480 (`g.W`/`g.H`), whatever the on-screen size.
 - **All state on `g.local`.** Module-scope variables break DOUBLE SLOP rounds,
   where the same module object runs in two lanes at once.

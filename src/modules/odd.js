@@ -7,6 +7,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'odd', verb:'ODD ONE!', color:'#fff02f',
+  hint:'tap the odd one out',
   init(g){
     const n=9;
     const colors=['#ff2f9e','#c9ff2f','#2fe1ff','#fff02f','#7a3cff','#ff7a2f'];
@@ -30,8 +31,6 @@ export default {
       c.beginPath(); c.arc(cell.x,cell.y,32,0,Math.PI*2);
       c.fillStyle=cell.color; c.fill();
     });
-    c.fillStyle='#f5f2ff'; c.font='13px sans-serif'; c.textAlign='center';
-    c.fillText('tap the odd one out', g.W/2, 26);
   },
   onDown(g,x,y){
     const l=g.local;

@@ -7,6 +7,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'match', verb:'MATCH!', color:'#fff02f',
+  hint:g=>g.local.phase==='show' ? 'memorise it' : 'tap the one that matches',
   init(g){
     const shapes=['circle','square','triangle'];
     const colors=['#ff2f9e','#c9ff2f','#2fe1ff','#fff02f'];

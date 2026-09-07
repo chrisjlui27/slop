@@ -7,6 +7,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'squeeze', verb:'SQUEEZE!', color:'#c9ff2f',
+  hint:'tap when the gap feels right',
   init(g){
     g.local.gap = g.W-40;
     g.local.rate = 0.15 + Math.min(0.1,g.round*0.004);
@@ -27,8 +28,6 @@ export default {
     c.fillStyle='#ff2f9e';
     c.fillRect(0,0,wallW,g.H);
     c.fillRect(g.W-wallW,0,wallW,g.H);
-    c.fillStyle='#f5f2ff'; c.font='13px sans-serif'; c.textAlign='center';
-    c.fillText('tap when gap feels right', g.W/2, g.H-30);
   },
   onDown(g){
     const l=g.local;

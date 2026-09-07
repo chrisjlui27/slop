@@ -7,6 +7,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'grab', verb:'GRAB!', color:'#c9ff2f',
+  hint:g=>'grab ★, avoid ✕ · '+Math.max(0,g.local.target-g.local.good)+' to go',
   init(g){
     g.local.items = [];
     g.local.spawnT = 0;
@@ -35,8 +36,6 @@ export default {
       c.fillStyle = '#0c0a15'; c.font='bold 16px sans-serif'; c.textAlign='center'; c.textBaseline='middle';
       c.fillText(it.bad ? '✕' : '★', it.x, it.y+1);
     });
-    c.fillStyle='#f5f2ff'; c.font='14px sans-serif'; c.textAlign='left';
-    c.fillText('good: '+l.good+'/'+l.target, 12, 22);
   },
   onDown(g,x,y){
     const l=g.local;

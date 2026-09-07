@@ -19,6 +19,7 @@ const pathY = (g, x) => {
 
 export default {
   id:'trace', verb:'TRACE!', color:'#2fe1ff',
+  hint:g=>g.local.settled ? 'stay on the line' : (g.local.dragging ? 'get on the line' : 'drag from the dot'),
   init(g){
     const l=g.local;
     l.amp = 50 + Math.random()*55;
@@ -55,10 +56,6 @@ export default {
 
     c.fillStyle = l.settled ? '#2fe1ff' : (l.dragging ? '#fff02f' : '#7a3cff');
     c.beginPath(); c.arc(l.x, pathY(g,l.x), 13, 0, Math.PI*2); c.fill();
-
-    c.fillStyle='#f5f2ff'; c.font='13px sans-serif'; c.textAlign='center';
-    c.fillText(l.settled ? 'stay on the line'
-      : (l.dragging ? 'get on the line' : 'drag from the dot'), g.W/2, g.H-40);
   },
   onDown(g,x,y){
     const l=g.local;

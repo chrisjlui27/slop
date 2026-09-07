@@ -11,6 +11,7 @@ import { Sound } from "../audio.js";
  */
 export default {
   id:'flee', verb:'SURVIVE!', color:'#ff2f9e', surviveOnTimeout:true,
+  hint:'drag to keep away from them',
   init(g){
     const l=g.local;
     l.x = g.W/2; l.y = g.H/2;
@@ -47,8 +48,6 @@ export default {
     });
     c.fillStyle='#c9ff2f';
     c.beginPath(); c.arc(l.x,l.y,l.r,0,Math.PI*2); c.fill();
-    c.fillStyle='#f5f2ff'; c.font='13px sans-serif'; c.textAlign='center';
-    c.fillText('drag to stay alive', g.W/2, g.H-40);
   },
   onDown(g,x,y){ this.onMove(g,x,y); },
   onMove(g,x,y){
