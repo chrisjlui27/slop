@@ -119,14 +119,40 @@ most — with the others still audible, because the arguing is the texture.
 The favor spine comes first. It is what every loop hooks into, and retrofitting
 it after a second loop exists means changing that loop twice.
 
-1. **Standing** — multi-axis favor, the UI for it, and the four-way bark
-   weighting. Artificer and Goblin keep behaving as they do today.
-2. **THE CRAB** — cast entry, voice, barks; then the defense lane rebuilt as a
-   real tower defense with waves, tower types and a cost for losing.
+1. ~~**Standing**~~ — **done.** Multi-axis favor, its UI, and the four-way
+   bark weighting.
+2. ~~**THE CRAB**~~ — **done.** Cast entry, voice, barks, and the defense lane
+   rebuilt as a real tower defense. See "How the perimeter turned out" below.
 3. **THE UNDERSTUDY** — the idle layer, and the offline-time rule that only
    applies to them.
 4. **Breadth** — more microgames, more Acts, NG+ and meta-progression across
    runs, deeper hero systems.
+
+## How the perimeter turned out
+
+`src/defense.js` with its data in `src/content/defense.js`. The decisions worth
+knowing before changing it:
+
+- **One simulation, two views.** Positions live in board space (480×360) and
+  are scaled at render time, so the HUD strip and the full overlay cannot
+  disagree about where anything is. `renderStrip` and `renderBoard` are the
+  only places that know about pixels.
+- **Nine pads, three columns by three rows.** A pad row sits between its own
+  corridor and the next one down, so the top two rows cover two corridors each
+  and the bottom row covers one. The efficient slots are the ones furthest
+  from the breach — that asymmetry *is* the placement decision.
+- **It never stops.** Waves arrive on the rAF loop during menus, the honey pot
+  and microgames. Ignoring the perimeter is a decision with a consequence.
+- **Global reinforcement is separate from per-tower level.** `Game.turret`
+  multiplies every tower; REINFORCE stays worth buying at nine towers.
+- **It has its own crash guard.** `Game.safeDefense` mirrors `safeLane`, but
+  unlike a microgame crash a fault here is *not* awarded to the player and does
+  not become a `GLITCH?!` — the perimeter is where consequences are real, so
+  swallowing a fault as a reward would be a lie. It logs and abandons the frame.
+- **Waves are generated, not listed.** A run has no last wave, so a fixed table
+  would either run out or be mostly copy-paste.
+- **What persists.** Towers, integrity and breach count; not the enemies in
+  flight. Resuming into a half-finished wave would be an ambush nobody chose.
 
 Steps 2 and 3 are each a genuine game. They should be built behind the same
 `safeLane()`-style guarantee the microgames get, so a crash in the tower

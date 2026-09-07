@@ -517,3 +517,90 @@
   /* Long bodies get their own scroll region so the CLOSE button stays put
      instead of being pushed below the fold by a codex that keeps growing. */
   #sheetBody{ max-height:250px; overflow-y:auto; }
+
+  /* ============================================================
+     THE PERIMETER — the Crab's overlay
+     ============================================================ */
+
+  #tdStatus{
+    font-size:8px; color:var(--orange); letter-spacing:0.5px; margin-bottom:5px;
+  }
+  #tdIntegrityTrack{
+    width:100%; max-width:330px; height:7px; border-radius:4px; overflow:hidden;
+    background:#15111f; margin-bottom:8px;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.7);
+  }
+  /* Colour carries the warning rather than a separate alarm state: the fill is
+     set from JS so it can cross from orange through yellow to pink as
+     integrity falls. */
+  #tdIntegrityFill{ height:100%; width:100%; background:var(--orange); transition:width 0.3s ease, background 0.3s ease; }
+
+  #tdCanvas{
+    width:100%; max-width:330px; aspect-ratio:4/3; display:block;
+    touch-action:none; border-radius:10px;
+    background:linear-gradient(180deg,#0c0a15,#120d1c);
+    border:1px solid #3a2417;
+  }
+
+  /* The build menu is DOM so its rows are real 44px targets rather than
+     hit-tested rectangles on the canvas. Empty until a pad is selected. */
+  #tdBuildMenu{
+    width:100%; max-width:330px; display:flex; flex-direction:column; gap:5px;
+    margin-top:8px;
+  }
+  #tdBuildMenu:empty{ display:none; }
+  #tdBuildMenu button{
+    display:flex; align-items:center; gap:8px; width:100%; min-height:44px;
+    padding:7px 10px; border-radius:8px; cursor:pointer; text-align:left;
+    background:#15111f; border:1px solid #2a2238; color:var(--ink);
+    font-family:'Space Grotesk',system-ui,sans-serif; font-size:11px;
+    transition: transform 0.06s ease, filter 0.12s ease;
+  }
+  #tdBuildMenu button:active{ transform:translateY(2px); filter:brightness(1.3); }
+  #tdBuildMenu button:disabled{ opacity:0.4; cursor:default; }
+  #tdBuildMenu .tdGlyph{ font-size:19px; line-height:1; }
+  #tdBuildMenu .tdName{ font-family:'Press Start 2P',monospace; font-size:8px; }
+  #tdBuildMenu .tdDesc{ opacity:0.6; font-size:10px; line-height:1.25; }
+  #tdBuildMenu .tdCost{ margin-left:auto; font-family:'Press Start 2P',monospace; font-size:9px; color:var(--acid); white-space:nowrap; }
+  #tdBuildMenu .tdHint{
+    font-size:10px; opacity:0.5; text-align:center; padding:6px 0; line-height:1.4;
+  }
+
+  #tdActions{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; justify-content:center; }
+  #tdActions .btn{ font-size:10px; padding:11px 14px; }
+  #tdReinforceBtn{ background:var(--orange); box-shadow:0 6px 0 #a34a12; color:#170d06; }
+  #tdReinforceBtn:active{ box-shadow:0 2px 0 #a34a12; }
+  #tdDoneBtn{ background:var(--cyan); box-shadow:0 6px 0 #0e7a91; }
+  #tdDoneBtn:active{ box-shadow:0 2px 0 #0e7a91; }
+
+  /* The HUD button that opens all this. Turns from status readout into an
+     alarm once the perimeter is genuinely in trouble. */
+  #turretUpgradeBtn.breached{
+    color:var(--pink); border-color:#ff2f9e88; animation: panic 0.5s infinite;
+  }
+
+  /* The perimeter is the tallest overlay in the game — a board, a status
+     readout, a contextual build menu and two actions. Rather than shrink all
+     of it to fit, the scrolling region is bounded and the actions sit outside
+     it, so LEAVE POST is on screen no matter how long the build menu gets. */
+  #defenseOverlay{ justify-content:flex-start; padding:12px 12px 10px; }
+  #tdScroll{
+    flex:1 1 auto; min-height:0; overflow-y:auto; width:100%;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  #tdActions{ flex:0 0 auto; }
+  #defenseOverlay .title{ margin-bottom:10px; }
+  /* Slightly narrower than the other overlays' 330px: the board is 4:3, so
+     every pixel of width costs three quarters of one in height. */
+  #tdCanvas, #tdIntegrityTrack, #tdBuildMenu{ max-width:300px; }
+
+  /* The build menu is pinned between the board and the actions rather than
+     stacked under the board. Three options at the 44px touch floor is ~140px,
+     which cannot share a 271px region with a 225px board — so instead of
+     letting it fall below the fold, the board yields space while a pad is
+     selected. The menu keeps its own scroll for the rare taller case. */
+  #tdBuildMenu{
+    flex:0 0 auto; max-height:136px; overflow-y:auto; margin-top:8px;
+  }
+  #defenseOverlay.building #tdCanvas{ max-width:210px; }
+  #defenseOverlay.building .title{ display:none; }

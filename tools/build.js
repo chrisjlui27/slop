@@ -22,6 +22,21 @@ const OUT = path.join(OUT_DIR, "slop.html");
 const seen = new Set();
 const ordered = [];
 
+/**
+ * One definition, handed out fresh so the /g lastIndex of one caller cannot
+ * affect another. It used to be written out twice — once for the dependency
+ * walk and once for stripping — and the two agreeing was load-bearing but
+ * unenforced.
+ *
+ * `[^;]*?` spans newlines so a multi-line `import { a, b } from "x"` is
+ * matched, while the excluded semicolon stops the match running past the end
+ * of the statement into unrelated code. The line-anchored version this
+ * replaces failed on multi-line imports in both roles at once: it left the
+ * `import` keyword in the output *and* skipped the dependency entirely, so the
+ * bundle was missing a module rather than merely malformed.
+ */
+const importRe = () => /^[ \t]*import\s+(?:[^;]*?from\s*)?["']([^"']+)["'][ \t]*;?[ \t]*$/gm;
+
 /** Depth-first walk so dependencies are emitted before their dependents. */
 function walk(file) {
   const abs = path.resolve(file);
@@ -31,9 +46,9 @@ function walk(file) {
   const src = fs.readFileSync(abs, "utf8");
   const dir = path.dirname(abs);
 
-  const importRe = /^\s*import\s+(?:.+?\s+from\s+)?["'](.+?)["'];?\s*$/gm;
+  const re = importRe();
   let m;
-  while ((m = importRe.exec(src)) !== null) {
+  while ((m = re.exec(src)) !== null) {
     if (m[1].startsWith(".")) walk(path.join(dir, m[1]));
   }
   ordered.push({ abs, src });
@@ -48,9 +63,19 @@ function strip(file) {
   const name = path.basename(file.abs, ".js");
   let out = file.src;
 
-  out = out.replace(/^\s*import\s+(?:.+?\s+from\s+)?["'].+?["'];?\s*$/gm, "");
+  out = out.replace(importRe(), "");
   out = out.replace(/^\s*export\s+default\s+/m, `const ${name} = `);
   out = out.replace(/^\s*export\s+(const|let|function|class)\s+/gm, "$1 ");
+
+  // A surviving module keyword means the bundle is broken in a way that only
+  // shows up when something tries to run it. Fail here, where the message can
+  // name the file, rather than as a jsdom stack trace in the smoke test.
+  const leftover = out.match(/^[ \t]*(import|export)\b.*$/m);
+  if (leftover) {
+    throw new Error(
+      `Unstripped module syntax in ${path.relative(ROOT, file.abs)}:\n  ${leftover[0].trim()}`
+    );
+  }
 
   return `\n/* ===== ${path.relative(ROOT, file.abs)} ===== */\n${out.trim()}\n`;
 }

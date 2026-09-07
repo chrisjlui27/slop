@@ -3,8 +3,12 @@
 A browser CRPG hiding inside a WarioWare-style microgame chassis.
 
 Fourteen microgames, five acts, five bosses, a hero sheet with stats and XP, a
-shop, a tower-defense lane, a virtual pet, a second entire game inside a honey
-pot — and two narrators who built all of it and can't agree on what it's for.
+shop, a real tower defense, a virtual pet, a second entire game inside a honey
+pot — and four creators who built all of it and can't agree on what it's for.
+
+Each of them owns a whole loop, not a feature, and your standing with each one
+powers the loop they built. Siding with someone costs standing with everyone
+else, so "who am I with" and "what am I playing" are the same question.
 
 Vanilla JS. ES modules. No framework, no build dependencies, no runtime deps.
 
@@ -48,28 +52,39 @@ trial you were in the middle of.
 You are the Hero. Clear microgames to earn XP and damage the gate at the end of
 each Act. Five gates, then THE UNSHIPPED, then NEW GAME+.
 
-**There is no lose state.** No lives, no game over. Missing a trial costs
-momentum — your combo breaks, the boss regenerates — never progress. This is
-canon: the Artificer removed death from the build and the Slop-Goblin was
+**The campaign has no lose state.** No lives, no game over. Missing a trial
+costs momentum — your combo breaks, the boss regenerates — never progress. This
+is canon: the Artificer removed death from the build and the Slop-Goblin was
 furious about it.
+
+**The perimeter is the exception.** THE CRAB was allowed one real stake,
+because he is the only one of them who thinks a game should be able to cost you
+something. It stays inside his economy — a breach takes goo and his regard, and
+never touches the Act ladder.
 
 Running in parallel, all the time, whether you're paying attention or not:
 
 - **The buddy** (👾) gets hungry in real time. Feed it for goo and levels. Its
   *mood throttles your turret's fire rate*, so neglect has teeth.
-- **The defense lane** auto-fires at drifting blobs; tap them yourself for more
-  goo. Upgrade the turret, or buy a second one.
+- **The perimeter** (🦀) is a whole tower defense, and it never stops. Three
+  corridors, nine build pads, three tower types, and waves that keep arriving
+  during menus and microgames alike. Leaks eat integrity; at zero you breach,
+  and a breach costs you goo. **It is the only thing in SLOP that can be lost**
+  — THE CRAB was allowed a real stake because neither of the other two would
+  enforce one.
 - **The honey pot** (🍯) fills slowly from a 15% skim on *every* goo you earn
   anywhere. Open it and you get a whole separate drop-catching minigame — which
   pauses the Artificer's plot entirely. Harvest for a GLAZED buff.
-- **Two narrators** comment continuously, in distinct voices with distinct
-  synth timbres, weighted by which of them you've been siding with.
+- **Four creators** comment continuously, in distinct voices with distinct
+  synth timbres, weighted by your standing with each. THE UNDERSTUDY is still
+  waiting to be given a loop of their own, and says so.
 
 **Choices that matter:** a mutator draft every few rounds (pick a sabotage or
 refuse it), stat points on level up, a shop with three upgrade trees, a reroll
 button for bailing on a trial, and a chaos-intensity setting. Every one of them
-also nudges the FAVOR meter toward one narrator or the other — Goblin side pays
-+50% goo, Artificer side pays +50% XP, and the winner talks more.
+also moves your STANDING with one of the four — Goblin standing pays
++50% goo, Artificer +50% XP, Crab a stronger perimeter, and whoever you have
+backed talks the most.
 
 ## Repo map
 
@@ -84,18 +99,21 @@ src/
   main.js              entry point
   game.js              the chassis: round flow, economy, all subsystems
   save.js              what survives closing the app
+  defense.js           THE PERIMETER — the Crab's tower defense
   audio.js             one blip() primitive, ~30 named cues
   fx.js                shake, chroma, glitch bars, stamps, confetti
   modules/             14 microgames, one file each, fully isolated
   content/
-    lore.js            the two narrators, their barks, the five Acts
+    lore.js            the four creators, their barks, the five Acts
     mutators.js        sabotage effects
     shop.js            upgrade catalogue
     stats.js           hero stat definitions
+    defense.js         towers, enemies, wave composition
 docs/
   ARCHITECTURE.md      how the chassis works, how systems cross-feed
   ADDING-A-MICROGAME.md  5-minute guide, two files to touch
   LORE.md              voice bible — read before writing dialogue
+  PARALLEL-LOOPS.md    one loop per character, and how standing drives them
 tools/
   build.js             ~100-line bundler → dist/slop.html
   smoke-test.js        boots the build, plays a whole campaign

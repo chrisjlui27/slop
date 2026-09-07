@@ -92,6 +92,22 @@ export const Barks = {
     { who:'goblin', line:"he's mad!! he's eating the slop meter!! that's a feature" },
     { who:'artificer', line:"The tantrum is draining a meter I need for pacing. Please feed it." }
   ],
+  /* The Crab's screen. He does not pause the plot to spite the Artificer, the
+     way the pot does — he pauses it because losing a trial while defending the
+     perimeter would be unfair, and unfairness is the thing he is against. */
+  defenseOpen:{
+    crab:[
+      "good. you are here. the line is there. keep it there",
+      "pads cover the corridor they sit on and the one below. bottom row covers one. that is the decision",
+      "the trial is paused. i am not going to make you lose one of his rounds for standing watch",
+      "spend goo on the line or spend it on his shop. i am not going to pretend that is a free choice",
+      "brine slows. shell scatters. clacker just works. build what the wave is, not what you like"
+    ],
+    goblin:[
+      "oh you're doing the crab thing. he's SO normal about this",
+      "i keep feeding them. he keeps noticing. it's our little routine"
+    ]
+  },
   idle:{
     artificer:[
       "The final boss is THE UNSHIPPED. Everything here is aimed at that.",

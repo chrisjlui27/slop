@@ -57,6 +57,16 @@ export const Save = {
       hero: Object.assign({}, g.hero),
       buddy: { level: g.buddy.level, feeds: g.buddy.feeds },
       turret: Object.assign({}, g.turret),
+      // The perimeter persists, minus everything in flight. Towers and
+      // integrity are what the player built and what they owe; the enemies on
+      // the board are not, and restoring a half-finished wave would mean
+      // resuming into an ambush nobody chose to walk into.
+      perimeter: g.defense.perimeter,
+      wave: g.defense.wave,
+      breaches: g.defense.breaches,
+      towers: g.defense.pads.map(p => p.tower
+        ? { typeId: p.tower.typeId, level: p.tower.level }
+        : null),
       shopLevels: Object.assign({}, g.shopLevels),
       pot: { brew: g.pot.brew, brewMax: g.pot.brewMax },
       // Boss HP is the one mid-encounter value worth keeping: losing it would
@@ -113,10 +123,23 @@ export const Save = {
     g.boss = d.boss || null;
     g.codexSeen = Array.isArray(d.codexSeen) ? d.codexSeen.slice() : [];
 
-    // Rebuilt from the shop rather than saved: the turret list is a derived
-    // view of `secondturret`, and storing both invites them to disagree.
-    g.turrets = [{x:624,y:50,fireT:0}];
-    if(g.shopLevels.secondturret) g.turrets.push({x:560,y:50,fireT:0});
+    // The board comes back empty and the wave restarts from its beginning —
+    // see the snapshot comment. Integrity and breach count carry, because
+    // those are the consequences the player earned.
+    if(typeof d.perimeter === 'number'){
+      g.defense.perimeter = Math.max(1, Math.min(g.defense.perimeterMax, d.perimeter));
+    }
+    g.defense.wave = Math.max(0, d.wave|0);
+    g.defense.breaches = Math.max(0, d.breaches|0);
+    if(Array.isArray(d.towers)){
+      // Cleared first: Defense.reset() seeds a free tower, and layering a save
+      // over it would resurrect one the player had deliberately salvaged.
+      g.defense.pads.forEach(p => { p.tower = null; });
+      d.towers.forEach((t, i)=>{
+        if(!t || !g.defense.pads[i]) return;
+        g.defense.pads[i].tower = { typeId: t.typeId, level: Math.max(1, t.level|0), fireT: 0 };
+      });
+    }
   },
 
   /* A one-line description of a save, for the resume button on the title

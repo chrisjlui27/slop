@@ -71,7 +71,10 @@
   <div id="potRow"><button id="potBtn" class="arcade">🍯</button><div id="potTrack"><div id="potFill"></div></div></div>
   <div id="defenseWrap">
     <canvas id="defenseCanvas" width="640" height="80"></canvas>
-    <button id="turretUpgradeBtn" class="arcade">+🔧 <span id="turretCostVal">10</span></button>
+    <!-- Id kept because DOM ids are a contract, but the role changed: this
+         used to buy a turret level inline, and now opens the perimeter, where
+         reinforcing can show what it is actually buying. -->
+    <button id="turretUpgradeBtn" class="arcade">🦀 <span id="perimeterPct">100%</span></button>
   </div>
   <div id="timerRow">
     <div id="timerTrack"><div id="timerFill"></div></div>
@@ -156,6 +159,28 @@
       <div style="display:flex; gap:10px; margin-top:12px;">
         <button class="btn" id="potHarvestBtn" style="font-size:11px; padding:10px 16px;">HARVEST</button>
         <button class="btn" id="potDoneBtn" style="font-size:11px; padding:10px 16px; background:var(--cyan); box-shadow:0 6px 0 #0e7a91;">BACK TO PLOT</button>
+      </div>
+    </div>
+
+    <!-- THE CRAB's loop. The board is the same state the HUD strip draws,
+         rendered large enough to play on; the build menu is DOM rather than
+         canvas so its buttons can be real touch targets. -->
+    <div id="defenseOverlay" class="overlay hidden">
+      <!-- Board and menu scroll; the actions are pinned outside that region so
+           LEAVE POST is reachable at any content height. A player who cannot
+           see the way out of a screen is trapped in it. -->
+      <div id="tdScroll">
+        <div class="title" style="font-size:15px;">THE PERIMETER</div>
+        <div id="tdStatus" class="arcade">WAVE 1 · INTEGRITY 100%</div>
+        <div id="tdIntegrityTrack"><div id="tdIntegrityFill"></div></div>
+        <canvas id="tdCanvas" width="480" height="360"></canvas>
+      </div>
+      <!-- Outside the scroll region, like the actions: a build menu you have to
+           go looking for makes tapping a pad feel like it did nothing. -->
+      <div id="tdBuildMenu"></div>
+      <div id="tdActions">
+        <button class="btn" id="tdReinforceBtn">REINFORCE <span id="turretCostVal">10</span></button>
+        <button class="btn" id="tdDoneBtn">LEAVE POST</button>
       </div>
     </div>
 

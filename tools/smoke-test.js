@@ -128,6 +128,66 @@ setTimeout(() => {
   const castOk = Object.keys(G.standing).every(id => G.cast[id] && G.cast[id].name && G.cast[id].color);
   check("every patron has a cast entry", castOk);
 
+  // ---- THE PERIMETER (the Crab's loop) ----
+  const D = G.defenseApi;
+  G.defense = D.reset();
+  const d = G.defense;
+
+  check("perimeter starts intact", d.perimeter === d.perimeterMax);
+  check("perimeter starts with one tower", d.pads.filter(p => p.tower).length === 1);
+  check("nine build pads", d.pads.length === 9);
+
+  // Pads must not sit on top of each other, or placement is not a decision.
+  const positions = d.pads.map((_, i) => { const p = D.padPos(i); return p.x + ":" + p.y; });
+  check("every pad has a distinct position", new Set(positions).size === 9);
+
+  G.goo = 500;
+  const emptyPad = d.pads.findIndex(p => !p.tower);
+  const buildCost = D.buildCost(G, "clacker");
+  const gooBefore = G.goo;
+  D.build(G, emptyPad, "clacker");
+  check("building places a tower", !!d.pads[emptyPad].tower);
+  check("building charges goo", G.goo === gooBefore - buildCost);
+
+  D.upgradeTower(G, emptyPad);
+  check("upgrading raises tower level", d.pads[emptyPad].tower.level === 2);
+
+  D.sellTower(G, emptyPad);
+  check("salvage clears the pad", d.pads[emptyPad].tower === null);
+
+  // Building must be refused rather than going into debt.
+  G.goo = 0;
+  D.build(G, emptyPad, "shell");
+  check("cannot build without goo", d.pads[emptyPad].tower === null && G.goo === 0);
+
+  // The wave engine has to actually produce enemies when ticked.
+  G.goo = 500;
+  for (let i = 0; i < 400; i++) G.updateDefense(50);
+  check("waves advance", d.wave >= 1);
+  check("the tick throws nothing", !G._defenseFaults);
+
+  // A leak costs integrity; a breach costs goo, and must leave the campaign
+  // alone — the Act ladder still cannot be failed.
+  const actBefore = G.actIdx, levelBefore = G.hero.level;
+  d.perimeter = 3;
+  d.enemies = [{ typeId: "lump", lane: 0, x: 10, hp: 99, maxHp: 99, slowT: 0, slowAmt: 0, wobble: 0 }];
+  G.goo = 200;
+  const breachesBefore = d.breaches;
+  for (let i = 0; i < 40; i++) G.updateDefense(50);
+  check("a breach is recorded", d.breaches === breachesBefore + 1);
+  check("a breach costs goo", G.goo < 200);
+  check("a breach leaves integrity above zero", d.perimeter > 0);
+  check("a breach does not touch the act ladder", G.actIdx === actBefore);
+  check("a breach does not touch hero level", G.hero.level === levelBefore);
+
+  // Opening and closing the Crab's screen must restore the prior state.
+  G.state = "menu";
+  G.openDefense();
+  check("perimeter screen opens", G.state === "tdgame");
+  G.renderBuildMenu();
+  G.closeDefense();
+  check("perimeter screen closes back to play", G.state !== "tdgame");
+
   console.log(
     failures === 0
       ? "\nAll smoke checks passed."

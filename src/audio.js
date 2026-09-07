@@ -59,6 +59,15 @@ export const Sound = {
   // A rehearsed little three-note phrase, always identical. The Understudy has
   // practised this.
   understudySpeak(){ [440,554,660].forEach((f,i)=> setTimeout(()=>this.blip(f,0.035,'triangle',0.05), i*45)); },
+  /* --- the perimeter --- */
+  crabBuild(){ this.blip(300,0.03,'square',0.11); setTimeout(()=>this.blip(420,0.04,'square',0.11),60); setTimeout(()=>this.blip(560,0.06,'square',0.10),120); },
+  // Deliberately unpleasant. It is the only sound in the game that means
+  // something was actually lost.
+  crabBreach(){ [150,120,96,74].forEach((f,i)=> setTimeout(()=>this.blip(f,0.26,'sawtooth',0.18), i*110)); },
+  waveClear(){ this.blip(392,0.07,'square',0.11); setTimeout(()=>this.blip(587,0.1,'square',0.11),80); },
+  // A single dry tick per leak. Quiet on purpose: it should nag rather than
+  // alarm, so that the breach still lands when it comes.
+  leak(){ this.blip(190,0.05,'sawtooth',0.09); },
   bossAppear(){ [110,98,87,73].forEach((f,i)=> setTimeout(()=>this.blip(f,0.3,'sawtooth',0.16), i*140)); },
   bossHit(){ this.blip(240,0.07,'square',0.16); setTimeout(()=>this.blip(160,0.09,'sawtooth',0.12),50); },
   bossDown(){ [523,659,784,1046,1318].forEach((f,i)=> setTimeout(()=>this.blip(f,0.16,'square',0.16), i*110)); },

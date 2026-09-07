@@ -77,6 +77,8 @@ have to be.
 | Add a mutator / shop item / stat | `src/content/mutators.js`, `shop.js`, `stats.js` |
 | Change round flow, scoring, economy | `src/game.js` — see `docs/ARCHITECTURE.md` |
 | Change what survives closing the app | `src/save.js` |
+| Add a tower, enemy or reshape waves | `src/content/defense.js` — data only |
+| Change how the perimeter plays | `src/defense.js` — see `docs/PARALLEL-LOOPS.md` |
 | Change how it installs or caches | `manifest.webmanifest`, `sw.js` — see `DEPLOY.md` |
 | Change sounds | `src/audio.js` |
 | Change screen effects | `src/fx.js` |
@@ -136,8 +138,15 @@ voices wrong is the most common way to damage this project.
 - **Everything runs on one rAF loop.** The buddy, turret lane, and honey pot
   brew keep ticking during menus and even during the pot minigame. Only the
   *round* pauses. That asymmetry is intentional.
-- **There is no lose state.** No lives, no game over. Failing a round costs
-  momentum (combo, boss regen), never progress. Do not add a fail state.
+- **There is no lose state _in the campaign_.** No lives, no game over.
+  Failing a round costs momentum (combo, boss regen), never progress. Do not
+  add a fail state to the Act ladder.
+  **The perimeter is the one exception, and it is deliberately fenced.** THE
+  CRAB's tower defense can be lost: leaks eat integrity and a breach costs goo
+  and his regard. That loss must stay inside his own economy — it must never
+  touch `actIdx`, hero level, or XP. The Artificer removed death from the
+  build and that has not been reversed; the Crab was simply allowed a stake of
+  his own. `npm test` asserts this boundary directly.
 - **`sw.js`'s `SHELL` is a contract too.** Every file the game fetches at
   runtime must be listed, or the app is broken offline while looking fine
   online. The install handler swallows per-entry failures deliberately, so

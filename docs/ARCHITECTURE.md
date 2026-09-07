@@ -10,6 +10,7 @@ index.html          DOM skeleton — every element the chassis binds to
           ├ src/audio.js    Sound: one blip() primitive + ~30 named cues
           ├ src/fx.js       FX: shake, chroma, glitch bars, stamps, confetti
           ├ src/save.js     the only code that touches localStorage
+          ├ src/defense.js  THE PERIMETER — the Crab's tower defense
           ├ src/modules/    14 microgames, each fully isolated
           └ src/content/    Acts, dialogue, mutators, shop, stats — pure data
 
@@ -28,7 +29,7 @@ manifest.webmanifest  install identity — outside the module graph entirely
   own canvas, its own `local` scratch object, and its own `win()`/`lose()`.
   Lanes never see each other.
 - **State machine** — `boot / story / playing / resolve / draft / levelup /
-  bonus / potgame / menu / victory`. The rAF loop dispatches on this.
+  bonus / potgame / tdgame / menu / victory`. The rAF loop dispatches on this.
 - **Everything else** — hero stats, XP, favor, boss HP, buddy, turret lane,
   honey pot, shop, codex.
 
@@ -130,7 +131,7 @@ tab doesn't teleport state. Round timers are deadline-based (`performance.now()
 + timeLimit`) rather than accumulated, and menus that pause the round stash the
 remaining time and restore it — see `pauseForMenu()` / `resumeAfterMenu()`.
 
-The buddy, turret lane, and pot brew tick on *every* frame regardless of state,
+The buddy, the perimeter and the pot brew tick on *every* frame regardless of state,
 including while the honey pot minigame has the plot paused. Only the round
 stops. That asymmetry is a joke the two narrators comment on, and it is
 intentional.

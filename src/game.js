@@ -6,12 +6,16 @@ import { Mutators } from "./content/mutators.js";
 import { ShopItems } from "./content/shop.js";
 import { StatDefs } from "./content/stats.js";
 import { Save } from "./save.js";
+import { Defense } from "./defense.js";
 
 /* ============================== CHASSIS ============================== */
 export const $ = id => document.getElementById(id);
 const laneRow=$('laneRow'), scoreEl=$('scoreVal'), roundEl=$('roundVal'), timerFill=$('timerFill');
 const meterFill=$('meterFill'), mutChip=$('mutChip'), gooCountEl=$('gooCount');
 const turretCostEl=$('turretCostVal'), rerollCostEl=$('rerollCostVal');
+const defenseOverlay=$('defenseOverlay'), tdCanvas=$('tdCanvas'), tdCtx=tdCanvas.getContext('2d');
+const tdStatus=$('tdStatus'), tdIntegrityFill=$('tdIntegrityFill'), tdBuildMenu=$('tdBuildMenu');
+const tdReinforceBtn=$('tdReinforceBtn'), tdDoneBtn=$('tdDoneBtn'), perimeterPctEl=$('perimeterPct');
 const buddyBtn=$('buddyBtn'), buddyFaceEl=$('buddyFace'), buddyLvlEl=$('buddyLvl');
 const startScreen=$('startScreen'), muteBtn=$('muteBtn'), resetBtn=$('resetBtn');
 const defenseCanvas=$('defenseCanvas'), defenseCtx=defenseCanvas.getContext('2d');
@@ -49,8 +53,11 @@ export const Game = {
   mutator:null, mutatorRoundsLeft:0, shieldCharge:0,
   meter:0, megaPending:false, finishingRound:false, bonus:null,
   buddy:{ hunger:1, tantrumCooldown:false, level:1, feeds:0, mood:'happy', incomeT:5000 },
-  turret:{ level:1, fireInterval:1100, dmg:1 }, turrets:[],
-  defense:{ enemies:[], spawnT:0, projectiles:[] },
+  // Global reinforcement, multiplied into every tower on the board. Kept
+  // separate from the towers themselves so REINFORCE stays meaningful once
+  // there are nine of them rather than one.
+  turret:{ level:1, fireInterval:1100, dmg:1 },
+  defense:Defense.reset(),
   shopLevels:{}, rerollsThisRound:0, chaosLevel:1, ambientT:1500,
   pot:{ brew:0, brewMax:100 }, potBuffT:0, potGame:null,
   pausedState:null, pausedRemain:null,
@@ -63,9 +70,12 @@ export const Game = {
      one powers its owner's loop — so "who am I siding with" and "what am I
      playing" are the same question. See docs/PARALLEL-LOOPS.md. */
   standing:{ artificer:0, goblin:0, crab:0, understudy:0 },
-  // The cast is reachable through the chassis so tests and the console can ask
-  // who exists without importing content directly.
+  // The cast and the perimeter's API are reachable through the chassis so
+  // tests and the console can reach them without importing content directly —
+  // the bundled build wraps every module in one closure, so there is no other
+  // way in.
   cast: Cast,
+  defenseApi: Defense,
   barkT:9000, lastSpeaker:null,
   codexSeen:[],
   rafId:null,
@@ -443,8 +453,7 @@ export const Game = {
     this.history=[]; this.mutatorRoundsLeft=0; this.meter=0; this.megaPending=false; this.bonus=null;
     this.buddy={ hunger:1, tantrumCooldown:false, level:1, feeds:0, mood:'happy', incomeT:5000 };
     this.turret={ level:1, fireInterval:1100, dmg:1 };
-    this.turrets=[{x:624,y:50,fireT:0}];
-    this.defense={ enemies:[], spawnT:0, projectiles:[] };
+    this.defense=Defense.reset();
     this.shopLevels={}; this.rerollsThisRound=0; this.ambientT=1500;
     this.pot={ brew:0, brewMax:100 }; this.potBuffT=0; this.potGame=null;
     this.pausedState=null; this.pausedRemain=null;
@@ -872,89 +881,119 @@ export const Game = {
     if(this.potGame) this.potGame.jarX=Math.max(24,Math.min(376,x));
   },
 
-  /* ---------------- defense ---------------- */
+  /* ---------------- defense: THE PERIMETER ----------------
+     The loop itself lives in src/defense.js. What stays here is the chassis
+     side of it: the crash guard, the overlay, and the DOM build menu.
+
+     Every call into Defense goes through safeDefense for the same reason
+     safeLane exists — the Crab's game is now the largest body of code in the
+     project that can throw, and a bad frame in the perimeter must not be able
+     to take the campaign down with it. */
+  safeDefense(fn, label){
+    try{ return fn(); }
+    catch(e){
+      // Unlike a microgame crash this is not awarded to the player and does
+      // not become a GLITCH?! — the perimeter is the one place consequences
+      // are real, so a silent failure here would be a lie. It is logged, the
+      // frame is abandoned, and play continues.
+      console.error('perimeter fault ('+(label||'tick')+'):', e);
+      this._defenseFaults = (this._defenseFaults||0) + 1;
+      return null;
+    }
+  },
+
   turretCost(){ return 10 + (this.turret.level-1)*8; },
-  updateDefense(dt){
+
+  updateDefense(dt){ this.safeDefense(()=> Defense.tick(this, dt), 'tick'); },
+  renderDefense(){ this.safeDefense(()=> Defense.renderStrip(this, defenseCtx), 'strip'); },
+  defenseTap(x,y){ this.safeDefense(()=> Defense.stripTap(this, x, y), 'strip tap'); },
+
+  perimeterFrac(){
     const d=this.defense;
-    d.spawnT-=dt;
-    if(d.spawnT<=0){
-      d.spawnT=Math.max(650, 1400-this.round*15);
-      d.enemies.push({ x:-10, y:20+Math.random()*40, r:12+Math.random()*6, hp:1, alive:true, wobble:Math.random()*10 });
-    }
-    const jitter=(this.mutator && this.mutator.id==='quake')?3:1;
-    d.enemies.forEach(en=>{ if(en.alive) en.x+=0.05*dt*jitter; });
-    d.enemies=d.enemies.filter(en=> en.x<660);
-    const moodFactor={happy:0.85,neutral:1,grumpy:1.2,feral:1.5}[this.buddy.mood]||1;
-    const rushBoost=(this.mutator && this.mutator.id==='rush')?0.75:1;
-    const effInterval=this.turret.fireInterval*moodFactor*rushBoost;
-    const hitCount=this.shopLevels.splash?2:1;
-    this.turrets.forEach(tur=>{
-      tur.fireT-=dt;
-      if(tur.fireT<=0){
-        tur.fireT=effInterval;
-        let hits=0;
-        for(const en of d.enemies){
-          if(hits>=hitCount) break;
-          if(!en.alive) continue;
-          // Crab standing is what makes the perimeter hold — his loop, his bonus.
-          en.hp -= this.turret.dmg * this.favorDefenseBonus();
-          d.projectiles.push({ x1:tur.x, y1:tur.y, x2:en.x, y2:en.y, t:0 });
-          hits++;
-          if(en.hp<=0){
-            en.alive=false;
-            this.addGoo(1*this.gooMult()*this.comboGooMult());
-            this.buddy.hunger=Math.min(1,this.buddy.hunger+0.03);
-            Sound.pop(false); this.updateHUD();
-          }
-        }
-        if(hits>0) Sound.turretFire();
-      }
-    });
-    d.projectiles.forEach(p=> p.t+=dt);
-    d.projectiles=d.projectiles.filter(p=> p.t<150);
+    return d && d.perimeterMax ? Math.max(0, d.perimeter)/d.perimeterMax : 1;
   },
-  renderDefense(){
-    const c=defenseCtx, d=this.defense;
-    c.clearRect(0,0,640,80);
-    // The ground line lives here rather than in CSS so it stays welded to the
-    // canvas geometry — a pseudo-element would drift the moment the lane is
-    // resized. Orange because this lane is the Crab's; colour is how ownership
-    // is signalled throughout the HUD.
-    c.strokeStyle='#4a2a18'; c.beginPath(); c.moveTo(0,60); c.lineTo(640,60); c.stroke();
-    this.turrets.forEach(tur=>{
-      c.fillStyle='#ff7a2f'; c.beginPath(); c.arc(tur.x,tur.y,14,0,Math.PI*2); c.fill();
-      c.fillStyle='#0c0a15'; c.font='14px sans-serif'; c.textAlign='center'; c.textBaseline='middle';
-      c.fillText('🛡', tur.x, tur.y+1);
-    });
-    d.enemies.forEach(en=>{
-      if(!en.alive) return;
-      c.beginPath(); c.arc(en.x, en.y+Math.sin((en.x+en.wobble)*0.2)*4, en.r,0,Math.PI*2);
-      c.fillStyle='#c9ff2f'; c.fill();
-    });
-    d.projectiles.forEach(p=>{
-      c.strokeStyle='#fff02f'; c.lineWidth=2;
-      c.beginPath(); c.moveTo(p.x1,p.y1); c.lineTo(p.x2,p.y2); c.stroke();
-    });
+
+  openDefense(){
+    if(this.state==='tdgame') return;
+    this.pausedState=this.state;
+    this.pausedRemain=(this.state==='playing'||this.state==='bonus') ? Math.max(0,this.deadline-performance.now()) : null;
+    this.state='tdgame';
+    this.defense.selectedPad=-1;
+    Sound.crabBuild();
+    this.bark(Barks.defenseOpen);
+    this.renderBuildMenu();
+    this.updateDefenseUI();
+    defenseOverlay.classList.remove('hidden');
   },
-  defenseTap(x,y){
-    const d=this.defense;
-    for(const en of d.enemies){
-      if(!en.alive) continue;
-      if(Math.hypot(x-en.x,y-en.y)<=en.r+10){
-        en.alive=false;
-        this.addGoo(3*this.gooMult()*this.comboGooMult());
-        this.score+=5;
-        this.buddy.hunger=Math.min(1,this.buddy.hunger+0.05);
-        // Manually popping a blob is helping hold the line. Kept small and
-        // fractional because kills are frequent — a whole point each would max
-        // his standing inside one act and make the choice meaningless.
-        this.shiftFavor('crab', 0.4);
-        Sound.pop(true);
-        if(Math.random()<0.25) FX.stamp('POP!','#c9ff2f','#2fe1ff');
-        this.updateHUD();
-        return;
-      }
+
+  closeDefense(){
+    defenseOverlay.classList.add('hidden');
+    this.defense.selectedPad=-1;
+    Sound.potClose();
+    const back=this.pausedState; this.pausedState=null;
+    if(back==='playing'||back==='bonus'){
+      this.state=back;
+      if(this.pausedRemain!=null) this.deadline=performance.now()+this.pausedRemain;
+    }else if(back==='menu'||back==='resolve'){
+      this.state=back;
+    }else{
+      this.state = back || 'menu';
     }
+  },
+
+  /* Redrawn whenever the selection or the goo balance changes. Built from
+     TowerTypes rather than hardcoded, so a new tower type is a content edit. */
+  renderBuildMenu(){
+    const d=this.defense, idx=d.selectedPad;
+    tdBuildMenu.innerHTML='';
+    // The board yields width — and so height, being 4:3 — while a pad is
+    // selected, so the menu and the board can both be on screen at once.
+    defenseOverlay.classList.toggle('building', idx>=0);
+    if(idx<0){
+      const hint=document.createElement('div');
+      hint.className='tdHint';
+      hint.textContent='tap a pad to build. the two upper rows cover two corridors each — the bottom row is the last chance.';
+      tdBuildMenu.appendChild(hint);
+      return;
+    }
+    const pad=d.pads[idx];
+    const row=(glyph,name,desc,cost,enabled,onClick,color)=>{
+      const b=document.createElement('button');
+      b.innerHTML='<span class="tdGlyph">'+glyph+'</span>'+
+        '<span><span class="tdName" style="color:'+color+'">'+name+'</span><br>'+
+        '<span class="tdDesc">'+desc+'</span></span>'+
+        '<span class="tdCost">'+(cost==null?'':'🟢'+cost)+'</span>';
+      b.disabled=!enabled;
+      b.addEventListener('click', ()=>{ Sound.ensure(); onClick(); });
+      tdBuildMenu.appendChild(b);
+    };
+
+    if(pad.tower){
+      const t=Defense.TowerTypes.find(x=>x.id===pad.tower.typeId);
+      const up=Defense.upgradeCost(this,idx);
+      row(t.glyph, t.name+' LV'+pad.tower.level, t.desc, up, this.goo>=up,
+        ()=>{ if(Defense.upgradeTower(this,idx)){ this.renderBuildMenu(); this.updateDefenseUI(); } }, t.color);
+      row('🗑', 'SALVAGE', 'take the parts back', null, true,
+        ()=>{ if(Defense.sellTower(this,idx)){ this.renderBuildMenu(); this.updateDefenseUI(); } }, '#8a7f9a');
+    }else{
+      Defense.TowerTypes.forEach(t=>{
+        const cost=Defense.buildCost(this,t.id);
+        row(t.glyph, t.name, t.desc, cost, this.goo>=cost,
+          ()=>{ if(Defense.build(this,idx,t.id)){ this.renderBuildMenu(); this.updateDefenseUI(); } }, t.color);
+      });
+    }
+
+  },
+
+  updateDefenseUI(){
+    const d=this.defense, frac=this.perimeterFrac();
+    const pct=Math.round(frac*100);
+    const color = frac>0.5 ? '#ff7a2f' : (frac>0.25 ? '#fff02f' : '#ff2f9e');
+    tdStatus.textContent='WAVE '+Math.max(1,d.wave)+' · INTEGRITY '+pct+'%'+(d.breaches?' · BREACHES '+d.breaches:'');
+    tdIntegrityFill.style.width=pct+'%';
+    tdIntegrityFill.style.background=color;
+    turretCostEl.textContent=this.turretCost();
+    tdReinforceBtn.disabled=this.goo<this.turretCost();
   },
 
   /* ---------------- shop ---------------- */
@@ -978,7 +1017,7 @@ export const Game = {
     const cost=Math.round(item.baseCost*Math.pow(1.6,lvl));
     if(this.goo<cost){ Sound.deny(); return; }
     this.goo-=cost; this.shopLevels[id]=lvl+1;
-    if(id==='secondturret') this.turrets.push({x:560,y:50,fireT:0});
+    if(id==='secondturret') Defense.applyShop(this);
     // Buying from someone's shelf is siding with them. The Workshop is
     // nominally the Artificer's, but three of its items are not his.
     this.shiftFavor(item.owner || 'artificer', 4);
@@ -1014,6 +1053,11 @@ export const Game = {
       if(remain<=0) this.finishBonusStage();
     }else if(this.state==='potgame'){
       this.updatePotGame(dt); this.renderPotGame();
+    }else if(this.state==='tdgame'){
+      // The perimeter's own tick runs below with everything else — this only
+      // draws the large board, so the overlay and the HUD strip stay two views
+      // of one simulation rather than two simulations.
+      this.safeDefense(()=> Defense.renderBoard(this, tdCtx), 'board');
     }
 
     this.updateBuddyTick(dt);
@@ -1050,6 +1094,14 @@ export const Game = {
       this._lastGoo=this.goo;
     }
     turretCostEl.textContent=this.turretCost();
+
+    // The HUD button doubles as the perimeter's status light, so integrity is
+    // legible without opening the Crab's screen. It only starts shouting once
+    // a breach is genuinely close — an alarm that is always on is not an alarm.
+    const frac=this.perimeterFrac();
+    perimeterPctEl.textContent=Math.round(frac*100)+'%';
+    turretUpgradeBtn.classList.toggle('breached', frac<=0.3);
+    if(this.state==='tdgame') this.updateDefenseUI();
   },
 
   getPos(lane,e){
@@ -1131,23 +1183,41 @@ defenseCanvas.addEventListener('pointerdown', e=>{
 });
 turretUpgradeBtn.addEventListener('click', ()=>{
   Sound.ensure();
-  if(Game.state==='boot') return;
+  if(Game.state==='boot'||Game.state==='tdgame') return;
+  if(Game.state==='draft'||Game.state==='story'||Game.state==='levelup'||Game.state==='potgame') return;
+  Game.openDefense();
+});
+
+/* Reinforcement is global: one purchase lifts every tower on the board. That
+   is what keeps it worth buying at nine towers, and it is the clearest single
+   way to side with the Crab. */
+tdReinforceBtn.addEventListener('click', ()=>{
+  Sound.ensure();
   const cost=Game.turretCost();
   if(Game.goo>=cost){
     Game.goo-=cost; Game.turret.level++;
     Game.turret.fireInterval=Math.max(300,Game.turret.fireInterval-120);
     Game.turret.dmg+=1;
-    // The turret is the Crab's. Spending on it is the clearest way to side
-    // with him, and for now the main way his standing moves at all.
     Game.shiftFavor('crab', 5);
-    FX.stamp('TURRET LV'+Game.turret.level+'!','#ff7a2f','#2fe1ff');
-    Sound.upgrade(); Game.updateHUD();
+    FX.stamp('REINFORCED LV'+Game.turret.level,'#ff7a2f','#2fe1ff');
+    Sound.upgrade(); Game.updateHUD(); Game.renderBuildMenu(); Game.updateDefenseUI();
   }else Sound.deny();
+});
+
+tdDoneBtn.addEventListener('click', ()=>{ Sound.ensure(); Game.closeDefense(); });
+
+tdCanvas.addEventListener('pointerdown', e=>{
+  Sound.ensure();
+  const rect=tdCanvas.getBoundingClientRect();
+  const x=(e.clientX-rect.left)*(Defense.BOARD.w/rect.width);
+  const y=(e.clientY-rect.top)*(Defense.BOARD.h/rect.height);
+  Game.safeDefense(()=> Defense.boardTap(Game, x, y), 'board tap');
+  Game.renderBuildMenu();
 });
 rerollBtn.addEventListener('click', ()=>{ Sound.ensure(); Game.reroll(); });
 potBtn.addEventListener('pointerdown', e=>{
   e.stopPropagation(); Sound.ensure();
-  if(Game.state==='boot'||Game.state==='draft'||Game.state==='potgame'||Game.state==='story'||Game.state==='levelup') return;
+  if(Game.state==='boot'||Game.state==='tdgame'||Game.state==='draft'||Game.state==='potgame'||Game.state==='story'||Game.state==='levelup') return;
   Game.openPotGame();
 });
 potCanvas.addEventListener('pointerdown', e=>{ Sound.ensure(); Game.potPointer(e); });
@@ -1162,7 +1232,7 @@ $('draftSkipBtn').addEventListener('click', ()=>{
   Game.continueModuleRound();
 });
 
-const menuGuard = ()=> Game.state==='boot'||Game.state==='potgame'||Game.state==='draft'||Game.state==='story'||Game.state==='levelup';
+const menuGuard = ()=> Game.state==='boot'||Game.state==='tdgame'||Game.state==='potgame'||Game.state==='draft'||Game.state==='story'||Game.state==='levelup';
 $('shopBtn').addEventListener('click', ()=>{
   Sound.ensure(); Sound.menuOpen();
   if(menuGuard()) return;
