@@ -131,7 +131,7 @@ export const Barks = {
   idle:{
     artificer:[
       "The final boss is THE UNSHIPPED. Everything here is aimed at that.",
-      "I am tracking your pace against five Acts. You are inside tolerance.",
+      "I am tracking your pace against eight Acts. You are inside tolerance.",
       "If a system confuses you, it is probably his.",
       "Your stats persist. The chaos does not. Invest accordingly."
     ],
@@ -150,7 +150,7 @@ export const Barks = {
       "you tapped one yourself. noted. that is the first help i have had"
     ],
     understudy:[
-      "i know every trial. all fourteen. i could run them right now if asked",
+      "i know every trial. all twenty-two. i could run them right now if asked",
       "no notes on your form. genuinely. i would just also like a turn",
       "i wait in the wings. that is the whole job so far. i am very good at it",
       "the crab talks to me. mostly about the perimeter. i listen properly"
@@ -212,14 +212,61 @@ export const Acts = [
       { who:'goblin', line:"you went into the undocumented part and came back. that's genuinely impressive. genuinely" }
     ]
   },
+  /* Acts V-VII were added after THE CRAB and THE UNDERSTUDY became full
+     characters with loops of their own. They sit here, between the Artificer's
+     confession in Act IV and his finale, because that is where the other two
+     have room to be part of the plot rather than commentary beside it. Each of
+     the three belongs to a different voice. */
   {
-    n:'ACT V', title:'THE FINAL BUILD',
+    n:'ACT V', title:'THE DEPRECATED WING',
+    quest:'Hold the line',
+    rounds:8,
+    boss:{ name:'THE BREAKING CHANGE', hp:12, regen:2 },
+    open:[
+      { who:'crab', line:"this part was sealed off. i sealed it off. something has been widening the gap and it was not me" },
+      { who:'artificer', line:"He filed this. Repeatedly. I marked it low priority for four Acts. That was an error and it is mine." }
+    ],
+    close:[
+      { who:'crab', line:"line held. i am not going to make a thing of it. i would like it in the record that i filed this" }
+    ]
+  },
+  {
+    n:'ACT VI', title:'THE ORPHANED BRANCH',
+    quest:'Find what was cut',
+    rounds:9,
+    boss:{ name:'THE FORCE PUSH', hp:14, regen:2 },
+    open:[
+      { who:'understudy', line:"this is where the cut content went. i know all of it. i learned every part nobody kept" },
+      { who:'goblin', line:"oh this place RULES. everything in here is a version of something you already beat but worse. i love it here" }
+    ],
+    close:[
+      { who:'understudy', line:"you saw it. that is all i wanted. it was good work and somebody has now seen it" }
+    ]
+  },
+  {
+    n:'ACT VII', title:'THE FROZEN ROADMAP',
+    quest:'Thaw it',
+    rounds:9,
+    boss:{ name:'THE SCOPE CREEP', hp:16, regen:3 },
+    open:[
+      { who:'artificer', line:"Everything promised and never built is stored here, at temperature. Do not read the labels. Some of them are recent." },
+      { who:'goblin', line:"i added forty things to this roadmap while you were reading that. THE SCOPE CREEP is my son and i am proud of him" }
+    ],
+    close:[
+      { who:'artificer', line:"The roadmap is moving again. I had stopped expecting that. Thank you." },
+      { who:'crab', line:"it is moving toward the gate. that is a direction. i will take a direction" }
+    ]
+  },
+  {
+    n:'ACT VIII', title:'THE FINAL BUILD',
     quest:'Ship it',
     rounds:9,
-    boss:{ name:'THE UNSHIPPED', hp:14, regen:2, final:true },
+    boss:{ name:'THE UNSHIPPED', hp:18, regen:3, final:true },
     open:[
       { who:'artificer', line:"The last gate. THE UNSHIPPED is every version of this game we abandoned. It is large. You are ready." },
-      { who:'goblin', line:"ok real talk. i want you to beat it too. i just wanted the road there to be extremely stupid. it was. good job" }
+      { who:'goblin', line:"ok real talk. i want you to beat it too. i just wanted the road there to be extremely stupid. it was. good job" },
+      { who:'crab', line:"whole company is behind you. i am at the back. that is where i am useful" },
+      { who:'understudy', line:"we rehearsed this one. all of us. we never thought anyone would call it. break a leg" }
     ],
     close:[]
   }

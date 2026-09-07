@@ -125,8 +125,8 @@ it after a second loop exists means changing that loop twice.
    rebuilt as a real tower defense. See "How the perimeter turned out" below.
 3. ~~**THE UNDERSTUDY**~~ — **done.** The idle layer and the offline-time rule
    that only applies to them. See "How the company turned out" below.
-4. **Breadth** — more microgames, more Acts, NG+ and meta-progression across
-   runs, deeper hero systems.
+4. ~~**Breadth**~~ — **done.** More microgames, more Acts, meta-progression
+   across runs, deeper hero systems. See "How the breadth pass turned out".
 
 ## How the perimeter turned out
 
@@ -206,3 +206,57 @@ are touched again:
 
 The top row is a trickle you notice; the bottom is a genuine commitment that
 costs standing with the other three.
+
+## How the breadth pass turned out
+
+Four separate widenings, none of which needed a chassis change beyond wiring.
+
+**Microgames: 14 → 22.** The pool leaned almost entirely on `onDown`, so the
+eight new ones deliberately do not: drag-precision (`trace`), pursuit
+(`chase`), timing (`stack`), rhythm (`rhythm`), drag-to-connect (`wire`),
+pure judgement with no reflex at all (`weigh`), survive-by-dragging (`flee`),
+and steady-drag that punishes speed (`peel`). Variety across *input syntax* is
+what makes a double round read as two games rather than one game twice.
+
+**Acts: 5 → 8.** V, VI and VII sit between the Artificer's confession in Act IV
+and his finale, because that is where the Crab and the Understudy have room to
+be part of the plot rather than commentary beside it. Each of the three belongs
+to a different voice. THE UNSHIPPED remains the only `final` boss.
+
+**Hero stats: 3 → 5.** NERVE raises the combo *ceiling* rather than any rate,
+so it compounds with every goo source at once without making one louder. CHARM
+scales standing earned — and explicitly not standing lost, since a stat that
+deepened your penalties would be a trap rather than an investment. It scales
+the bleed too, so a charming hero commits harder in both directions instead of
+collecting all four patrons for free.
+
+**THE LEDGER** (`src/ledger.js`, boons in `src/content/ledger.js`) is the only
+state that outlives a run, under its own storage key so that starting a run
+cannot clear the record of having played. It belongs to the Artificer, and that
+attribution is the design: he wants you to finish, so when you do not, he
+writes down how far you got and quietly makes the next attempt easier.
+
+It counts **total gates cleared, not runs completed** — counting runs would
+give nothing at all to a player who keeps stalling in Act VI, who is exactly
+who it exists for. Six boons unlock across 3 to 30 gates, each applied after
+the reset and announced by the Artificer inside the Act I opening, because a
+silent buff is indistinguishable from a bug.
+
+### What the tests learned
+
+Three bugs surfaced that the existing suite structurally could not catch, and
+each left a permanent check behind:
+
+- **The bundle shares one scope.** `src/ledger.js` was written with the same
+  `const KEY` as `src/save.js`; the dev server was fine and the built artefact
+  was broken. `tools/build.js` now fails on any top-level name collision.
+- **jsdom had no usable `localStorage`.** Its default `about:blank` origin
+  makes every storage access throw, so `store()` returned null and the save and
+  ledger degraded to no-ops — exactly as designed, which is why the suite
+  passed while covering neither. Giving the DOM a real `url` made persistence
+  testable for the first time.
+- **"Does not throw" is not "is a game."** The chassis awards a throwing module
+  to the player, so an unwinnable module is invisible in play. A winnability
+  harness drives the correct input for each new microgame at rounds 1 and 30
+  and demands a win. It immediately found `trace` accepting a 46px grab into a
+  27px corridor and then failing the player for it on the first move.

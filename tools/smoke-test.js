@@ -28,6 +28,12 @@ const check = (label, cond) => {
 const dom = new JSDOM(fs.readFileSync(HTML, "utf8"), {
   runScripts: "dangerously",
   pretendToBeVisual: true,
+  // A real origin, because jsdom refuses localStorage on the default
+  // about:blank one. Without it every storage access throws, `store()` returns
+  // null, and the save and ledger degrade to no-ops — which they are designed
+  // to do, so the suite passed while covering neither of them. This line is
+  // what makes persistence testable at all.
+  url: "https://slop.test/",
   // Stubs must be installed BEFORE the inline script executes, otherwise the
   // chassis calls getContext() during boot and gets jsdom's unimplemented one.
   beforeParse(window) {
@@ -39,12 +45,167 @@ const dom = new JSDOM(fs.readFileSync(HTML, "utf8"), {
 });
 const { window } = dom;
 
+/* The body is wrapped because jsdom runs with pretendToBeVisual, so the game's
+   requestAnimationFrame loop holds the event loop open. An assertion that
+   throws would therefore skip process.exit() and leave the run hanging until
+   something kills it, reporting nothing — which is precisely the least useful
+   way for a test suite to fail. The finally clause guarantees an exit code. */
 setTimeout(() => {
+  try {
+    runChecks();
+  } catch (e) {
+    failures++;
+    console.log(" FAIL  smoke test threw: " + (e && e.stack ? e.stack : e));
+  } finally {
+    console.log(
+      failures === 0
+        ? "\nAll smoke checks passed."
+        : `\n${failures} check(s) failed.`
+    );
+    process.exit(failures === 0 ? 0 : 1);
+  }
+}, 120);
+
+function runChecks() {
   const G = window.SLOP;
   check("game object exposed on window.SLOP", !!G);
-  if (!G) process.exit(1);
+  if (!G) return;
 
-  check("14 microgames registered", G && typeof G.pickModule === "function");
+  check("microgame pool is populated", G && typeof G.pickModule === "function");
+
+  // ---- the microgame contract, across the whole pool ----
+  // The chassis converts a throwing module into a free win, which is exactly
+  // what makes a permanently broken one invisible in play: it never crashes
+  // the page, it just quietly stops being a game. So every module is driven
+  // here, outside safeLane, where a throw is a failure rather than a feature.
+  const mods = G.modules || [];
+  check("every microgame is registered", mods.length >= 20);
+  check("microgame ids are unique", new Set(mods.map(m => m.id)).size === mods.length);
+
+  const shapeBad = mods.filter(m =>
+    !m.id || !m.verb || !m.color ||
+    typeof m.init !== "function" || typeof m.render !== "function");
+  check("every microgame has id, verb, colour, init and render", shapeBad.length === 0);
+
+  // Module-scope mutable state breaks DOUBLE SLOP, where one module object
+  // runs in two lanes at once. Two independent `local` objects must stay
+  // independent after both have been initialised and driven.
+  const fakeCtx = () => new Proxy({}, { get: () => () => {} });
+  const fakeG = (round) => {
+    const g = {
+      W: 480, H: 480, ctx: fakeCtx(), local: {}, round,
+      won: false, lost: false,
+      win() { this.won = true; }, lose() { this.lost = true; },
+    };
+    return g;
+  };
+
+  const broken = [];
+  const leaky = [];
+  mods.forEach(m => {
+    try {
+      // Late-round values, where difficulty scaling is most likely to produce
+      // a degenerate number.
+      const a = fakeG(1), b = fakeG(40);
+      m.init(a); m.init(b);
+      for (let i = 0; i < 30; i++) {
+        if (m.update) { m.update(a, 33); m.update(b, 33); }
+        m.render(a); m.render(b);
+      }
+      if (m.onDown) { m.onDown(a, 240, 240); m.onDown(b, 100, 380); }
+      if (m.onMove) { m.onMove(a, 250, 250); m.onMove(b, 110, 390); }
+      if (m.onUp) { m.onUp(a, 260, 260); m.onUp(b, 120, 400); }
+      if (m.cleanup) { m.cleanup(a); m.cleanup(b); }
+      if (Object.keys(a.local).length === 0) leaky.push(m.id + " (no g.local state)");
+    } catch (e) {
+      broken.push(m.id + ": " + e.message);
+    }
+  });
+  check("no microgame throws when driven: " + (broken[0] || "none"), broken.length === 0);
+  check("every microgame keeps its state on g.local", leaky.length === 0);
+
+  // ---- winnability ----
+  // "Does not throw" is not "is a game". The chassis awards a throwing module
+  // to the player, so a module that can never be won looks identical in play to
+  // one that is merely hard — it just quietly stops being winnable. These drive
+  // the correct input for each and demand a win.
+  //
+  // Deliberately coupled to each module's internals: that coupling is the
+  // point, and a module that changes shape should have to update its strategy
+  // here rather than silently losing coverage.
+  const byId = id => mods.find(m => m.id === id);
+  const strategies = {
+    trace(m, g) {
+      const py = x => 240 + Math.sin(g.local.phase + (x / 480) * Math.PI * 2 * g.local.freq) * g.local.amp;
+      m.onDown(g, g.local.x, py(g.local.x));
+      for (let x = g.local.x; x <= 445 && !g.won && !g.lost; x += 4) m.onMove(g, x, py(x));
+    },
+    chase(m, g) {
+      for (let i = 0; i < 600 && !g.won; i++) { m.onMove(g, g.local.tx, g.local.ty); m.update(g, 16); }
+    },
+    stack(m, g) {
+      for (let i = 0; i < 4000 && !g.won && !g.lost; i++) {
+        m.update(g, 16);
+        if (!g.local.dropping && Math.abs(g.local.x - 240) < 4) m.onDown(g);
+      }
+    },
+    rhythm(m, g) {
+      for (let i = 0; i < 6000 && !g.won && !g.lost; i++) {
+        m.update(g, 16);
+        const n = g.local.notes.find(n => !n.hit && Math.abs(n.x - g.local.line) <= g.local.tol * 0.5);
+        if (n) m.onDown(g);
+      }
+    },
+    wire(m, g) {
+      g.local.left.forEach(p => {
+        const t = g.local.right.find(r => r.col === p.col);
+        m.onDown(g, p.x, p.y); m.onMove(g, t.x, t.y); m.onUp(g, t.x, t.y);
+      });
+    },
+    weigh(m, g) { m.onDown(g, g.local.heavy === "L" ? 100 : 380, 240); },
+    peel(m, g) {
+      m.onDown(g, 240, g.local.y);
+      let y = g.local.y;
+      const step = Math.max(1, g.local.maxStep - 2);
+      for (let i = 0; i < 1200 && !g.won && !g.lost; i++) { y += step; m.onMove(g, 240, y); }
+    },
+  };
+
+  const unwinnable = [];
+  Object.keys(strategies).forEach(id => {
+    const m = byId(id);
+    if (!m) { unwinnable.push(id + " (missing)"); return; }
+    // Two rounds apart, so a difficulty curve that becomes impossible late is
+    // caught rather than passing on the easy case.
+    [1, 30].forEach(round => {
+      const g = fakeG(round);
+      try {
+        m.init(g);
+        strategies[id](m, g);
+        if (!g.won) unwinnable.push(id + " @round " + round + (g.lost ? " (lost)" : " (never resolved)"));
+      } catch (e) { unwinnable.push(id + " @round " + round + ": " + e.message); }
+    });
+  });
+  check("playing correctly wins: " + (unwinnable[0] || "all"), unwinnable.length === 0);
+
+  // flee survives on the clock rather than resolving, so it is checked the
+  // other way round: running from the pack must not get you caught.
+  const fleeMod = byId("flee");
+  if (fleeMod) {
+    const g = fakeG(30);
+    fleeMod.init(g);
+    const corners = [[30, 30], [450, 30], [30, 450], [450, 450], [240, 240]];
+    for (let i = 0; i < 300 && !g.lost; i++) {
+      let bx = 240, by = 240, best = -1;
+      corners.forEach(([px, py]) => {
+        const dd = Math.min.apply(null, g.local.hunters.map(h => Math.hypot(px - h.x, py - h.y)));
+        if (dd > best) { best = dd; bx = px; by = py; }
+      });
+      fleeMod.onMove(g, bx, by);
+      fleeMod.update(g, 16);
+    }
+    check("flee is survivable when played well", !g.lost);
+  }
 
   // Start a run.
   window.document.getElementById("startBtn").click();
@@ -86,7 +247,9 @@ setTimeout(() => {
   while (G.state !== "victory" && guard++ < 4000) forceWin();
 
   check("campaign reached victory state", G.state === "victory");
-  check("progressed through all 5 acts", G.actIdx >= 4);
+  check("progressed through every act", G.actIdx >= G.acts.length - 1);
+  check("the campaign has grown past five acts", G.acts.length >= 8);
+  check("only the last act is final", G.acts.filter(a => a.boss.final).length === 1 && G.acts[G.acts.length-1].boss.final);
   check("hero gained levels", G.hero.level > 1);
   check("xp accrued", G.hero.xp >= 0 && G.hero.xpNext > 0);
   check("no boss left standing", G.boss === null);
@@ -102,6 +265,29 @@ setTimeout(() => {
   G.addGoo(10);
   check("addGoo credits goo", G.goo === 10);
   check("addGoo skims into the honey pot", G.pot.brew > 0);
+
+  // ---- hero stats ----
+  const statIds = (G.acts && G.hero) ? ["reflex", "wit", "grit", "nerve", "charm"] : [];
+  check("every stat exists on the hero", statIds.every(id => typeof G.hero[id] === "number"));
+
+  // NERVE raises the combo ceiling, which multiplies every goo source at once.
+  G.hero.nerve = 1;
+  const capBase = G.comboCap();
+  G.hero.nerve = 4;
+  check("nerve raises the combo cap", G.comboCap() === capBase + 3);
+  G.hero.nerve = 1;
+
+  // CHARM scales standing earned, and must not scale standing lost — a stat
+  // that deepened your penalties would be a trap.
+  G.standing = { artificer: 0, goblin: 0, crab: 0, understudy: 0 };
+  G.hero.charm = 5;
+  G.shiftFavor("goblin", 10);
+  check("charm raises standing earned", G.standing.goblin > 10);
+  G.standing.crab = 50;
+  G.hero.charm = 5;
+  G.shiftFavor("crab", -10);
+  check("charm does not deepen standing lost", G.standing.crab === 40);
+  G.hero.charm = 1;
 
   // Standing: four independent axes, each powering its owner's loop.
   G.standing = { artificer: 0, goblin: 0, crab: 0, understudy: 0 };
@@ -265,10 +451,64 @@ setTimeout(() => {
   G.closeCompany();
   check("company screen closes back", G.state !== "company");
 
-  console.log(
-    failures === 0
-      ? "\nAll smoke checks passed."
-      : `\n${failures} check(s) failed.`
-  );
-  process.exit(failures === 0 ? 0 : 1);
-}, 120);
+  // ---- THE LEDGER (cross-run meta-progression) ----
+  const L = G.ledgerApi;
+  L.clear();
+
+  check("a fresh ledger shows nothing", L.describe(L.read()) === null);
+  check("a fresh ledger grants no boons", L.earned(L.read()).length === 0);
+  check("a fresh ledger names what is next", !!L.next(L.read()));
+
+  // Gates accumulate across runs, not just completed ones — that is the whole
+  // premise, so it gets a direct test.
+  G.actIdx = 4; G.ngPlus = 0;
+  for (let i = 0; i < 3; i++) L.recordActCleared(G);
+  let rec = L.read();
+  check("clearing a gate is recorded", rec.actsCleared === 3);
+  check("the best act reached is tracked", rec.bestAct === 5);
+  check("three gates earn the first boon", L.earned(rec).length === 1);
+  check("the ledger describes itself once there is history", typeof L.describe(rec) === "string");
+
+  // Boons must actually change the run they are applied to.
+  G.goo = 0;
+  const applied = L.applyBoons(G);
+  check("earned boons are applied", G.goo >= 40);
+  check("a newly earned boon is announced once", applied.fresh.length === 1);
+  const again = L.applyBoons(G);
+  check("an announced boon is not announced twice", again.fresh.length === 0);
+
+  // A deep ledger must apply every boon without any of them throwing.
+  L.clear();
+  G.actIdx = 7;
+  for (let i = 0; i < 30; i++) L.recordActCleared(G);
+  rec = L.read();
+  check("a deep ledger earns every boon", L.earned(rec).length === L.Boons.length);
+  check("a complete ledger has nothing left to name", L.next(rec) === null);
+
+  G.defense = D.reset();
+  G.understudy = U.reset();
+  G.goo = 0; G.hero.points = 0; G.hero.nerve = 1; G.rerollDiscount = 0;
+  L.applyBoons(G);
+  check("every boon applies without throwing", G.goo >= 40);
+  check("the company boon seats the stand-in", U.has(G, "standin"));
+  check("the perimeter boon pre-digs a pad", G.defense.pads.filter(p => p.tower).length >= 2);
+  check("the promotion boon grants a point", G.hero.points >= 1);
+  check("the reroll boon discounts rerolls", G.rerollDiscount >= 2);
+  check("the steady boon raises nerve", G.hero.nerve >= 2);
+  check("every boon has a line to announce it", L.Boons.every(b => !!L.BoonLines[b.id]));
+
+  // Durable state a user can hand-edit must degrade to "no boons", not to a
+  // broken boot.
+  try { window.localStorage.setItem("slop.ledger.v1", "{ not json"); } catch (e) {}
+  check("a corrupt ledger reads as empty", L.read().actsCleared === 0);
+  try { window.localStorage.setItem("slop.ledger.v1", JSON.stringify({ v: 99, actsCleared: 9999 })); } catch (e) {}
+  check("a ledger from another version is discarded", L.read().actsCleared === 0);
+
+  // Starting a run clears the save but must never clear the record of playing.
+  L.clear();
+  G.actIdx = 2;
+  L.recordActCleared(G);
+  G.start(false);
+  check("starting a run keeps the ledger", L.read().actsCleared === 1);
+  check("starting a run clears the save", window.localStorage.getItem("slop.save.v1") === null);
+}

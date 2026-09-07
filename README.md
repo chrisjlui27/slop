@@ -2,7 +2,7 @@
 
 A browser CRPG hiding inside a WarioWare-style microgame chassis.
 
-Fourteen microgames, five acts, five bosses, a hero sheet with stats and XP, a
+Twenty-two microgames, eight acts, eight bosses, a hero sheet with stats and XP, a
 shop, a real tower defense, a virtual pet, a second entire game inside a honey
 pot — and four creators who built all of it and can't agree on what it's for.
 
@@ -55,7 +55,7 @@ exception, and they will tell you exactly what they got done.
 ## The game
 
 You are the Hero. Clear microgames to earn XP and damage the gate at the end of
-each Act. Five gates, then THE UNSHIPPED, then NEW GAME+.
+each Act. Eight gates, then THE UNSHIPPED, then NEW GAME+.
 
 **The campaign has no lose state.** No lives, no game over. Missing a trial
 costs momentum — your combo breaks, the boss regenerates — never progress. This
@@ -110,19 +110,21 @@ src/
   save.js              what survives closing the app
   defense.js           THE PERIMETER — the Crab's tower defense
   understudy.js        THE COMPANY — the Understudy's idle layer
+  ledger.js            THE LEDGER — the only state that outlives a run
   audio.js             one blip() primitive, ~30 named cues
   fx.js                shake, chroma, glitch bars, stamps, confetti
-  modules/             14 microgames, one file each, fully isolated
+  modules/             22 microgames, one file each, fully isolated
   content/
-    lore.js            the four creators, their barks, the five Acts
+    lore.js            the four creators, their barks, the eight Acts
     mutators.js        sabotage effects
     shop.js            upgrade catalogue
     stats.js           hero stat definitions
     defense.js         towers, enemies, wave composition
     understudy.js      the company roster, idle rates, offline cap
+    ledger.js          cross-run boons and what unlocks them
 docs/
   ARCHITECTURE.md      how the chassis works, how systems cross-feed
-  ADDING-A-MICROGAME.md  5-minute guide, two files to touch
+  ADDING-A-MICROGAME.md  5-minute guide, three files to touch
   LORE.md              voice bible — read before writing dialogue
   PARALLEL-LOOPS.md    one loop per character, and how standing drives them
 tools/

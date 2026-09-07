@@ -8,6 +8,7 @@ import { StatDefs } from "./content/stats.js";
 import { Save } from "./save.js";
 import { Defense } from "./defense.js";
 import { Understudy } from "./understudy.js";
+import { Ledger } from "./ledger.js";
 
 /* ============================== CHASSIS ============================== */
 export const $ = id => document.getElementById(id);
@@ -67,7 +68,7 @@ export const Game = {
   pausedState:null, pausedRemain:null,
   // --- narrative / RPG state ---
   actIdx:0, actRound:0, boss:null, ngPlus:0,
-  hero:{ level:1, xp:0, xpNext:120, reflex:1, wit:1, grit:1, points:0 },
+  hero:{ level:1, xp:0, xpNext:120, reflex:1, wit:1, grit:1, nerve:1, charm:1, points:0 },
   /* Standing, not a slider. One axis could rank two parties against each
      other; it cannot say which of four loops you are actually investing in,
      which is the choice the game is now about. Each value is 0..100 and each
@@ -80,7 +81,12 @@ export const Game = {
   // way in.
   cast: Cast,
   defenseApi: Defense,
+  modules: Modules,
+  acts: Acts,
   understudyApi: Understudy,
+  ledgerApi: Ledger,
+  // Set by the STANDING ORDER boon; zero for a player with no history.
+  rerollDiscount:0,
   barkT:9000, lastSpeaker:null,
   codexSeen:[],
   rafId:null,
@@ -121,6 +127,11 @@ export const Game = {
      not a choice. */
   shiftFavor(whoId, delta){
     if(!Cast[whoId] || !delta) return;
+    // CHARM scales what you earn, never what you lose — a stat that deepened
+    // your penalties would be a trap rather than an investment. It also scales
+    // the bleed, so a charming hero commits harder in both directions rather
+    // than getting all four patrons for free.
+    if(delta > 0) delta *= 1 + (this.hero.charm - 1) * 0.15;
     this.standing[whoId] = Math.max(0, Math.min(100, (this.standing[whoId]||0) + delta));
     if(delta > 0){
       const bleed = delta * 0.3;
@@ -192,7 +203,19 @@ export const Game = {
     actNameEl.textContent = a.n + (this.ngPlus? ' (NG+'+this.ngPlus+')' : '');
     questNameEl.textContent = a.quest.toUpperCase();
     this.noteCodex(a.n+' — '+a.title);
-    this.showStory(a.n+': '+a.title, a.quest, a.open, ()=> this.nextRound());
+
+    /* A newly earned boon is introduced inside the Act's own opening rather
+       than as a separate overlay: it is the Artificer speaking, in the scene
+       he already owns, and one more screen before the first trial would be one
+       too many. Only ever fires on the first Act of a run. */
+    let lines = a.open;
+    if(this._boonIntro && this._boonIntro.length){
+      lines = a.open.concat(this._boonIntro.map(b=>({
+        who:'artificer', line: Ledger.BoonLines[b.id] || ('Granted: '+b.label+'.')
+      })));
+      this._boonIntro = null;
+    }
+    this.showStory(a.n+': '+a.title, a.quest, lines, ()=> this.nextRound());
   },
 
   /* ---------------- boss ---------------- */
@@ -242,6 +265,9 @@ export const Game = {
     this.addGoo(40);
     bossRow.classList.add('hidden');
     this.boss=null;
+    // Every gate is banked, final or not. A run abandoned in Act VI still put
+    // five gates in the ledger, and that player is who the boons are for.
+    this.safeSubsystem(()=> Ledger.recordActCleared(this), 'ledger');
     if(wasFinal){ this.triggerVictory(); return; }
     const closing = a.close.length ? a.close : Barks.bossDown;
     this.showStory('GATE DOWN', a.n+' COMPLETE', closing, ()=>{
@@ -252,8 +278,10 @@ export const Game = {
   triggerVictory(){
     this.state='victory';
     // The run is finished. Leaving the save in place would offer to resume a
-    // completed campaign one round before its own ending.
+    // completed campaign one round before its own ending. The ledger is not
+    // cleared — it is the record of having played at all.
     Save.clear();
+    this.safeSubsystem(()=> Ledger.recordVictory(this), 'ledger');
     Sound.victory();
     FX.confetti(240,240,60);
     victorySub.textContent = 'You defeated THE UNSHIPPED at level '+this.hero.level+'.';
@@ -283,7 +311,7 @@ export const Game = {
   updateHeroUI(){
     heroLvlEl.textContent = 'LV'+this.hero.level;
     xpFill.style.width = (this.hero.xp/this.hero.xpNext*100)+'%';
-    statsMiniEl.textContent = 'R'+this.hero.reflex+' W'+this.hero.wit+' G'+this.hero.grit;
+    statsMiniEl.textContent = 'R'+this.hero.reflex+' W'+this.hero.wit+' G'+this.hero.grit+' N'+this.hero.nerve+' C'+this.hero.charm;
     sheetBtn.classList.toggle('alert', this.hero.points>0);
   },
   openLevelUp(){
@@ -405,6 +433,9 @@ export const Game = {
     const glaze = this.potBuffT>0 ? 1.5 : 1;
     return base*glaze*this.favorGooBonus();
   },
+  // NERVE raises the ceiling rather than the rate, so it compounds with every
+  // goo source at once without making any single one louder.
+  comboCap(){ return 6 + (this.hero.nerve-1); },
   comboGooMult(){ return 1+this.combo*0.08; },
   meterMult(){ return 1+0.25*(this.shopLevels.battery||0); },
   addGoo(amount){
@@ -464,7 +495,7 @@ export const Game = {
     this.pot={ brew:0, brewMax:100 }; this.potBuffT=0; this.potGame=null;
     this.pausedState=null; this.pausedRemain=null;
     this.actIdx=0; this.actRound=0; this.boss=null;
-    this.hero={ level:1, xp:0, xpNext:120, reflex:1, wit:1, grit:1, points:0 };
+    this.hero={ level:1, xp:0, xpNext:120, reflex:1, wit:1, grit:1, nerve:1, charm:1, points:0 };
     this.standing={ artificer:0, goblin:0, crab:0, understudy:0 };
     this.codexSeen=[];
     if(!keepNg) this.ngPlus=0;
@@ -486,6 +517,15 @@ export const Game = {
   start(keepNg){
     this.resetState(keepNg);
     Save.clear();   // beginning a run abandons whatever was in progress
+    this.rerollDiscount=0;
+
+    /* The ledger is the only state that survives a run, so its boons are
+       applied after the reset rather than being part of it. Newly earned ones
+       are announced — a silent buff is indistinguishable from a bug. */
+    const boons = this.safeSubsystem(()=> Ledger.applyBoons(this), 'boons');
+    if(boons && boons.fresh.length){
+      this._boonIntro = boons.fresh;
+    }
     this.refreshAllUI();
     this.startAct();
     this.ensureLoop();
@@ -647,7 +687,7 @@ export const Game = {
       if(lane.result) wonCount++; else lostCount++;
     });
     const allWon = lostCount===0;
-    this.combo = allWon ? Math.min(6,this.combo+1) : 0;
+    this.combo = allWon ? Math.min(this.comboCap(),this.combo+1) : 0;
     const mult = this.mutator ? (this.mutator.scoreMult||1) : 1;
     if(wonCount>0){
       this.score += Math.round(wonCount*(100+this.combo*20)*mult);
@@ -673,7 +713,7 @@ export const Game = {
     if(this.state==='resolve') setTimeout(()=>{ if(this.state==='resolve') this.nextRound(); }, 340);
   },
 
-  rerollCost(){ return Math.max(2, (6 + this.rerollsThisRound*6) - this.hero.wit); },
+  rerollCost(){ return Math.max(2, (6 + this.rerollsThisRound*6) - this.hero.wit - (this.rerollDiscount||0)); },
   updateRerollUI(){ rerollCostEl.textContent = this.rerollCost(); },
   reroll(){
     if(this.state!=='playing') return;
@@ -735,7 +775,7 @@ export const Game = {
   },
   finishBonusStage(){
     const gained = this.bonus ? this.bonus.score : 0;
-    this.score += gained; this.combo=Math.min(6,this.combo+1);
+    this.score += gained; this.combo=Math.min(this.comboCap(),this.combo+1);
     this.gainXp(Math.round(gained*0.5));
     FX.stamp('+'+gained+' SUGAR!','#fff02f','#ff2f9e'); FX.confetti(240,240,32);
     Sound.win(); Sound.sugar();
@@ -1253,6 +1293,22 @@ window.addEventListener('pointerup', e=>{
 });
 
 $('startBtn').addEventListener('click', ()=>{ Sound.ensure(); Game.start(false); });
+
+/* The ledger on the title screen. Shown only once there is history — a
+   first-time player should not be handed an empty scoreboard — and it names
+   what is coming next, since a meta layer you cannot see the shape of is
+   indistinguishable from no meta layer. */
+(function showLedger(){
+  const el = $('ledgerLine');
+  const rec = Ledger.read();
+  const line = Ledger.describe(rec);
+  if(!line) return;
+  const next = Ledger.next(rec);
+  el.innerHTML = line + (next
+    ? '<br><span style="opacity:0.7">next at ' + next.at + ' gates · ' + next.label + '</span>'
+    : '<br><span style="opacity:0.7">every boon earned</span>');
+  el.classList.remove('hidden');
+})();
 
 /* Resume is offered rather than automatic. Dropping a player straight back
    into Act IV mid-boss on app launch takes the choice away, and BEGIN has to

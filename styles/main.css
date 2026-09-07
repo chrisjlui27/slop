@@ -657,3 +657,9 @@
      perimeter: a screen whose exit is below the fold reads as a trap. */
   #coList{ flex:1 1 auto; min-height:0; overflow-y:auto; }
   #coRates, #coReport, #coFooter, #companyOverlay .title{ flex:0 0 auto; }
+
+  /* The ledger line pushed the title screen 2px past its stage. Reclaimed from
+     the notes rather than the buttons or the narrators' text — the tap targets
+     and the authored copy are the two things this layout exists to protect. */
+  #startScreen .note{ margin-top:5px; line-height:1.3; }
+  #ledgerLine{ margin-bottom:2px; }

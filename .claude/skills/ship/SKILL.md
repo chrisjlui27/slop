@@ -36,7 +36,7 @@ comment in a tool script.
 npm test
 ```
 
-It plays all five acts to victory in jsdom. Then open the game — Python is not
+It plays every act to victory in jsdom. Then open the game — Python is not
 installed, so use the PowerShell server:
 
 ```bash

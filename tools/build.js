@@ -80,10 +80,46 @@ function strip(file) {
   return `\n/* ===== ${path.relative(ROOT, file.abs)} ===== */\n${out.trim()}\n`;
 }
 
+/**
+ * Every module ends up in one shared function scope, so two files declaring the
+ * same top-level name is a redeclaration error at runtime — and one that the
+ * unbundled dev server never sees, because there each module has its own scope.
+ * That asymmetry makes it a genuinely nasty bug: it only appears in the built
+ * artefact, which is what ships.
+ *
+ * It has already happened once, when src/ledger.js was written with the same
+ * `const KEY` as src/save.js.
+ */
+function checkCollisions(stripped) {
+  const seenNames = new Map();
+  const clashes = [];
+  const declRe = /^(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)/gm;
+
+  stripped.forEach(({ file, code }) => {
+    let m;
+    while ((m = declRe.exec(code)) !== null) {
+      const name = m[1];
+      const where = path.relative(ROOT, file.abs);
+      if (seenNames.has(name)) clashes.push(`${name} — ${seenNames.get(name)} and ${where}`);
+      else seenNames.set(name, where);
+    }
+  });
+
+  if (clashes.length) {
+    throw new Error(
+      "Top-level name collisions; the bundle shares one scope, so these would " +
+      "redeclare each other at runtime:\n  " + clashes.join("\n  ")
+    );
+  }
+}
+
 function build() {
   walk(ENTRY);
 
-  const js = ordered.map(strip).join("\n");
+  const stripped = ordered.map(file => ({ file, code: strip(file) }));
+  checkCollisions(stripped);
+
+  const js = stripped.map(s => s.code).join("\n");
   const css = fs.readFileSync(path.join(ROOT, "styles/main.css"), "utf8");
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
 

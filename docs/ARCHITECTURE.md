@@ -12,7 +12,8 @@ index.html          DOM skeleton — every element the chassis binds to
           ├ src/save.js     the only code that touches localStorage
           ├ src/defense.js  THE PERIMETER — the Crab's tower defense
           ├ src/understudy.js THE COMPANY — the Understudy's idle layer
-          ├ src/modules/    14 microgames, each fully isolated
+          ├ src/ledger.js   THE LEDGER — cross-run boons, its own storage key
+          ├ src/modules/    22 microgames, each fully isolated
           └ src/content/    Acts, dialogue, mutators, shop, stats — pure data
 
 sw.js                 offline cache, registered from index.html
@@ -32,8 +33,8 @@ manifest.webmanifest  install identity — outside the module graph entirely
 - **State machine** — `boot / story / playing / resolve / draft / levelup /
   bonus / potgame / tdgame / company / menu / victory`. The rAF loop dispatches
   on this.
-- **Everything else** — hero stats, XP, favor, boss HP, buddy, turret lane,
-  honey pot, shop, codex.
+- **Everything else** — hero stats, XP, standing, boss HP, buddy, the perimeter,
+  honey pot, the company, the ledger, shop, codex.
 
 ### The microgame contract
 
@@ -77,8 +78,11 @@ turret/manual kills ──► goo ──► addGoo() ──┬──► spendabl
 buddy hunger +                                            ▼
                                               pot harvest ──► GLAZED buff
                                                              (goo ×1.5, 10s)
-favor meter ──► goblin side: goo ×1.5 max
-            └─► artificer side: XP ×1.5 max, and biases who speaks
+standing ──┬─► goblin:     goo ×1.5 max
+           ├─► artificer:  XP ×1.5 max
+           ├─► crab:       tower damage ×1.5 max
+           ├─► understudy: idle rate ×1.5 max
+           └─► and weights who speaks, four ways
 ```
 
 `addGoo()` is the single funnel for all goo income — that's what makes the pot
@@ -88,14 +92,14 @@ goo source, call `addGoo()`, not `Game.goo += n`.
 ## Narrative layer
 
 `Game.say(who, line)` drives the persistent dialogue bar; `Game.bark(barkSet)`
-picks a speaker weighted by the favor meter, so the side you're aligned with
+picks a speaker weighted by standing, so the patron you're aligned with
 talks more. Story beats (act openings, boss intros, act closings) use
 `showStory()`, which halts the round flow behind an overlay and resumes via a
 continuation callback.
 
 Acts are data in `content/lore.js`: `{ n, title, quest, rounds, boss, open,
 close }`. The chassis reads `rounds` to know when to open the boss gate and
-`boss.hp/regen/final` to build the encounter. Adding a sixth act requires no
+`boss.hp/regen/final` to build the encounter. Adding a ninth act requires no
 chassis change.
 
 ## Persistence
@@ -126,7 +130,15 @@ Time-based state — the GLAZED buff, the buddy's hunger clock, ambient bark
 timers — is deliberately not restored. A buddy that starved for nine hours
 while the app was closed would be a punishment for closing the app.
 
-**One system is exempt, and it is the point of a whole character.** THE
+**A second key holds what outlives a run.** `slop.save.v1` is one campaign and
+`start()` wipes it; `slop.ledger.v1` (`src/ledger.js`) is the record of ever
+having played and must survive that, which is why it is a separate key rather
+than a field in the save. It counts total gates cleared across every attempt
+and unlocks boons applied at the start of each new run. Both keys go through
+the same `store()` guard.
+
+**One system is exempt from the freeze, and it is the point of a whole
+character.** THE
 UNDERSTUDY's company (`src/understudy.js`) is credited for time the app was
 shut. The save carries a `lastAt` wall-clock stamp that the live tick advances
 every frame, so the gap on the next launch is exactly the time nobody was
@@ -144,5 +156,5 @@ remaining time and restore it — see `pauseForMenu()` / `resumeAfterMenu()`.
 
 The buddy, the perimeter and the pot brew tick on *every* frame regardless of state,
 including while the honey pot minigame has the plot paused. Only the round
-stops. That asymmetry is a joke the two narrators comment on, and it is
+stops. That asymmetry is a joke the narrators comment on, and it is
 intentional.

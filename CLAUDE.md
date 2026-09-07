@@ -81,6 +81,8 @@ have to be.
 | Change how the perimeter plays | `src/defense.js` — see `docs/PARALLEL-LOOPS.md` |
 | Add to the company or retune idle rates | `src/content/understudy.js` — data only |
 | Change how offline time pays | `src/understudy.js` |
+| Add or retune a cross-run boon | `src/content/ledger.js` — data only |
+| Change what survives between runs | `src/ledger.js` |
 | Change how it installs or caches | `manifest.webmanifest`, `sw.js` — see `DEPLOY.md` |
 | Change sounds | `src/audio.js` |
 | Change screen effects | `src/fx.js` |
@@ -140,6 +142,16 @@ voices wrong is the most common way to damage this project.
   gap over the cap, a timestamp in the future (a wound-back device clock), and
   a gap under a minute. `Save.apply` refuses a `lastAt` it cannot believe.
   Every one of those has a test; do not relax one without adding another.
+- **Two storage keys, two lifetimes.** `slop.save.v1` is one run and is wiped
+  by `start()`. `slop.ledger.v1` is the record of ever having played and must
+  survive that — clearing a run must never clear the ledger. Both go through
+  `store()` in `src/save.js`; nothing else touches `localStorage`.
+- **The bundle is one shared scope.** `tools/build.js` concatenates modules
+  into a single closure, so two files declaring the same top-level name
+  redeclare each other at runtime. The dev server never sees this, because
+  there each module has its own scope — it only breaks the built artefact,
+  which is what ships. The build fails loudly on a collision now; if it does,
+  rename, do not work around it.
 
 ## Gotchas
 

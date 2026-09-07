@@ -1,6 +1,10 @@
 # Adding a microgame
 
-Two files change. It takes about five minutes.
+Three files change. It takes about five minutes.
+
+> The third is `sw.js` — see step 3. It was added when the game became an
+> installed PWA, and forgetting it breaks the game offline while leaving it
+> working online, which is the worst way for a bug to hide.
 
 ## 1. Create `src/modules/yourgame.js`
 
@@ -59,7 +63,13 @@ export const Modules = [
 ];
 ```
 
-That's it. The chassis picks it up immediately, avoids repeating it too soon,
+## 3. Add it to `SHELL` in `sw.js`
+
+Every file the game fetches at runtime must be listed there, and `CACHE` must
+be bumped so installed phones retire the previous generation. `npm run
+check:shell` fails loudly if you forget.
+
+That is it. The chassis picks it up immediately, avoids repeating it too soon,
 and includes it in double-lane rounds and rerolls automatically.
 
 ## Rules
@@ -103,7 +113,7 @@ own. Uncapped scaling makes late acts impossible.
 ## Testing
 
 ```bash
-npm run dev     # then play until it comes up
+npm run dev:win # then play until it comes up (npm run dev needs Python)
 npm test        # verifies nothing structural broke
 ```
 

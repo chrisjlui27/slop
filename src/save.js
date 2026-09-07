@@ -28,7 +28,7 @@ const VERSION = 1;
    throws in a Chrome profile with cookies blocked, so every access is guarded
    rather than null-checked. A phone that cannot save still plays; it just
    plays the way the game originally did. */
-function store(){
+export function store(){
   try{
     const s = window.localStorage;
     const probe = '__slop__';

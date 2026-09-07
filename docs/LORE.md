@@ -10,7 +10,9 @@ know they are inside a game. Both know the player is outside it. Neither
 pretends otherwise — the fourth wall is not broken occasionally, it is simply
 absent, permanently, as a design constant.
 
-The player is "the Hero," progressing through five Acts toward THE UNSHIPPED.
+The player is "the Hero," progressing through eight Acts toward THE UNSHIPPED.
+Acts I-IV and VIII are the Artificer's; V, VI and VII belong to the Crab, the
+Understudy and the roadmap respectively.
 
 ## THE ARTIFICER
 
