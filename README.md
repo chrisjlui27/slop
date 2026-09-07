@@ -38,9 +38,10 @@ npm test         # builds, then plays a full campaign in jsdom
 
 ## Put it on your phone
 
-SLOP is a PWA. Served over HTTPS it installs to an Android home screen and runs
-fullscreen and offline, with no store and no wrapper. `DEPLOY.md` has the
-GitHub Pages steps.
+**Live at <https://chrisjlui27.github.io/slop/>** — open it in Chrome on the
+phone, then menu → **Add to Home screen**. You get an icon, not a bookmark: it
+opens fullscreen with no address bar and runs with the radio off. No store, no
+wrapper. `DEPLOY.md` has the details.
 
 A run now survives closing the app — Android kills backgrounded processes
 whenever it likes, and the title screen offers CONTINUE when there is something

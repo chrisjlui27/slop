@@ -56,11 +56,11 @@ Pages redeploys in about a minute at `https://<username>.github.io/slop/`.
 
 ## After
 
-The service worker has never been observed registering in this project's
-development browser — it parses and every `SHELL` entry resolves, but
-registration is blocked in that environment. The live origin is the first real
-test. Do not report offline support as working on the strength of a green
-`check:shell`; that checks the list, not the worker.
+The service worker was confirmed activated on the live origin, with every
+SHELL entry cached. It has never once registered in the dev browser, which is
+an environment restriction, not a defect — do not chase it locally. The live
+origin is where it is checked. Do not report offline support as working on a
+green `check:shell`; that checks the list, not the worker.
 
 Verify on the deployed URL: DevTools → Application → Service Workers should
 read *activated and running*, and the app should still load with Network set to

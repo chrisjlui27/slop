@@ -10,14 +10,14 @@ the same route.
 
 ## What is different here
 
-Eldritch Garden ships as one self-contained `index.html`. SLOP ships as 30
+Eldritch Garden ships as one self-contained `index.html`. SLOP ships as 45
 files — ES modules, a stylesheet and three icons — served straight from the
 repo root. Pages serves over HTTPS, so the browser loads the module graph
 natively and **no build step is involved in deploying**. `tools/build.js` still
 exists for producing a single portable `dist/slop.html`, but that is a
 distribution convenience, not part of shipping to the phone.
 
-The consequence is that `sw.js` has a list of 30 files that must match what is
+The consequence is that `sw.js` has a list of 45 files that must match what is
 on disk. Run this before every deploy:
 
 ```bash
@@ -29,46 +29,28 @@ It fails loudly if a module was added, renamed or removed without updating
 install handler swallows per-entry errors on purpose, so a missing file yields
 a worker that installs happily and then cannot open the game offline.
 
-## One-time setup
+## It is already set up
 
-**1. Install the GitHub CLI.** It is not currently on this machine:
+**Live at <https://chrisjlui27.github.io/slop/>** — repo `chrisjlui27/slop`,
+public, Pages serving `main` at `/`. Nothing below needs doing again; it is
+kept as the record of how, and for the next project.
 
-```bash
-winget install --id GitHub.cli
-```
-
-Then open a new terminal so `gh` is on `PATH`.
-
-**2. Log it in.**
+<details>
+<summary>How it was set up (one time)</summary>
 
 ```bash
-gh auth login
-```
-
-Choose *GitHub.com* → *HTTPS* → *Login with a web browser*. It prints a one-time
-code, opens a browser, and you approve it there.
-
-Do this yourself. Nobody else should be handling your credentials, and there is
-no step in this file where a token needs to be pasted into a chat.
-
-**3. Publish.** From this folder:
-
-```bash
+winget install --id GitHub.cli     # then open a new terminal for PATH
+gh auth login                      # GitHub.com → HTTPS → browser
 gh repo create slop --public --source=. --remote=origin --push
-```
-
-**4. Turn on Pages.**
-
-```bash
 gh api --method POST /repos/:owner/slop/pages -f "source[branch]=main" -f "source[path]=/"
 ```
 
-Or click it: repo → Settings → Pages → Source: *Deploy from a branch* → `main` /
-`(root)`.
+`gh auth login` is yours to run. Nobody else should be handling your
+credentials, and there is no step here where a token gets pasted into a chat.
 
-The site appears at `https://<username>.github.io/slop/` within a minute or two.
+Pages on a free account requires the repo to be public.
 
-**Note:** Pages on a free account requires the repo to be public.
+</details>
 
 ## Installing it
 
@@ -91,16 +73,20 @@ shell file.** Navigations are network-first, so an online phone picks up a new
 the only thing that clears them. Ship without bumping it and a phone runs a new
 document against old modules, which is a broken build rather than a stale one.
 
-## Checking the service worker
+## The service worker
 
-**It has not been observed installing.** It parses, and all 30 `SHELL` entries
-resolve over HTTP, both verified. But registration fails in the browser this
-project has been developed in — `An unknown error occurred when fetching the
-script`, with the script itself returning 200 and the correct
-`text/javascript` content type. That is an environment restriction, not a
-defect in the file, and it is the same wall `eldritch-garden` hit.
+**Confirmed working on the live origin.** Verified at
+`https://chrisjlui27.github.io/slop/`: one registration, state `activated`,
+scope `/slop/`, and all 45 `SHELL` entries present in the `slop-v6` cache with
+`src/game.js` served out of it. Offline play is real, not assumed.
 
-So the first run on a real device is the first real test:
+It never once registered during development — `An unknown error occurred when
+fetching the script`, with the script itself returning 200 and the correct
+`text/javascript` type. That was an environment restriction in the dev browser,
+the same wall `eldritch-garden` hit, and not a defect in the file. Do not chase
+it locally; check it on the deployed origin.
+
+To re-check after a deploy:
 
 1. Open the Pages URL on a desktop browser, or `chrome://inspect/#devices`
    with the phone attached.
@@ -116,8 +102,8 @@ prompt, not the campaign.
 Service workers treat `http://localhost` as secure, so a local server is enough
 to test everything except the phone itself.
 
-There is no Python or Node on this machine, so `npm run dev` will not run.
-Use the PowerShell server instead — it needs nothing installed:
+Python is not installed, so `npm run dev` will not run. Use the PowerShell
+server instead — it needs nothing beyond PowerShell:
 
 ```bash
 npm run dev:win
