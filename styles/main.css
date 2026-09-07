@@ -373,3 +373,147 @@
   #startScreen .speechBlock{ font-size:10px; line-height:1.28; margin-bottom:5px; }
   #startScreen .title{ font-size:22px !important; }
   #startScreen .subtitle{ margin-bottom:6px; }
+
+  /* ============================================================
+     POLISH PASS
+     ------------------------------------------------------------
+     The HUD had grown to eleven stacked rows above the stage, most
+     of them thin bars of equal weight and similar brightness: xp,
+     standing, boss, slop meter, pot brew and the round timer all
+     read as the same object. The pass below does not move anything;
+     it establishes a hierarchy so the eye can tell them apart.
+
+     The rule it follows: exactly one bar should be loud at a time,
+     and it should be the one that is counting down against you.
+     ============================================================ */
+
+  /* --- recessed tracks ---------------------------------------
+     Every meter shares one track treatment, so a "channel" reads as
+     a channel everywhere and the fills are what differ. */
+  #xpTrack, #meterTrack, #potTrack, #timerTrack, #bossHpTrack,
+  .standingTrack, #potGameMeterTrack{
+    background:#15111f;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.03);
+  }
+
+  /* --- ambient meters step back ------------------------------
+     Standing, xp, pot brew and the slop meter all move slowly and
+     none of them is urgent. Held below full strength so they stop
+     competing with the timer and the boss bar. */
+  #xpFill, #potFill, #meterFill{ opacity:0.72; }
+  .standingFill{ opacity:0.8; }
+
+  /* --- the timer is the loud one -----------------------------
+     It is the only bar with a deadline attached, so it gets the
+     glow and the full-strength colour the others gave up. */
+  #timerRow{ position:relative; }
+  #timerTrack{ height:8px; }
+  #timerFill{ box-shadow: 0 0 10px -1px rgba(255,47,158,0.65); }
+
+  /* The boss bar is the other thing that can be losing. Given weight
+     with a border rather than brightness, so it reads as armoured
+     instead of merely bright. */
+  #bossHpTrack{ height:11px; border-color:#4a2036; }
+  #bossHpFill{ box-shadow: 0 0 8px -2px rgba(255,47,158,0.5); }
+
+  /* --- surfaces ----------------------------------------------
+     The action buttons and the pot/turret controls were bare
+     outlines on the page background, which made them read as
+     disabled. Given the same raised surface as the dialogue panel. */
+  #hudActions button, #potBtn, #buddyBtn{
+    background:#140f1e;
+    border-color:#2a2238;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.06s ease;
+  }
+  #hudActions button:active, #potBtn:active, #buddyBtn:active{ background:#1e1730; }
+
+  /* A ring only for keyboard focus. Touch was leaving a stuck outline
+     on the last button tapped, which read as a selected state that
+     did not mean anything. */
+  #hudActions button:focus, #potBtn:focus, #buddyBtn:focus,
+  .btn:focus, #turretUpgradeBtn:focus, #rerollBtn:focus{ outline:none; }
+  #hudActions button:focus-visible, #potBtn:focus-visible, #buddyBtn:focus-visible,
+  .btn:focus-visible, #turretUpgradeBtn:focus-visible, #rerollBtn:focus-visible{
+    outline:2px solid var(--cyan); outline-offset:2px;
+  }
+
+  /* The unspent-point badge was a yellow border plus a permanent
+     panic shake, which at six buttons wide looked like an error.
+     A filled chip says "there is something for you here" without
+     shouting it every frame. */
+  #hudActions button.alert{
+    border-color:var(--yellow); background:#2a2410; animation: nudge 2.4s ease-in-out infinite;
+  }
+  @keyframes nudge{ 0%,88%,100%{ transform:translateY(0); } 94%{ transform:translateY(-3px); } }
+
+  /* --- the defense lane --------------------------------------
+     Empty, it was a black rectangle that read as a rendering
+     failure. A ground line and a horizon give it somewhere for the
+     blobs to be, which matters more now that it is the Crab's loop
+     and about to carry a real game. */
+  #defenseWrap{
+    background:linear-gradient(180deg,#0d0a16 0%,#130f1f 62%,#1a1327 100%);
+  }
+  /* The ground line itself is drawn by renderDefense, not here — welded to the
+     canvas geometry so the two cannot drift apart when the lane is resized. */
+
+  /* --- standing ----------------------------------------------
+     Four tags at 6px were legible only if you already knew what
+     they said. Slightly larger, and the fills carry a matching glow
+     so colour does the identifying rather than the text. */
+  #standingRow{ gap:8px; }
+  .standingTag{ font-size:7px; opacity:0.85; }
+  .standingTrack{ height:6px; }
+  .standing:nth-child(1) .standingFill{ box-shadow:0 0 6px -1px var(--artificer); }
+  .standing:nth-child(2) .standingFill{ box-shadow:0 0 6px -1px var(--goblin); }
+  .standing:nth-child(3) .standingFill{ box-shadow:0 0 6px -1px var(--orange); }
+  .standing:nth-child(4) .standingFill{ box-shadow:0 0 6px -1px var(--violet); }
+
+  /* --- dialogue ----------------------------------------------
+     The bar carries the whole narrative layer and four voices now
+     pass through it, so it earns a little more presence. */
+  #dialogue{
+    background:linear-gradient(180deg,#131020,#0e0b18);
+    box-shadow: 0 2px 10px -4px rgba(0,0,0,0.9);
+  }
+  #dialogueWho{ letter-spacing:0.8px; }
+
+  /* --- overlays ----------------------------------------------
+     A touch more contrast against the stage behind them, and a
+     softer edge so a full-bleed overlay stops looking like a
+     screenshot pasted over the game. */
+  .overlay{
+    background: radial-gradient(120% 90% at 50% 0%, rgba(20,12,32,0.97), rgba(6,4,10,0.985));
+    backdrop-filter: blur(2px);
+  }
+  .title{ letter-spacing:1px; }
+
+  /* --- level-up and shop rows --------------------------------
+     These are the only places the game asks a real question, so the
+     rows get a clear hover-free pressed state and a warmer surface. */
+  #levelList button, #shopList button, #draftCards button{
+    transition: transform 0.06s ease, filter 0.12s ease;
+  }
+  #levelList button:active, #shopList button:active, #draftCards button:active{
+    transform: translateY(2px); filter: brightness(1.25);
+  }
+
+  /* The turret belongs to the Crab now, so its control stops wearing the
+     Artificer's cyan. Colour is how ownership is signalled everywhere else in
+     this HUD; the button was the last thing still miscredited. */
+  #turretUpgradeBtn{
+    color:var(--orange); border-color:#ff7a2f55; background:#1d1520;
+  }
+
+  /* .title carries a 6px offset double shadow, so its 6px bottom margin left
+     the shadow sitting on the first line of body text. Scoped to the dense
+     overlays — the title screen is tuned to fit its stage exactly and cannot
+     spare the pixels. */
+  #sheetOverlay .title, #codexOverlay .title, #shopOverlay .title,
+  #levelOverlay .title, #victoryOverlay .title, #potOverlay .title{
+    margin-bottom:14px;
+  }
+
+  /* Long bodies get their own scroll region so the CLOSE button stays put
+     instead of being pushed below the fold by a codex that keeps growing. */
+  #sheetBody{ max-height:250px; overflow-y:auto; }

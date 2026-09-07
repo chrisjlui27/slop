@@ -916,9 +916,13 @@ export const Game = {
   renderDefense(){
     const c=defenseCtx, d=this.defense;
     c.clearRect(0,0,640,80);
-    c.strokeStyle='#2a2438'; c.beginPath(); c.moveTo(0,60); c.lineTo(640,60); c.stroke();
+    // The ground line lives here rather than in CSS so it stays welded to the
+    // canvas geometry — a pseudo-element would drift the moment the lane is
+    // resized. Orange because this lane is the Crab's; colour is how ownership
+    // is signalled throughout the HUD.
+    c.strokeStyle='#4a2a18'; c.beginPath(); c.moveTo(0,60); c.lineTo(640,60); c.stroke();
     this.turrets.forEach(tur=>{
-      c.fillStyle='#2fe1ff'; c.beginPath(); c.arc(tur.x,tur.y,14,0,Math.PI*2); c.fill();
+      c.fillStyle='#ff7a2f'; c.beginPath(); c.arc(tur.x,tur.y,14,0,Math.PI*2); c.fill();
       c.fillStyle='#0c0a15'; c.font='14px sans-serif'; c.textAlign='center'; c.textBaseline='middle';
       c.fillText('🛡', tur.x, tur.y+1);
     });
