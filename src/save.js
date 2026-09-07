@@ -67,6 +67,17 @@ export const Save = {
       towers: g.defense.pads.map(p => p.tower
         ? { typeId: p.tower.typeId, level: p.tower.level }
         : null),
+      /* The company, including the wall-clock stamp that makes offline pay
+         possible. This is the one field in the whole schema that exists to
+         measure time the app was NOT running — everywhere else time-based
+         state is frozen on purpose (see the header). `lastAt` is advanced by
+         the live tick, so the gap on resume is time nobody was watching. */
+      company: {
+        members: Object.assign({}, g.understudy.members),
+        lastAt: g.understudy.lastAt,
+        lifetimeGoo: g.understudy.lifetimeGoo,
+        lifetimeXp: g.understudy.lifetimeXp
+      },
       shopLevels: Object.assign({}, g.shopLevels),
       pot: { brew: g.pot.brew, brewMax: g.pot.brewMax },
       // Boss HP is the one mid-encounter value worth keeping: losing it would
@@ -131,6 +142,19 @@ export const Save = {
     }
     g.defense.wave = Math.max(0, d.wave|0);
     g.defense.breaches = Math.max(0, d.breaches|0);
+    if(d.company){
+      const c = d.company;
+      if(c.members && typeof c.members === 'object'){
+        g.understudy.members = Object.assign({}, c.members);
+      }
+      // A missing or absurd stamp becomes "now", which pays nothing. Trusting
+      // it blindly would let a hand-edited save mint unlimited goo.
+      const t = Number(c.lastAt);
+      g.understudy.lastAt = (isFinite(t) && t > 0 && t <= Date.now()) ? t : Date.now();
+      g.understudy.lifetimeGoo = Math.max(0, c.lifetimeGoo || 0);
+      g.understudy.lifetimeXp = Math.max(0, c.lifetimeXp || 0);
+    }
+
     if(Array.isArray(d.towers)){
       // Cleared first: Defense.reset() seeds a free tower, and layering a save
       // over it would resurrect one the player had deliberately salvaged.

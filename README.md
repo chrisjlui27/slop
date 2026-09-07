@@ -47,6 +47,11 @@ whenever it likes, and the title screen offers CONTINUE when there is something
 to come back to. The save is a between-rounds snapshot, so resuming replays the
 trial you were in the middle of.
 
+Closing it is also the only way to collect from the company. Every other
+time-based system is frozen while you are away, on purpose — a pet that starved
+overnight would punish you for having a life. THE UNDERSTUDY's cast is the
+exception, and they will tell you exactly what they got done.
+
 ## The game
 
 You are the Hero. Clear microgames to earn XP and damage the gate at the end of
@@ -75,16 +80,20 @@ Running in parallel, all the time, whether you're paying attention or not:
 - **The honey pot** (🍯) fills slowly from a 15% skim on *every* goo you earn
   anywhere. Open it and you get a whole separate drop-catching minigame — which
   pauses the Artificer's plot entirely. Harvest for a GLAZED buff.
+- **The company** (🎭) rehearses whether you are there or not. THE UNDERSTUDY
+  knows every trial and has never been called on, so they assembled a cast and
+  started running the whole show in the wings. Recruit them, and **they keep
+  earning while the app is closed** — the one place in SLOP where time away
+  pays you back.
 - **Four creators** comment continuously, in distinct voices with distinct
-  synth timbres, weighted by your standing with each. THE UNDERSTUDY is still
-  waiting to be given a loop of their own, and says so.
+  synth timbres, weighted by your standing with each.
 
 **Choices that matter:** a mutator draft every few rounds (pick a sabotage or
 refuse it), stat points on level up, a shop with three upgrade trees, a reroll
 button for bailing on a trial, and a chaos-intensity setting. Every one of them
-also moves your STANDING with one of the four — Goblin standing pays
-+50% goo, Artificer +50% XP, Crab a stronger perimeter, and whoever you have
-backed talks the most.
+also moves your STANDING with one of the four — Goblin pays +50% goo, Artificer
++50% XP, Crab a stronger perimeter, Understudy a faster company — and whoever
+you have backed talks the most.
 
 ## Repo map
 
@@ -100,6 +109,7 @@ src/
   game.js              the chassis: round flow, economy, all subsystems
   save.js              what survives closing the app
   defense.js           THE PERIMETER — the Crab's tower defense
+  understudy.js        THE COMPANY — the Understudy's idle layer
   audio.js             one blip() primitive, ~30 named cues
   fx.js                shake, chroma, glitch bars, stamps, confetti
   modules/             14 microgames, one file each, fully isolated
@@ -109,6 +119,7 @@ src/
     shop.js            upgrade catalogue
     stats.js           hero stat definitions
     defense.js         towers, enemies, wave composition
+    understudy.js      the company roster, idle rates, offline cap
 docs/
   ARCHITECTURE.md      how the chassis works, how systems cross-feed
   ADDING-A-MICROGAME.md  5-minute guide, two files to touch

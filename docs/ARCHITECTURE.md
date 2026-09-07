@@ -11,6 +11,7 @@ index.html          DOM skeleton — every element the chassis binds to
           ├ src/fx.js       FX: shake, chroma, glitch bars, stamps, confetti
           ├ src/save.js     the only code that touches localStorage
           ├ src/defense.js  THE PERIMETER — the Crab's tower defense
+          ├ src/understudy.js THE COMPANY — the Understudy's idle layer
           ├ src/modules/    14 microgames, each fully isolated
           └ src/content/    Acts, dialogue, mutators, shop, stats — pure data
 
@@ -29,7 +30,8 @@ manifest.webmanifest  install identity — outside the module graph entirely
   own canvas, its own `local` scratch object, and its own `win()`/`lose()`.
   Lanes never see each other.
 - **State machine** — `boot / story / playing / resolve / draft / levelup /
-  bonus / potgame / tdgame / menu / victory`. The rAF loop dispatches on this.
+  bonus / potgame / tdgame / company / menu / victory`. The rAF loop dispatches
+  on this.
 - **Everything else** — hero stats, XP, favor, boss HP, buddy, turret lane,
   honey pot, shop, codex.
 
@@ -123,6 +125,15 @@ Three decisions shape it:
 Time-based state — the GLAZED buff, the buddy's hunger clock, ambient bark
 timers — is deliberately not restored. A buddy that starved for nine hours
 while the app was closed would be a punishment for closing the app.
+
+**One system is exempt, and it is the point of a whole character.** THE
+UNDERSTUDY's company (`src/understudy.js`) is credited for time the app was
+shut. The save carries a `lastAt` wall-clock stamp that the live tick advances
+every frame, so the gap on the next launch is exactly the time nobody was
+watching — using the save's own write time instead would double-count a session
+left open and idle. The payout is capped, refuses a future timestamp, and
+ignores gaps under a minute; each of those guards exists because the
+alternative is a system farmed by changing the device clock.
 
 ## Timing
 

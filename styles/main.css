@@ -604,3 +604,56 @@
   }
   #defenseOverlay.building #tdCanvas{ max-width:210px; }
   #defenseOverlay.building .title{ display:none; }
+
+  /* ============================================================
+     THE COMPANY — the Understudy's overlay
+     ============================================================ */
+
+  #coRates{ font-size:8px; color:var(--violet); letter-spacing:0.5px; margin-bottom:8px; text-align:center; line-height:1.6; }
+
+  /* The report is the payoff for having been away, so it gets the only
+     coloured panel on the screen rather than being one line among many. */
+  #coReport{
+    width:100%; max-width:300px; margin-bottom:9px; padding:8px 10px;
+    border-radius:0 8px 8px 0; border-left:3px solid var(--violet);
+    background:#160f24; font-size:11px; line-height:1.45; text-align:left;
+  }
+  #coReport .coReportHead{
+    font-family:'Press Start 2P',monospace; font-size:8px; color:var(--violet); margin-bottom:5px;
+  }
+  #coReport b{ color:var(--acid); }
+
+  #coList{ width:100%; max-width:300px; display:flex; flex-direction:column; gap:5px; }
+  #coList button{
+    display:flex; align-items:center; gap:8px; width:100%; min-height:44px;
+    padding:7px 10px; border-radius:8px; cursor:pointer; text-align:left;
+    background:#15111f; border:1px solid #2a2238; color:var(--ink);
+    font-family:'Space Grotesk',system-ui,sans-serif; font-size:11px;
+    transition: transform 0.06s ease, filter 0.12s ease;
+  }
+  #coList button:active{ transform:translateY(2px); filter:brightness(1.3); }
+  #coList button:disabled{ opacity:0.4; cursor:default; }
+  /* Recruited members are dimmer than the ones you could still hire — the
+     open decisions should be what draws the eye. */
+  #coList button.enlisted{ background:#120e1c; border-color:#241d33; }
+  #coList .coGlyph{ font-size:19px; line-height:1; }
+  #coList .coName{ font-family:'Press Start 2P',monospace; font-size:8px; }
+  #coList .coDesc{ opacity:0.6; font-size:10px; line-height:1.25; }
+  #coList .coCost{ margin-left:auto; font-family:'Press Start 2P',monospace; font-size:9px; color:var(--acid); white-space:nowrap; text-align:right; }
+  #coList .coCost small{ display:block; font-size:7px; opacity:0.65; color:var(--ink); }
+
+  #coFooter{ font-size:10px; opacity:0.5; text-align:center; margin-top:8px; max-width:300px; line-height:1.4; }
+
+  #companyOverlay{ justify-content:flex-start; padding:12px 12px 10px; }
+  #companyOverlay .title{ margin-bottom:8px; }
+  #coDoneBtn{
+    flex:0 0 auto; margin-top:10px; font-size:10px; padding:11px 16px;
+    background:var(--violet); box-shadow:0 6px 0 #4a1f9e;
+  }
+  #coDoneBtn:active{ box-shadow:0 2px 0 #4a1f9e; }
+
+  /* The roster is the only part of the company screen that grows, so it takes
+     the scrolling and LET THEM WORK stays pinned. Same lesson as the
+     perimeter: a screen whose exit is below the fold reads as a trap. */
+  #coList{ flex:1 1 auto; min-height:0; overflow-y:auto; }
+  #coRates, #coReport, #coFooter, #companyOverlay .title{ flex:0 0 auto; }

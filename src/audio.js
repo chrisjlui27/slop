@@ -68,6 +68,13 @@ export const Sound = {
   // A single dry tick per leak. Quiet on purpose: it should nag rather than
   // alarm, so that the breach still lands when it comes.
   leak(){ this.blip(190,0.05,'sawtooth',0.09); },
+  /* --- the company --- */
+  // The Understudy's three-note phrase, opened out into a full cadence. They
+  // have been waiting a long time to be introduced to someone.
+  understudyJoin(){ [440,554,659,880].forEach((f,i)=> setTimeout(()=>this.blip(f,0.1,'triangle',0.12), i*80)); },
+  // Played when the company reports back. Warm rather than triumphant — they
+  // are pleased to see you, not claiming a victory.
+  rehearsalReport(){ [523,659,784].forEach((f,i)=> setTimeout(()=>this.blip(f,0.14,'triangle',0.13), i*120)); },
   bossAppear(){ [110,98,87,73].forEach((f,i)=> setTimeout(()=>this.blip(f,0.3,'sawtooth',0.16), i*140)); },
   bossHit(){ this.blip(240,0.07,'square',0.16); setTimeout(()=>this.blip(160,0.09,'sawtooth',0.12),50); },
   bossDown(){ [523,659,784,1046,1318].forEach((f,i)=> setTimeout(()=>this.blip(f,0.16,'square',0.16), i*110)); },

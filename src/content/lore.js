@@ -108,6 +108,26 @@ export const Barks = {
       "i keep feeding them. he keeps noticing. it's our little routine"
     ]
   },
+  /* The company. Eager, rehearsed, entirely without resentment — the moment
+     they stop being gracious about never being cast, they stop being the
+     Understudy and become a different character. */
+  companyOpen:{
+    understudy:[
+      "you came to see us. nobody comes to see us. sit anywhere",
+      "we work while you are out. that is not a complaint, it is the arrangement",
+      "recruit whoever you like. we have all learned the whole show",
+      "the director keeps the hall open longer. do not ask who approved that",
+      "everything we earn goes to you. that has always been the deal. i just like saying it out loud"
+    ],
+    artificer:[
+      "I did not cast them. I also did not stop them. Both of those are on the record.",
+      "Their XP is real XP. I checked it twice, hoping it would not be."
+    ],
+    goblin:[
+      "they rehearse in the DARK. while you're ASLEEP. i think it's great",
+      "i offered to wire them into the pot. they said no. politely. weird"
+    ]
+  },
   idle:{
     artificer:[
       "The final boss is THE UNSHIPPED. Everything here is aimed at that.",

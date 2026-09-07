@@ -53,6 +53,7 @@
 
   <div id="hudActions">
     <button id="sheetBtn">🧙</button>
+    <button id="companyBtn">🎭</button>
     <button id="shopBtn">🛒</button>
     <button id="codexBtn">📖</button>
     <button id="settingsBtn">⚙</button>
@@ -182,6 +183,17 @@
         <button class="btn" id="tdReinforceBtn">REINFORCE <span id="turretCostVal">10</span></button>
         <button class="btn" id="tdDoneBtn">LEAVE POST</button>
       </div>
+    </div>
+
+    <!-- THE UNDERSTUDY's loop. No board and nothing to react to: the only
+         decisions are who to recruit and how deeply, made at any pace. -->
+    <div id="companyOverlay" class="overlay hidden">
+      <div class="title" style="font-size:16px;">THE COMPANY</div>
+      <div id="coRates" class="arcade">—</div>
+      <div id="coReport" class="hidden"></div>
+      <div id="coList"></div>
+      <div id="coFooter"></div>
+      <button class="btn" id="coDoneBtn">LET THEM WORK</button>
     </div>
 
     <div id="victoryOverlay" class="overlay hidden">

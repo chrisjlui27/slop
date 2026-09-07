@@ -29,8 +29,8 @@ violet defined and unassigned to any speaker.
 
 ### THE CRAB
 
-The defense lane currently auto-fires at drifting blobs and is, mechanically,
-a decoration that prints goo. THE CRAB is the answer to "why is that there,
+The defense lane used to auto-fire at drifting blobs and was, mechanically,
+a decoration that printed goo. THE CRAB is the answer to "why is that there,
 and who put it there."
 
 His position: **the blobs are getting in.** They are not scenery. The Artificer
@@ -51,7 +51,7 @@ time and has stopped padding sentences.
 
 Never: exclamation marks, enthusiasm, addressing the plot, caring who wins.
 
-His lane becomes a **proper tower defense**: a path, real waves with
+His lane is now a **proper tower defense**: real waves with
 composition, multiple tower types with distinct roles, placement that matters,
 and a fail state that is *his* — losing the perimeter costs you something,
 which is the first thing in this game that can be lost. That is the point of
@@ -123,8 +123,8 @@ it after a second loop exists means changing that loop twice.
    bark weighting.
 2. ~~**THE CRAB**~~ — **done.** Cast entry, voice, barks, and the defense lane
    rebuilt as a real tower defense. See "How the perimeter turned out" below.
-3. **THE UNDERSTUDY** — the idle layer, and the offline-time rule that only
-   applies to them.
+3. ~~**THE UNDERSTUDY**~~ — **done.** The idle layer and the offline-time rule
+   that only applies to them. See "How the company turned out" below.
 4. **Breadth** — more microgames, more Acts, NG+ and meta-progression across
    runs, deeper hero systems.
 
@@ -145,7 +145,7 @@ knowing before changing it:
   and microgames. Ignoring the perimeter is a decision with a consequence.
 - **Global reinforcement is separate from per-tower level.** `Game.turret`
   multiplies every tower; REINFORCE stays worth buying at nine towers.
-- **It has its own crash guard.** `Game.safeDefense` mirrors `safeLane`, but
+- **It has its own crash guard.** `Game.safeSubsystem` mirrors `safeLane`, but
   unlike a microgame crash a fault here is *not* awarded to the player and does
   not become a `GLITCH?!` — the perimeter is where consequences are real, so
   swallowing a fault as a reward would be a lie. It logs and abandons the frame.
@@ -154,9 +154,6 @@ knowing before changing it:
 - **What persists.** Towers, integrity and breach count; not the enemies in
   flight. Resuming into a half-finished wave would be an ambush nobody chose.
 
-Steps 2 and 3 are each a genuine game. They should be built behind the same
-`safeLane()`-style guarantee the microgames get, so a crash in the tower
-defense cannot take the campaign down with it.
 
 ## What this does not change
 
@@ -168,3 +165,44 @@ defense cannot take the campaign down with it.
 - **The chassis still catches everything.** More loops means more surface for
   a careless throw, which makes the crash-as-feature bet more valuable, not
   less.
+
+## How the company turned out
+
+`src/understudy.js` with its data in `src/content/understudy.js`. It is the
+quietest loop in the game and the only one with an exploit surface, so most of
+the decisions are about the latter.
+
+- **`lastAt` is the whole trick.** It is stamped on every live tick and written
+  into the save, so the gap between it and `Date.now()` on launch is exactly
+  the time nobody was watching. Using the save's own timestamp instead would
+  double-count a session that sat open and idle.
+- **Three things are refused rather than trusted**: a gap larger than the cap,
+  a timestamp in the future (a wound-back device clock), and a gap under a
+  minute (a reload is not a session away). Each has a test.
+- **The cap is load-bearing.** Without it a week away hands back a finished run
+  and there is no reason to play the game the rewards are for. Eight hours is
+  one night; THE DIRECTOR is the only way to extend it, which makes them the
+  pick for someone who plays once a day rather than in many short bursts.
+- **Off-hours pay 12%, not 50%.** Measured, not guessed. Eight hours is 480
+  minutes, so any per-minute rate that is visible during play becomes enormous
+  overnight: at a half, one night returned 2340 goo and four hero levels when
+  the most expensive thing in the game cost 34. An hour of playing must always
+  beat an hour of not playing.
+- **Fractional carry matters.** Rates are hundredths of a goo per second, so
+  flushing with `Math.round` every frame would floor to zero forever. The
+  accumulator only pays out at whole units.
+- **XP is the interesting payout.** It is the Artificer's currency, earned by
+  someone he never cast. It accelerates levelling but cannot skip an Act, since
+  Acts advance on round wins.
+
+Measured gradient across a night, which is the shape to preserve if the numbers
+are touched again:
+
+| Investment | Per night |
+|---|---|
+| Nobody recruited | ~34 goo |
+| Full roster at level 1 | ~430 goo, one level |
+| Fully rehearsed, standing 100 | ~1900 goo, four levels, 17h window |
+
+The top row is a trickle you notice; the bottom is a genuine commitment that
+costs standing with the other three.

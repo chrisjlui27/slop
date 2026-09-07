@@ -7,6 +7,7 @@ import { ShopItems } from "./content/shop.js";
 import { StatDefs } from "./content/stats.js";
 import { Save } from "./save.js";
 import { Defense } from "./defense.js";
+import { Understudy } from "./understudy.js";
 
 /* ============================== CHASSIS ============================== */
 export const $ = id => document.getElementById(id);
@@ -16,6 +17,8 @@ const turretCostEl=$('turretCostVal'), rerollCostEl=$('rerollCostVal');
 const defenseOverlay=$('defenseOverlay'), tdCanvas=$('tdCanvas'), tdCtx=tdCanvas.getContext('2d');
 const tdStatus=$('tdStatus'), tdIntegrityFill=$('tdIntegrityFill'), tdBuildMenu=$('tdBuildMenu');
 const tdReinforceBtn=$('tdReinforceBtn'), tdDoneBtn=$('tdDoneBtn'), perimeterPctEl=$('perimeterPct');
+const companyOverlay=$('companyOverlay'), companyBtn=$('companyBtn'), coRates=$('coRates');
+const coReport=$('coReport'), coList=$('coList'), coFooter=$('coFooter'), coDoneBtn=$('coDoneBtn');
 const buddyBtn=$('buddyBtn'), buddyFaceEl=$('buddyFace'), buddyLvlEl=$('buddyLvl');
 const startScreen=$('startScreen'), muteBtn=$('muteBtn'), resetBtn=$('resetBtn');
 const defenseCanvas=$('defenseCanvas'), defenseCtx=defenseCanvas.getContext('2d');
@@ -58,6 +61,7 @@ export const Game = {
   // there are nine of them rather than one.
   turret:{ level:1, fireInterval:1100, dmg:1 },
   defense:Defense.reset(),
+  understudy:Understudy.reset(),
   shopLevels:{}, rerollsThisRound:0, chaosLevel:1, ambientT:1500,
   pot:{ brew:0, brewMax:100 }, potBuffT:0, potGame:null,
   pausedState:null, pausedRemain:null,
@@ -76,6 +80,7 @@ export const Game = {
   // way in.
   cast: Cast,
   defenseApi: Defense,
+  understudyApi: Understudy,
   barkT:9000, lastSpeaker:null,
   codexSeen:[],
   rafId:null,
@@ -454,6 +459,7 @@ export const Game = {
     this.buddy={ hunger:1, tantrumCooldown:false, level:1, feeds:0, mood:'happy', incomeT:5000 };
     this.turret={ level:1, fireInterval:1100, dmg:1 };
     this.defense=Defense.reset();
+    this.understudy=Understudy.reset();
     this.shopLevels={}; this.rerollsThisRound=0; this.ambientT=1500;
     this.pot={ brew:0, brewMax:100 }; this.potBuffT=0; this.potGame=null;
     this.pausedState=null; this.pausedRemain=null;
@@ -505,7 +511,21 @@ export const Game = {
       this.updateBossUI();
     }
     this.refreshAllUI();
-    this.say('goblin', 'oh you came back. i kept your stuff. most of it. the little guy got hungry again, that part is not my fault');
+
+    /* The company is the only system credited for the time the app was shut.
+       Done here rather than in Save.apply so the payout happens once, on a
+       real resume, and not on any other path that restores a snapshot. */
+    const report = this.safeSubsystem(()=> Understudy.applyOffline(this), 'offline');
+    if(report){
+      companyBtn.classList.add('alert');
+      Sound.rehearsalReport();
+      FX.stamp('REHEARSED '+Understudy.formatDuration(report.ms), '#7a3cff', '#c9ff2f');
+      this.say('understudy', 'you were gone '+Understudy.formatDuration(report.ms)+
+        '. we kept rehearsing. 🟢'+report.goo+' and '+report.xp+' xp, all logged. i can show you the notes', true);
+    }else{
+      this.say('goblin', 'oh you came back. i kept your stuff. most of it. the little guy got hungry again, that part is not my fault');
+    }
+
     this.ensureLoop();
     this.nextRound();
     return true;
@@ -885,11 +905,11 @@ export const Game = {
      The loop itself lives in src/defense.js. What stays here is the chassis
      side of it: the crash guard, the overlay, and the DOM build menu.
 
-     Every call into Defense goes through safeDefense for the same reason
+     Every call into a parallel loop goes through safeSubsystem, for the same
      safeLane exists — the Crab's game is now the largest body of code in the
      project that can throw, and a bad frame in the perimeter must not be able
      to take the campaign down with it. */
-  safeDefense(fn, label){
+  safeSubsystem(fn, label){
     try{ return fn(); }
     catch(e){
       // Unlike a microgame crash this is not awarded to the player and does
@@ -897,16 +917,16 @@ export const Game = {
       // are real, so a silent failure here would be a lie. It is logged, the
       // frame is abandoned, and play continues.
       console.error('perimeter fault ('+(label||'tick')+'):', e);
-      this._defenseFaults = (this._defenseFaults||0) + 1;
+      this._subsystemFaults = (this._subsystemFaults||0) + 1;
       return null;
     }
   },
 
   turretCost(){ return 10 + (this.turret.level-1)*8; },
 
-  updateDefense(dt){ this.safeDefense(()=> Defense.tick(this, dt), 'tick'); },
-  renderDefense(){ this.safeDefense(()=> Defense.renderStrip(this, defenseCtx), 'strip'); },
-  defenseTap(x,y){ this.safeDefense(()=> Defense.stripTap(this, x, y), 'strip tap'); },
+  updateDefense(dt){ this.safeSubsystem(()=> Defense.tick(this, dt), 'tick'); },
+  renderDefense(){ this.safeSubsystem(()=> Defense.renderStrip(this, defenseCtx), 'strip'); },
+  defenseTap(x,y){ this.safeSubsystem(()=> Defense.stripTap(this, x, y), 'strip tap'); },
 
   perimeterFrac(){
     const d=this.defense;
@@ -996,6 +1016,93 @@ export const Game = {
     tdReinforceBtn.disabled=this.goo<this.turretCost();
   },
 
+  /* ---------------- the company: THE UNDERSTUDY ----------------
+     The loop is in src/understudy.js. What lives here is the overlay and the
+     one moment that matters — the report, when they show you what they did
+     while you were gone. */
+
+  updateCompany(dt){ this.safeSubsystem(()=> Understudy.tick(this, dt), 'company'); },
+
+  openCompany(){
+    if(this.state==='company') return;
+    this.pausedState=this.state;
+    this.pausedRemain=(this.state==='playing'||this.state==='bonus') ? Math.max(0,this.deadline-performance.now()) : null;
+    this.state='company';
+    Sound.menuOpen();
+    this.bark(Barks.companyOpen);
+    this.renderCompany();
+    companyOverlay.classList.remove('hidden');
+  },
+
+  closeCompany(){
+    companyOverlay.classList.add('hidden');
+    // Reading the report is what dismisses it; the alert on the HUD button
+    // clears with it.
+    this.understudy.pendingReport = null;
+    companyBtn.classList.remove('alert');
+    Sound.potClose();
+    const back=this.pausedState; this.pausedState=null;
+    if(back==='playing'||back==='bonus'){
+      this.state=back;
+      if(this.pausedRemain!=null) this.deadline=performance.now()+this.pausedRemain;
+    }else{
+      this.state = back || 'menu';
+    }
+  },
+
+  renderCompany(){
+    const u=this.understudy, r=Understudy.rates(this);
+    const perMin = n => (n*60).toFixed(1);
+    coRates.innerHTML =
+      'REHEARSING · 🟢'+perMin(r.goo)+'/min · ✦'+perMin(r.xp)+' XP/min<br>'+
+      // Derived from the constant rather than written out, so the screen
+      // cannot drift from the rule the way "PAY HALF" did when it stopped
+      // being a half.
+      '<span style="opacity:0.6">OFF-HOURS PAY '+Math.round(Understudy.OFFLINE_RATE*100)+
+      '% · BANKS UP TO '+Math.round(Understudy.offlineCapMs(this)/3600000)+'H</span>';
+
+    if(u.pendingReport){
+      const p=u.pendingReport;
+      coReport.classList.remove('hidden');
+      coReport.innerHTML =
+        '<div class="coReportHead">WHILE YOU WERE OUT — '+Understudy.formatDuration(p.ms)+'</div>'+
+        'we kept going. <b>🟢'+p.goo+'</b> and <b>'+p.xp+' xp</b>, all of it logged. '+
+        (p.capped ? 'the hall shut before you got back, so that is not all of it. i am not complaining'
+                  : 'nobody watched. that is fine. that is the job');
+    }else{
+      coReport.classList.add('hidden');
+      coReport.innerHTML='';
+    }
+
+    coList.innerHTML='';
+    Understudy.Company.forEach(m=>{
+      const enlisted=Understudy.has(this,m.id);
+      const lvl=Understudy.levelOf(this,m.id);
+      const cost=enlisted ? Understudy.upgradeCost(this,m.id) : Understudy.recruitCost(this,m.id);
+      const rate=enlisted
+        ? '🟢'+perMin(m.goo*(1+(lvl-1)*0.55)*this.favorIdleBonus())+'/min'
+        : m.desc;
+      const b=document.createElement('button');
+      if(enlisted) b.className='enlisted';
+      b.innerHTML=
+        '<span class="coGlyph">'+m.glyph+'</span>'+
+        '<span><span class="coName" style="color:'+m.color+'">'+m.name+(enlisted?' LV'+lvl:'')+'</span><br>'+
+        '<span class="coDesc">'+(enlisted?rate:m.desc)+'</span></span>'+
+        '<span class="coCost">🟢'+cost+'<small>'+(enlisted?'rehearse':'recruit')+'</small></span>';
+      b.disabled = this.goo<cost;
+      b.addEventListener('click', ()=>{
+        Sound.ensure();
+        const ok = enlisted ? Understudy.upgradeMember(this,m.id) : Understudy.recruit(this,m.id);
+        if(ok) this.renderCompany();
+      });
+      coList.appendChild(b);
+    });
+
+    coFooter.textContent = u.lifetimeGoo || u.lifetimeXp
+      ? 'logged this run: 🟢'+Math.round(u.lifetimeGoo)+' · '+Math.round(u.lifetimeXp)+' xp'
+      : 'they have not been called on yet.';
+  },
+
   /* ---------------- shop ---------------- */
   renderShop(){
     shopList.innerHTML='';
@@ -1057,12 +1164,17 @@ export const Game = {
       // The perimeter's own tick runs below with everything else — this only
       // draws the large board, so the overlay and the HUD strip stay two views
       // of one simulation rather than two simulations.
-      this.safeDefense(()=> Defense.renderBoard(this, tdCtx), 'board');
+      this.safeSubsystem(()=> Defense.renderBoard(this, tdCtx), 'board');
     }
 
     this.updateBuddyTick(dt);
     this.updateDefense(dt);
     this.renderDefense();
+    // The company earns on the same always-on footing as the buddy and the
+    // perimeter. Its tick also stamps `lastAt`, which is what makes the gap on
+    // the next launch mean "time nobody was watching" rather than "time since
+    // the last save".
+    this.updateCompany(dt);
 
     if(this.potBuffT>0) this.potBuffT=Math.max(0,this.potBuffT-dt);
     if(!this.potReady()) this.pot.brew=Math.min(this.pot.brewMax, this.pot.brew+dt*0.0004);
@@ -1183,7 +1295,7 @@ defenseCanvas.addEventListener('pointerdown', e=>{
 });
 turretUpgradeBtn.addEventListener('click', ()=>{
   Sound.ensure();
-  if(Game.state==='boot'||Game.state==='tdgame') return;
+  if(Game.state==='boot'||Game.state==='tdgame'||Game.state==='company') return;
   if(Game.state==='draft'||Game.state==='story'||Game.state==='levelup'||Game.state==='potgame') return;
   Game.openDefense();
 });
@@ -1206,18 +1318,28 @@ tdReinforceBtn.addEventListener('click', ()=>{
 
 tdDoneBtn.addEventListener('click', ()=>{ Sound.ensure(); Game.closeDefense(); });
 
+companyBtn.addEventListener('click', ()=>{
+  Sound.ensure();
+  if(menuGuard()) return;
+  // No pauseForMenu here: openCompany stashes the state itself, the way the
+  // honey pot does. Doing both would overwrite pausedState with 'menu' and
+  // close back into the wrong one.
+  Game.openCompany();
+});
+coDoneBtn.addEventListener('click', ()=>{ Sound.ensure(); Game.closeCompany(); });
+
 tdCanvas.addEventListener('pointerdown', e=>{
   Sound.ensure();
   const rect=tdCanvas.getBoundingClientRect();
   const x=(e.clientX-rect.left)*(Defense.BOARD.w/rect.width);
   const y=(e.clientY-rect.top)*(Defense.BOARD.h/rect.height);
-  Game.safeDefense(()=> Defense.boardTap(Game, x, y), 'board tap');
+  Game.safeSubsystem(()=> Defense.boardTap(Game, x, y), 'board tap');
   Game.renderBuildMenu();
 });
 rerollBtn.addEventListener('click', ()=>{ Sound.ensure(); Game.reroll(); });
 potBtn.addEventListener('pointerdown', e=>{
   e.stopPropagation(); Sound.ensure();
-  if(Game.state==='boot'||Game.state==='tdgame'||Game.state==='draft'||Game.state==='potgame'||Game.state==='story'||Game.state==='levelup') return;
+  if(Game.state==='boot'||Game.state==='tdgame'||Game.state==='company'||Game.state==='draft'||Game.state==='potgame'||Game.state==='story'||Game.state==='levelup') return;
   Game.openPotGame();
 });
 potCanvas.addEventListener('pointerdown', e=>{ Sound.ensure(); Game.potPointer(e); });
@@ -1232,7 +1354,7 @@ $('draftSkipBtn').addEventListener('click', ()=>{
   Game.continueModuleRound();
 });
 
-const menuGuard = ()=> Game.state==='boot'||Game.state==='tdgame'||Game.state==='potgame'||Game.state==='draft'||Game.state==='story'||Game.state==='levelup';
+const menuGuard = ()=> Game.state==='boot'||Game.state==='tdgame'||Game.state==='company'||Game.state==='potgame'||Game.state==='draft'||Game.state==='story'||Game.state==='levelup';
 $('shopBtn').addEventListener('click', ()=>{
   Sound.ensure(); Sound.menuOpen();
   if(menuGuard()) return;

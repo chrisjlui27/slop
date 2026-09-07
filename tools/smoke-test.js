@@ -164,7 +164,7 @@ setTimeout(() => {
   G.goo = 500;
   for (let i = 0; i < 400; i++) G.updateDefense(50);
   check("waves advance", d.wave >= 1);
-  check("the tick throws nothing", !G._defenseFaults);
+  check("the tick throws nothing", !G._subsystemFaults);
 
   // A leak costs integrity; a breach costs goo, and must leave the campaign
   // alone — the Act ladder still cannot be failed.
@@ -187,6 +187,83 @@ setTimeout(() => {
   G.renderBuildMenu();
   G.closeDefense();
   check("perimeter screen closes back to play", G.state !== "tdgame");
+
+  // ---- THE COMPANY (the Understudy's idle layer) ----
+  const U = G.understudyApi;
+  G.understudy = U.reset();
+  const u = G.understudy;
+  G.standing.understudy = 0;
+
+  check("company starts with the understudy alone", Object.keys(u.members).join() === "understudy");
+  check("company earns something from the start", U.rates(G).goo > 0);
+
+  // Recruiting is the only way the roster grows, and it must be paid for.
+  G.goo = 0;
+  U.recruit(G, "standin");
+  check("cannot recruit without goo", !U.has(G, "standin"));
+  G.goo = 1000;
+  const rateBefore = U.rates(G).goo;
+  U.recruit(G, "standin");
+  check("recruiting adds to the company", U.has(G, "standin"));
+  check("recruiting raises the rate", U.rates(G).goo > rateBefore);
+  check("recruiting cannot happen twice", U.recruit(G, "standin") === false);
+
+  const lvlRate = U.rates(G).goo;
+  U.upgradeMember(G, "standin");
+  check("rehearsing raises the level", U.levelOf(G, "standin") === 2);
+  check("rehearsing raises the rate", U.rates(G).goo > lvlRate);
+
+  // Standing must scale the whole layer, since that is the Understudy's payoff.
+  const flatRate = U.rates(G).goo;
+  G.standing.understudy = 100;
+  check("understudy standing raises the idle rate", U.rates(G).goo > flatRate);
+  G.standing.understudy = 0;
+
+  // Small rates must not round away to nothing every frame.
+  G.goo = 0; u.accGoo = 0; u.accXp = 0; u.lifetimeGoo = 0;
+  for (let i = 0; i < 600; i++) G.updateCompany(100);   // 60 seconds
+  check("the company actually pays out over time", G.goo > 0);
+  check("the company logs what it earned", u.lifetimeGoo > 0);
+  check("the company tick throws nothing", !G._subsystemFaults);
+
+  // ---- offline accounting: where an exploit would live ----
+  u.lifetimeGoo = 0; G.goo = 0;
+  u.lastAt = Date.now() - 5000;
+  check("a reload is not a session away", U.applyOffline(G) === null);
+
+  u.lastAt = Date.now() - 2 * 60 * 60 * 1000;   // two hours
+  const twoHour = U.applyOffline(G);
+  check("being away pays out", twoHour && twoHour.goo > 0);
+  check("offline pay reaches the player", G.goo > 0);
+
+  // The cap is what stops a week away from returning a finished run.
+  G.goo = 0; u.lifetimeGoo = 0;
+  u.lastAt = Date.now() - 30 * 24 * 60 * 60 * 1000;   // a month
+  const capped = U.applyOffline(G);
+  const capHours = U.offlineCapMs(G) / 3600000;
+  check("a long absence is capped", capped && capped.ms <= U.offlineCapMs(G));
+  check("the cap is reported as capped", capped && capped.capped === true);
+  check("a month away pays no more than the cap", capped.goo <= U.rates(G).goo * capHours * 3600);
+
+  // Winding the device clock backwards must not mint anything.
+  G.goo = 0;
+  u.lastAt = Date.now() + 10 * 60 * 60 * 1000;
+  check("a future timestamp pays nothing", U.applyOffline(G) === null && G.goo === 0);
+
+  // Claiming twice in a row must not pay twice.
+  u.lastAt = Date.now() - 3 * 60 * 60 * 1000;
+  U.applyOffline(G);
+  const gooAfterClaim = G.goo;
+  U.applyOffline(G);
+  check("offline pay cannot be claimed twice", G.goo === gooAfterClaim);
+
+  // The screen must open and close back to where it came from.
+  G.state = "menu";
+  G.openCompany();
+  check("company screen opens", G.state === "company");
+  G.renderCompany();
+  G.closeCompany();
+  check("company screen closes back", G.state !== "company");
 
   console.log(
     failures === 0

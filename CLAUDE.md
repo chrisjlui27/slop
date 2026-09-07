@@ -79,6 +79,8 @@ have to be.
 | Change what survives closing the app | `src/save.js` |
 | Add a tower, enemy or reshape waves | `src/content/defense.js` — data only |
 | Change how the perimeter plays | `src/defense.js` — see `docs/PARALLEL-LOOPS.md` |
+| Add to the company or retune idle rates | `src/content/understudy.js` — data only |
+| Change how offline time pays | `src/understudy.js` |
 | Change how it installs or caches | `manifest.webmanifest`, `sw.js` — see `DEPLOY.md` |
 | Change sounds | `src/audio.js` |
 | Change screen effects | `src/fx.js` |
@@ -127,6 +129,17 @@ voices wrong is the most common way to damage this project.
   gesture. All storage access goes through `src/save.js` — do not call
   `localStorage` directly from anywhere else, and keep `sessionStorage`
   unused.
+- **Time away from the game pays exactly one system.** The save deliberately
+  freezes every time-based value across a session — the buddy's hunger, the
+  GLAZED buff, bark timers — because a pet that starved overnight punishes
+  someone for closing the app. THE UNDERSTUDY's company is the sole exception
+  and the whole point of that character: they were rehearsing while you were
+  out. If you add a system that accrues over real time, it does **not** get
+  offline credit unless it is theirs.
+- **Offline pay is an exploit surface.** `Understudy.applyOffline` refuses a
+  gap over the cap, a timestamp in the future (a wound-back device clock), and
+  a gap under a minute. `Save.apply` refuses a `lastAt` it cannot believe.
+  Every one of those has a test; do not relax one without adding another.
 
 ## Gotchas
 
