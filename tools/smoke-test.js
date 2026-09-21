@@ -79,7 +79,7 @@ function runChecks() {
   // the page, it just quietly stops being a game. So every module is driven
   // here, outside safeLane, where a throw is a failure rather than a feature.
   const mods = G.modules || [];
-  check("every microgame is registered", mods.length >= 20);
+  check("every microgame is registered", mods.length >= 24);
   check("microgame ids are unique", new Set(mods.map(m => m.id)).size === mods.length);
 
   const shapeBad = mods.filter(m =>
@@ -183,6 +183,26 @@ function runChecks() {
       });
     },
     weigh(m, g) { m.onDown(g, g.local.heavy === "L" ? 100 : 380, 240); },
+    crank(m, g) {
+      const l = g.local, dir = l.cw ? 1 : -1;
+      m.onDown(g, l.hx, l.hy + l.r);
+      for (let i = 1; i < 4000 && !g.won && !g.lost; i++) {
+        const a = Math.PI / 2 + dir * i * 0.2;
+        m.onMove(g, l.hx + Math.cos(a) * l.r, l.hy + Math.sin(a) * l.r);
+      }
+    },
+    split(m, g) {
+      // Bisect for the fair cut, which is only findable because share() is
+      // monotone in x — if that stops being true this stops passing.
+      const l = g.local;
+      let lo = l.x0, hi = l.x1;
+      for (let i = 0; i < 40; i++) {
+        const mid = (lo + hi) / 2;
+        if (m.share(l, mid) < l.total / 2) lo = mid; else hi = mid;
+      }
+      m.onDown(g, (lo + hi) / 2, 300);
+      m.onUp(g, (lo + hi) / 2, 300);
+    },
     peel(m, g) {
       m.onDown(g, 240, g.local.y);
       let y = g.local.y;

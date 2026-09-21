@@ -1,7 +1,7 @@
 /* SLOP — service worker.
 
    This ships as ES modules rather than one bundled file, which changes the
-   caching problem compared to a single-document app. Twenty-four files have to
+   caching problem compared to a single-document app. Four dozen files have to
    agree with each other: a fresh index.html next to a stale game.js is a
    broken build, not a slightly old one. So the cache is treated as one
    indivisible generation — CACHE names it, activate deletes every other
@@ -10,7 +10,7 @@
 
    Bump CACHE on every deploy that touches any shell file. Forget and phones
    keep running the previous build until they evict it themselves. */
-const CACHE = 'slop-v6';
+const CACHE = 'slop-v7';
 
 const SHELL = [
   '.',
@@ -57,7 +57,9 @@ const SHELL = [
   'src/modules/wire.js',
   'src/modules/weigh.js',
   'src/modules/flee.js',
-  'src/modules/peel.js'
+  'src/modules/peel.js',
+  'src/modules/crank.js',
+  'src/modules/split.js'
 ];
 
 self.addEventListener('install', e => {

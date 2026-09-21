@@ -2,7 +2,7 @@
 
 A browser CRPG hiding inside a WarioWare-style microgame chassis.
 
-Twenty-two microgames, eight acts, eight bosses, a hero sheet with stats and XP, a
+Twenty-four microgames, eight acts, eight bosses, a hero sheet with stats and XP, a
 shop, a real tower defense, a virtual pet, a second entire game inside a honey
 pot — and four creators who built all of it and can't agree on what it's for.
 
@@ -114,7 +114,7 @@ src/
   ledger.js            THE LEDGER — the only state that outlives a run
   audio.js             one blip() primitive, ~30 named cues
   fx.js                shake, chroma, glitch bars, stamps, confetti
-  modules/             22 microgames, one file each, fully isolated
+  modules/             24 microgames, one file each, fully isolated
   content/
     lore.js            the four creators, their barks, the eight Acts
     mutators.js        sabotage effects
@@ -149,4 +149,4 @@ game is unbreakable at the content layer, and why "maximalist slop" and
 
 Most additions are data, not code. A new boss, twenty new lines of dialogue, a
 new shop item, or a new mutator require no chassis changes — just edits in
-`src/content/`. A new microgame is two files. Start with `CLAUDE.md`.
+`src/content/`. A new microgame is three files. Start with `CLAUDE.md`.

@@ -20,6 +20,8 @@ import wire from "./wire.js";
 import weigh from "./weigh.js";
 import flee from "./flee.js";
 import peel from "./peel.js";
+import crank from "./crank.js";
+import split from "./split.js";
 
 // Order here is only the default pool order; the chassis picks at random.
 export const Modules = [
@@ -45,4 +47,6 @@ export const Modules = [
   weigh,
   flee,
   peel,
+  crank,
+  split,
 ];
