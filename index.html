@@ -12,12 +12,21 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="icon" href="./icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="./icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- Both faces are vendored under assets/fonts and declared in main.css. They
+     used to come from fonts.googleapis.com, which cannot be listed in sw.js's
+     SHELL — so an installed phone with no signal rendered the whole arcade UI
+     in fallback monospace and nothing said why. See assets/fonts/README.md. -->
+<link rel="preload" href="./assets/fonts/press-start-2p-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="./assets/fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="./styles/main.css">
 </head>
 <body>
+<!-- The backdrop lives outside #app because the sheets do: a filter on an
+     ancestor makes it the containing block for position:fixed children, so the
+     page-wide hue drift that used to live on <body> would have quietly pinned
+     every sheet to the column instead of the screen. -->
+<div id="bgLayer" aria-hidden="true"></div>
+
 <div id="app">
   <div id="actBar">
     <div id="actName" class="arcade">ACT I</div>
@@ -86,123 +95,145 @@
     <div id="laneRow"></div>
     <div id="fxLayer"></div>
 
-    <div id="startScreen" class="overlay">
-      <div class="title" style="font-size:34px;">SLOP</div>
-      <div class="subtitle" style="margin-bottom:12px;">a chronicle of unfinished things</div>
-      <div class="speechBlock" style="border-color:var(--artificer);">
-        <div class="speechWho" style="color:var(--artificer);">THE ARTIFICER</div>
-        You are the Hero. There are eight Acts and a final boss called THE UNSHIPPED. My job is to get you there intact. I built the progression, the stats, the shop. Follow it and you will win.
-      </div>
-      <div class="speechBlock" style="border-color:var(--goblin);">
-        <div class="speechWho" style="color:var(--goblin);">SLOP-GOBLIN</div>
-        hi. i built everything else. the honey pot. the little guy you feed. the turret. none of it was in the design doc. i keep wiring systems into each other because it is funny when they touch. good luck!!
-      </div>
-      <button class="btn hidden" id="continueBtn" style="background:var(--acid); box-shadow:0 6px 0 #7fa81c; margin-bottom:6px;">CONTINUE</button>
-      <div id="continueMeta" class="note hidden" style="margin-top:0; margin-bottom:12px; opacity:0.6;"></div>
-      <button class="btn" id="startBtn">BEGIN</button>
-      <div id="ledgerLine" class="note hidden"></div>
-      <div class="note">flashing effects, moderate use. sound strongly recommended.</div>
-    </div>
+  </div>
 
-    <div id="storyOverlay" class="overlay hidden">
-      <div class="title" id="storyTitle" style="font-size:20px;">ACT I</div>
-      <div class="subtitle" id="storySub" style="margin-bottom:14px;">—</div>
-      <div id="storySpeech" style="width:100%; max-width:300px;"></div>
-      <button class="btn" id="storyContinueBtn" style="font-size:11px; padding:10px 18px;">CONTINUE</button>
-    </div>
+</div>
 
-    <div id="draftOverlay" class="overlay hidden">
-      <div class="title" style="font-size:17px;" id="draftTitle">SLOP-GOBLIN MEDDLES</div>
-      <div class="subtitle" style="font-size:11px; margin-bottom:12px;" id="draftSub">pick which sabotage you would prefer. yes you have to pick one. well — you can skip. i guess.</div>
-      <div id="draftCards"></div>
-      <button class="btn" id="draftSkipBtn" style="margin-top:10px; font-size:10px; padding:9px 16px;">REFUSE (Artificer approves)</button>
+<!-- Sheets, not panels. Every menu used to live inside #stageWrap, which is
+     a square: on a 375x812 phone that is a 353x353 window holding a shop list
+     480px long, so the menus were the one part of the game you had to scroll.
+     They are siblings of #app now and each one takes the whole screen. -->
+<div id="sheetLayer">
+  <div id="startScreen" class="overlay">
+    <div class="title" style="font-size:34px;">SLOP</div>
+    <div class="subtitle" style="margin-bottom:12px;">a chronicle of unfinished things</div>
+    <div class="speechBlock" style="border-color:var(--artificer);">
+      <div class="speechWho" style="color:var(--artificer);">THE ARTIFICER</div>
+      You are the Hero. There are eight Acts and a final boss called THE UNSHIPPED. My job is to get you there intact. I built the progression, the stats, the shop. Follow it and you will win.
     </div>
+    <div class="speechBlock" style="border-color:var(--goblin);">
+      <div class="speechWho" style="color:var(--goblin);">SLOP-GOBLIN</div>
+      hi. i built everything else. the honey pot. the little guy you feed. the turret. none of it was in the design doc. i keep wiring systems into each other because it is funny when they touch. good luck!!
+    </div>
+    <button class="btn hidden" id="continueBtn" style="background:var(--acid); box-shadow:0 6px 0 #7fa81c; margin-bottom:6px;">CONTINUE</button>
+    <div id="continueMeta" class="note hidden" style="margin-top:0; margin-bottom:12px; opacity:0.6;"></div>
+    <button class="btn" id="startBtn">BEGIN</button>
+    <div id="ledgerLine" class="note hidden"></div>
+    <!-- What is actually in here. The title screen sold one game; there are
+         four, and the three the goblin and the crab built are the reason
+         anyone stays. Stickers rather than a list, because this is a slop
+         machine and it should look like one. -->
+    <div class="chipRow">
+      <span class="chip">🎯 24 TRIALS</span>
+      <span class="chip">📖 8 ACTS</span>
+      <span class="chip">🦀 PERIMETER</span>
+      <span class="chip">🍯 HONEY POT</span>
+      <span class="chip">🎭 COMPANY</span>
+    </div>
+    <div class="note">flashing effects, moderate use. sound strongly recommended.</div>
+  </div>
 
-    <div id="levelOverlay" class="overlay hidden">
-      <div class="title" style="font-size:19px;">LEVEL UP</div>
-      <div class="subtitle" style="font-size:11px; margin-bottom:12px;" id="levelSub">The Artificer offers you a point. Spend it.</div>
-      <div id="levelList"></div>
-    </div>
+  <div id="storyOverlay" class="overlay hidden">
+    <div class="title" id="storyTitle" style="font-size:20px;">ACT I</div>
+    <div class="subtitle" id="storySub" style="margin-bottom:14px;">—</div>
+    <div id="storySpeech" class="sheetBody"></div>
+    <button class="btn" id="storyContinueBtn" style="font-size:11px; padding:10px 18px;">CONTINUE</button>
+  </div>
 
-    <div id="sheetOverlay" class="overlay hidden">
-      <div class="title" style="font-size:20px;">HERO SHEET</div>
-      <div id="sheetBody" style="font-size:12px; text-align:left; width:100%; max-width:290px;"></div>
-      <button class="btn" id="sheetCloseBtn" style="margin-top:14px; font-size:11px; padding:10px 18px;">CLOSE</button>
-    </div>
+  <div id="draftOverlay" class="overlay hidden">
+    <div class="title" style="font-size:17px;" id="draftTitle">SLOP-GOBLIN MEDDLES</div>
+    <div class="subtitle" style="font-size:11px; margin-bottom:12px;" id="draftSub">pick which sabotage you would prefer. yes you have to pick one. well — you can skip. i guess.</div>
+    <div id="draftCards" class="sheetBody"></div>
+    <button class="btn" id="draftSkipBtn" style="margin-top:10px; font-size:10px; padding:9px 16px;">REFUSE (Artificer approves)</button>
+  </div>
 
-    <div id="codexOverlay" class="overlay hidden">
-      <div class="title" style="font-size:20px;">CODEX</div>
-      <div id="codexBody" style="font-size:11px; text-align:left; width:100%; max-width:290px; max-height:290px; overflow-y:auto;"></div>
-      <button class="btn" id="codexCloseBtn" style="margin-top:14px; font-size:11px; padding:10px 18px;">CLOSE</button>
-    </div>
+  <div id="levelOverlay" class="overlay hidden">
+    <div class="title" style="font-size:19px;">LEVEL UP</div>
+    <div class="subtitle" style="font-size:11px; margin-bottom:12px;" id="levelSub">The Artificer offers you a point. Spend it.</div>
+    <div id="levelList" class="sheetBody"></div>
+  </div>
 
-    <div id="shopOverlay" class="overlay hidden">
-      <div class="title" style="font-size:19px;">WORKSHOP</div>
-      <div class="subtitle" style="font-size:11px; margin-bottom:10px;">The Artificer's sanctioned upgrades. Mostly.</div>
-      <div id="shopList"></div>
-      <button class="btn" id="shopCloseBtn" style="margin-top:12px; font-size:11px; padding:10px 18px;">CLOSE</button>
-    </div>
+  <div id="sheetOverlay" class="overlay hidden">
+    <div class="title" style="font-size:20px;">HERO SHEET</div>
+    <div id="sheetBody" class="sheetBody" style="font-size:12px; text-align:left;"></div>
+    <button class="btn" id="sheetCloseBtn" style="margin-top:14px; font-size:11px; padding:10px 18px;">CLOSE</button>
+  </div>
 
-    <div id="settingsOverlay" class="overlay hidden">
-      <div class="title" style="font-size:20px;">SETTINGS</div>
-      <div class="subtitle" style="margin-bottom:8px; font-size:11px;">how much is the goblin allowed to do</div>
-      <div id="chaosButtons" style="display:flex; gap:8px; margin-bottom:16px;"></div>
-      <button class="btn" id="settingsCloseBtn" style="font-size:11px; padding:10px 18px;">CLOSE</button>
-    </div>
+  <div id="codexOverlay" class="overlay hidden">
+    <div class="title" style="font-size:20px;">CODEX</div>
+    <div id="codexBody" class="sheetBody" style="font-size:11px; text-align:left;"></div>
+    <button class="btn" id="codexCloseBtn" style="margin-top:14px; font-size:11px; padding:10px 18px;">CLOSE</button>
+  </div>
 
-    <div id="potOverlay" class="overlay hidden">
-      <div class="title" style="font-size:18px;">🍯 THE HONEY POT</div>
-      <div class="subtitle" style="margin-bottom:8px; font-size:11px;">an entire second game the goblin built inside this one. the plot waits.</div>
-      <div id="potGameWrap">
-        <canvas id="potCanvas" width="400" height="300"></canvas>
-        <div id="potHarvestFlash" class="arcade"></div>
-      </div>
-      <div id="potGameMeterRow"><div id="potGameMeterTrack"><div id="potGameMeterFill"></div></div></div>
-      <div style="display:flex; gap:10px; margin-top:12px;">
-        <button class="btn" id="potHarvestBtn" style="font-size:11px; padding:10px 16px;">HARVEST</button>
-        <button class="btn" id="potDoneBtn" style="font-size:11px; padding:10px 16px; background:var(--cyan); box-shadow:0 6px 0 #0e7a91;">BACK TO PLOT</button>
-      </div>
-    </div>
+  <div id="shopOverlay" class="overlay hidden">
+    <div class="title" style="font-size:19px;">WORKSHOP</div>
+    <div class="subtitle" style="font-size:11px; margin-bottom:10px;">The Artificer's sanctioned upgrades. Mostly.</div>
+    <div id="shopList" class="sheetBody"></div>
+    <button class="btn" id="shopCloseBtn" style="margin-top:12px; font-size:11px; padding:10px 18px;">CLOSE</button>
+  </div>
 
-    <!-- THE CRAB's loop. The board is the same state the HUD strip draws,
-         rendered large enough to play on; the build menu is DOM rather than
-         canvas so its buttons can be real touch targets. -->
-    <div id="defenseOverlay" class="overlay hidden">
-      <!-- Board and menu scroll; the actions are pinned outside that region so
-           LEAVE POST is reachable at any content height. A player who cannot
-           see the way out of a screen is trapped in it. -->
-      <div id="tdScroll">
-        <div class="title" style="font-size:15px;">THE PERIMETER</div>
-        <div id="tdStatus" class="arcade">WAVE 1 · INTEGRITY 100%</div>
-        <div id="tdIntegrityTrack"><div id="tdIntegrityFill"></div></div>
-        <canvas id="tdCanvas" width="480" height="360"></canvas>
-      </div>
-      <!-- Outside the scroll region, like the actions: a build menu you have to
-           go looking for makes tapping a pad feel like it did nothing. -->
-      <div id="tdBuildMenu"></div>
-      <div id="tdActions">
-        <button class="btn" id="tdReinforceBtn">REINFORCE <span id="turretCostVal">10</span></button>
-        <button class="btn" id="tdDoneBtn">LEAVE POST</button>
-      </div>
-    </div>
+  <div id="settingsOverlay" class="overlay hidden">
+    <div class="title" style="font-size:20px;">SETTINGS</div>
+    <div class="subtitle" style="margin-bottom:8px; font-size:11px;">how much is the goblin allowed to do</div>
+    <div id="chaosButtons" style="display:flex; gap:8px; margin-bottom:16px;"></div>
+    <button class="btn" id="settingsCloseBtn" style="font-size:11px; padding:10px 18px;">CLOSE</button>
+  </div>
 
-    <!-- THE UNDERSTUDY's loop. No board and nothing to react to: the only
-         decisions are who to recruit and how deeply, made at any pace. -->
-    <div id="companyOverlay" class="overlay hidden">
-      <div class="title" style="font-size:16px;">THE COMPANY</div>
-      <div id="coRates" class="arcade">—</div>
-      <div id="coReport" class="hidden"></div>
-      <div id="coList"></div>
-      <div id="coFooter"></div>
-      <button class="btn" id="coDoneBtn">LET THEM WORK</button>
+  <div id="potOverlay" class="overlay hidden">
+    <div class="title" style="font-size:18px;">🍯 THE HONEY POT</div>
+    <div class="subtitle" style="margin-bottom:8px; font-size:11px;">an entire second game the goblin built inside this one. the plot waits.</div>
+    <div id="potGameWrap">
+      <canvas id="potCanvas" width="400" height="300"></canvas>
+      <div id="potHarvestFlash" class="arcade"></div>
     </div>
+    <div id="potGameMeterRow"><div id="potGameMeterTrack"><div id="potGameMeterFill"></div></div></div>
+    <div style="display:flex; gap:10px; margin-top:12px;">
+      <button class="btn" id="potHarvestBtn" style="font-size:11px; padding:10px 16px;">HARVEST</button>
+      <button class="btn" id="potDoneBtn" style="font-size:11px; padding:10px 16px; background:var(--cyan); box-shadow:0 6px 0 #0e7a91;">BACK TO PLOT</button>
+    </div>
+  </div>
 
-    <div id="victoryOverlay" class="overlay hidden">
-      <div class="title" style="font-size:26px;">SHIPPED</div>
-      <div class="subtitle" id="victorySub">You defeated THE UNSHIPPED.</div>
-      <div id="victorySpeech" style="width:100%; max-width:300px;"></div>
-      <button class="btn" id="victoryBtn" style="font-size:11px; padding:10px 18px;">NEW GAME+</button>
+  <!-- THE CRAB's loop. The board is the same state the HUD strip draws,
+       rendered large enough to play on; the build menu is DOM rather than
+       canvas so its buttons can be real touch targets. -->
+  <div id="defenseOverlay" class="overlay hidden">
+    <!-- Board and menu scroll; the actions are pinned outside that region so
+         LEAVE POST is reachable at any content height. A player who cannot
+         see the way out of a screen is trapped in it. -->
+    <div id="tdScroll" class="sheetBody">
+      <div class="title" style="font-size:15px;">THE PERIMETER</div>
+      <div id="tdStatus" class="arcade">WAVE 1 · INTEGRITY 100%</div>
+      <div id="tdIntegrityTrack"><div id="tdIntegrityFill"></div></div>
+      <canvas id="tdCanvas" width="480" height="360"></canvas>
     </div>
+    <!-- Outside the scroll region, like the actions: a build menu you have to
+         go looking for makes tapping a pad feel like it did nothing. -->
+    <div id="tdBuildMenu"></div>
+    <div id="tdActions">
+      <button class="btn" id="tdReinforceBtn">REINFORCE <span id="turretCostVal">10</span></button>
+      <button class="btn" id="tdDoneBtn">LEAVE POST</button>
+    </div>
+  </div>
+
+  <!-- THE UNDERSTUDY's loop. No board and nothing to react to: the only
+       decisions are who to recruit and how deeply, made at any pace. -->
+  <div id="companyOverlay" class="overlay hidden">
+    <div class="title" style="font-size:16px;">THE COMPANY</div>
+    <div id="coRates" class="arcade">—</div>
+    <div id="coReport" class="hidden"></div>
+    <div id="coList" class="sheetBody"></div>
+    <div id="coFooter"></div>
+    <button class="btn" id="coDoneBtn">LET THEM WORK</button>
+  </div>
+
+  <div id="victoryOverlay" class="overlay hidden">
+    <div class="title" style="font-size:26px;">SHIPPED</div>
+    <div class="subtitle" id="victorySub">You defeated THE UNSHIPPED.</div>
+    <div id="victorySpeech" class="sheetBody"></div>
+    <button class="btn" id="victoryBtn" style="font-size:11px; padding:10px 18px;">NEW GAME+</button>
+  </div>
+</div>
+
   </div>
 </div>
 

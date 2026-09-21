@@ -113,6 +113,18 @@ function checkCollisions(stripped) {
   }
 }
 
+/* dist/slop.html is one portable file, so a relative url() into assets/ would
+   resolve against wherever the file was dropped and quietly fall back to
+   monospace — the same failure the vendored fonts were added to fix. The two
+   faces are 27KB; inlined they cost ~36KB of base64 and the file keeps being
+   the one thing you can email to someone. */
+function inlineFonts(css) {
+  return css.replace(/url\(['"]\.\.\/(assets\/[^'"]+\.woff2)['"]\)/g, (m, rel) => {
+    const buf = fs.readFileSync(path.join(ROOT, rel));
+    return `url(data:font/woff2;base64,${buf.toString("base64")})`;
+  });
+}
+
 function build() {
   walk(ENTRY);
 
@@ -120,7 +132,7 @@ function build() {
   checkCollisions(stripped);
 
   const js = stripped.map(s => s.code).join("\n");
-  const css = fs.readFileSync(path.join(ROOT, "styles/main.css"), "utf8");
+  const css = inlineFonts(fs.readFileSync(path.join(ROOT, "styles/main.css"), "utf8"));
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
 
   // Pull just the <body> contents out of index.html.
@@ -129,7 +141,10 @@ function build() {
   const body = bodyMatch[1].trim();
 
   const head = html.match(/<head>([\s\S]*?)<\/head>/i)[1]
-    .replace(/<link rel="stylesheet" href="\.\/styles\/main\.css">\s*/i, "");
+    .replace(/<link rel="stylesheet" href="\.\/styles\/main\.css">\s*/i, "")
+    // The fonts are inlined into the <style> below, so preloading the files
+    // they came from would only be two 404s in a portable copy.
+    .replace(/<link rel="preload"[^>]*\.woff2[^>]*>\s*/gi, "");
 
   const bundled = `<!DOCTYPE html>
 <html lang="en">

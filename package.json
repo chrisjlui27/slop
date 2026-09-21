@@ -7,7 +7,7 @@
     "dev": "python3 -m http.server 8000",
     "dev:win": "powershell -ExecutionPolicy Bypass -File tools/serve.ps1",
     "build": "node tools/build.js",
-    "check": "node tools/check-graph.js",
+    "check": "node tools/check-graph.js && node tools/check-shell.js",
     "check:shell": "powershell -ExecutionPolicy Bypass -File tools/check-shell.ps1",
     "test": "npm run check && npm run build && node tools/smoke-test.js",
     "start": "npm run dev"

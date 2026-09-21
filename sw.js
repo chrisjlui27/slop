@@ -10,7 +10,7 @@
 
    Bump CACHE on every deploy that touches any shell file. Forget and phones
    keep running the previous build until they evict it themselves. */
-const CACHE = 'slop-v7';
+const CACHE = 'slop-v8';
 
 const SHELL = [
   '.',
@@ -20,6 +20,8 @@ const SHELL = [
   'icon-512.png',
   'icon-maskable-512.png',
   'styles/main.css',
+  'assets/fonts/press-start-2p-latin.woff2',
+  'assets/fonts/space-grotesk-latin.woff2',
   'src/main.js',
   'src/game.js',
   'src/save.js',
@@ -101,7 +103,7 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Modules, CSS, icons and the Google font files are cache-first with NO
+  // Modules, CSS, icons and fonts are cache-first with NO
   // background refresh. That is deliberate and is the one place this worker
   // differs from the usual stale-while-revalidate advice: refreshing a single
   // module in the background would let the next reload pair it with siblings

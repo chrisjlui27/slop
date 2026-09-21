@@ -46,10 +46,10 @@ foreach ($rel in $declared) {
 $onDisk = @()
 $onDisk += Get-ChildItem -Path $rootFull -Filter '*.js' -File |
   Where-Object { $_.Name -ne 'sw.js' } | ForEach-Object { $_.Name }
-foreach ($dir in @('src', 'styles')) {
+foreach ($dir in @('src', 'styles', 'assets')) {
   $d = Join-Path $rootFull $dir
   if (Test-Path $d) {
-    $onDisk += Get-ChildItem -Path $d -Recurse -File -Include '*.js', '*.css' |
+    $onDisk += Get-ChildItem -Path $d -Recurse -File -Include '*.js', '*.css', '*.woff2' |
       ForEach-Object { $_.FullName.Substring($rootFull.Length + 1) -replace '\\', '/' }
   }
 }

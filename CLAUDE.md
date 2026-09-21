@@ -15,6 +15,10 @@ preprocessor. Keep it that way unless explicitly asked.
 added to the home screen, opening fullscreen and running offline. Same route
 as the sibling project `eldritch-garden`. See `DEPLOY.md`.
 
+`docs/DESIGN.md` is the fuller statement of that: SLOP is a console — four
+genuinely different games behind one set of menus, one save, and one idle layer
+that runs under all of them. Read it before reshaping a screen or adding a loop.
+
 That target, not "a web page", is what settles design arguments now:
 
 - **Touch is the only input.** No hover states, no keyboard, no right-click.
@@ -33,7 +37,7 @@ That target, not "a web page", is what settles design arguments now:
 npm run dev         # serve at localhost:8000 (ES modules need http://, not file://)
 npm run dev:win     # same, via PowerShell — no Node or Python needed
 npm run build       # bundle src/ + styles/ into dist/slop.html (single portable file)
-npm run check:shell # verify sw.js SHELL matches what is on disk
+npm run check:shell # verify sw.js SHELL matches what is on disk (PowerShell)
 npm test            # build, then drive a full campaign in jsdom
 ```
 
@@ -43,7 +47,9 @@ and crashes in the act/boss ladder that manual play will not.
 
 Python is *not* installed, so `npm run dev` fails — use `npm run dev:win`,
 which needs nothing beyond PowerShell. `npm run check:shell` also runs without
-Node, and should be run before every deploy.
+Node, and should be run before every deploy — though the same check is now part
+of `npm test` as `tools/check-shell.js`, so a missing `SHELL` entry fails
+the test run rather than waiting for a phone to lose signal.
 
 ## Skills
 
@@ -87,6 +93,8 @@ have to be.
 | Change sounds | `src/audio.js` |
 | Change screen effects | `src/fx.js` |
 | Change layout or styling | `styles/main.css`, `index.html` |
+| Change how a menu is laid out | the SHEET PASS in `styles/main.css` — see `docs/DESIGN.md` |
+| Add a font, image or sound file | `assets/`, then `sw.js`'s `SHELL` — see `docs/DESIGN.md` |
 
 `src/game.js` is large (~1000 lines) and deliberately monolithic — it is the
 chassis, and its parts are genuinely coupled. Prefer adding content over
@@ -178,6 +186,12 @@ voices wrong is the most common way to damage this project.
   touch `actIdx`, hero level, or XP. The Artificer removed death from the
   build and that has not been reversed; the Crab was simply allowed a stake of
   his own. `npm test` asserts this boundary directly.
+- **A `filter` on an ancestor breaks every sheet.** The menus are
+  `position:fixed` siblings of `#app`, and any filtered ancestor becomes
+  their containing block — which silently re-anchors a full-screen sheet to the
+  480px column. That is why the page's hue drift lives on `#bgLayer` and the
+  contrast tweak sits on `#stageWrap`. Do not move either back onto `body`
+  or `#app`.
 - **`sw.js`'s `SHELL` is a contract too.** Every file the game fetches at
   runtime must be listed, or the app is broken offline while looking fine
   online. The install handler swallows per-entry failures deliberately, so

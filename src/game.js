@@ -1527,6 +1527,25 @@ $('settingsBtn').addEventListener('click', ()=>{
 });
 $('settingsCloseBtn').addEventListener('click', ()=>{ settingsOverlay.classList.add('hidden'); Game.resumeAfterMenu(); });
 
+/* The stage is square and sized by width, so on a short phone the board fell
+   below the fold and the game had to be scrolled into view. main.css caps the
+   stage against the viewport height minus this value; measuring it beats
+   estimating it, because the HUD stack grows a boss bar and a mutator chip
+   depending on where the run is. Reading the stage's own top is safe from
+   feedback: what is above the stage does not depend on how tall the stage is. */
+function measureChrome(){
+  const top = $('stageWrap').getBoundingClientRect().top + (window.scrollY||0);
+  const prev = parseFloat(document.documentElement.style.getPropertyValue('--chrome'))||0;
+  const next = Math.round(top + 30);            // + the margin under the board
+  if(Math.abs(next-prev) > 2) document.documentElement.style.setProperty('--chrome', next+'px');
+}
+measureChrome();
+addEventListener('resize', measureChrome);
+addEventListener('orientationchange', measureChrome);
+// The HUD grows and shrinks mid-run (boss bar, mutator chip), and each of those
+// moves the board. Observing the app is cheaper than remembering every caller.
+if(window.ResizeObserver) new ResizeObserver(measureChrome).observe($('app'));
+
 Game.updateHUD(); Game.updateMutatorChip(); Game.updateBuddyUI();
 Game.updateRerollUI(); Game.updatePotUI(); Game.updateHeroUI(); Game.updateStandingUI();
 Game.renderDefense();

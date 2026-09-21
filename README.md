@@ -105,6 +105,7 @@ index.html             DOM skeleton (every id here is a contract)
 manifest.webmanifest   PWA identity: name, icons, fullscreen, portrait
 sw.js                  offline cache — SHELL must list every runtime file
 styles/main.css        all presentation
+assets/fonts/          the two typefaces, vendored (OFL) so offline is offline
 src/
   main.js              entry point
   game.js              the chassis: round flow, economy, all subsystems
@@ -128,11 +129,13 @@ docs/
   ADDING-A-MICROGAME.md  5-minute guide, three files to touch
   LORE.md              voice bible — read before writing dialogue
   PARALLEL-LOOPS.md    one loop per character, and how standing drives them
+  DESIGN.md            what the whole thing is trying to be, and the UI contract
 tools/
   build.js             ~100-line bundler → dist/slop.html
   smoke-test.js        boots the build, plays a whole campaign
   serve.ps1            dependency-free dev server (no Node, no Python)
   check-shell.ps1      verifies sw.js SHELL against what is on disk
+  check-shell.js       the same check, in Node, so npm test runs it
 ```
 
 ## The core design bet
