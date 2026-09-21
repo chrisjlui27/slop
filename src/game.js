@@ -196,8 +196,21 @@ export const Game = {
     Sound.actStart();
   },
 
+  /* The backdrop is the one piece of the screen that belongs to no system, so
+     it is where the Act gets to say something. Each Act carries a pair of
+     palette colours in lore.js and they are handed to #bgLayer as variables;
+     nothing else reads them, and an Act without a tint keeps the last one
+     rather than flashing to a default. */
+  applyActTint(){
+    const t = this.act().tint;
+    if(!t) return;
+    document.documentElement.style.setProperty('--act-a', t[0]);
+    document.documentElement.style.setProperty('--act-b', t[1]);
+  },
+
   startAct(){
     const a = this.act();
+    this.applyActTint();
     this.actRound = 0; this.boss = null;
     bossRow.classList.add('hidden');
     actNameEl.textContent = a.n + (this.ngPlus? ' (NG+'+this.ngPlus+')' : '');
@@ -588,6 +601,7 @@ export const Game = {
     const a = this.act();
     actNameEl.textContent = a.n + (this.ngPlus ? ' (NG+'+this.ngPlus+')' : '');
     questNameEl.textContent = a.quest.toUpperCase();
+    this.applyActTint();
     if(this.boss){
       bossRow.classList.remove('hidden');
       bossNameEl.textContent = this.boss.name;
@@ -1540,6 +1554,7 @@ function measureChrome(){
   if(Math.abs(next-prev) > 2) document.documentElement.style.setProperty('--chrome', next+'px');
 }
 measureChrome();
+Game.applyActTint();          // Act I lights the title screen too
 addEventListener('resize', measureChrome);
 addEventListener('orientationchange', measureChrome);
 // The HUD grows and shrinks mid-run (boss bar, mutator chip), and each of those

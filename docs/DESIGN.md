@@ -126,10 +126,16 @@ clear are not about taste:
 - **No new runtime dependencies.** Vanilla JS, ES modules, no framework, no
   build step for the dev path. An asset pack is files; a library is not.
 
+The backdrop is the current example of all four rules at once: gradients and a
+generated grain, lit by a pair of palette colours the Act itself carries in
+`lore.js`. Eight Acts, eight lightings, no files — and the strength is fixed in
+CSS with `color-mix`, so a new Act cannot ship a backdrop that drowns the HUD.
+
 What this leaves room for, in rough order of payoff: a proper sprite/particle
 pass on the perimeter, a sound bank beyond synthesised blips (the whole audio
-layer is oscillators today), and per-act background treatments so the eight
-Acts do not share one backdrop.
+layer is oscillators today, which is a style as much as a shortcut — a sample
+bank should sit beside it, not replace it), and per-loop backdrop treatments so
+the perimeter and the pot stop borrowing the Acts' lighting.
 
 ## What would break the design
 

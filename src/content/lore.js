@@ -150,7 +150,7 @@ export const Barks = {
       "you tapped one yourself. noted. that is the first help i have had"
     ],
     understudy:[
-      "i know every trial. all twenty-two. i could run them right now if asked",
+      "i know every trial. all twenty-four. i could run them right now if asked",
       "no notes on your form. genuinely. i would just also like a turn",
       "i wait in the wings. that is the whole job so far. i am very good at it",
       "the crab talks to me. mostly about the perimeter. i listen properly"
@@ -159,9 +159,13 @@ export const Barks = {
 };
 
 // ---- Acts: the actual plot spine ----
+/* tint is the Act's pair of backdrop lights — a wash and an accent, read by
+   Game.applyActTint and handed to #bgLayer. Content, not code: the colours are
+   the palette's own, and which two an Act gets says whose Act it is. */
 export const Acts = [
   {
     n:'ACT I', title:'THE CRUMBLING TUTORIAL',
+    tint:['#2fe1ff','#7a3cff'],
     quest:'Reach the gate',
     rounds:6,
     boss:{ name:'THE PLACEHOLDER', hp:5, regen:0 },
@@ -175,6 +179,7 @@ export const Acts = [
   },
   {
     n:'ACT II', title:'THE LEAKING SUBROUTINE',
+    tint:['#c9ff2f','#2fe1ff'],
     quest:'Plug the leak',
     rounds:7,
     boss:{ name:'THE MEMORY LEAK', hp:7, regen:1 },
@@ -188,6 +193,7 @@ export const Acts = [
   },
   {
     n:'ACT III', title:'THE GILDED CONFIG',
+    tint:['#fff02f','#ff7a2f'],
     quest:'Resolve the conflict',
     rounds:8,
     boss:{ name:'THE MERGE CONFLICT', hp:9, regen:1 },
@@ -201,6 +207,7 @@ export const Acts = [
   },
   {
     n:'ACT IV', title:'THE UNCOMMENTED DEPTHS',
+    tint:['#7a3cff','#ff2f9e'],
     quest:'Descend',
     rounds:8,
     boss:{ name:'THE NULL POINTER', hp:11, regen:2 },
@@ -219,6 +226,7 @@ export const Acts = [
      the three belongs to a different voice. */
   {
     n:'ACT V', title:'THE DEPRECATED WING',
+    tint:['#ff7a2f','#ff2f9e'],
     quest:'Hold the line',
     rounds:8,
     boss:{ name:'THE BREAKING CHANGE', hp:12, regen:2 },
@@ -232,6 +240,7 @@ export const Acts = [
   },
   {
     n:'ACT VI', title:'THE ORPHANED BRANCH',
+    tint:['#7a3cff','#c9ff2f'],
     quest:'Find what was cut',
     rounds:9,
     boss:{ name:'THE FORCE PUSH', hp:14, regen:2 },
@@ -245,6 +254,7 @@ export const Acts = [
   },
   {
     n:'ACT VII', title:'THE FROZEN ROADMAP',
+    tint:['#2fe1ff','#c9ff2f'],
     quest:'Thaw it',
     rounds:9,
     boss:{ name:'THE SCOPE CREEP', hp:16, regen:3 },
@@ -259,6 +269,7 @@ export const Acts = [
   },
   {
     n:'ACT VIII', title:'THE FINAL BUILD',
+    tint:['#ff2f9e','#fff02f'],
     quest:'Ship it',
     rounds:9,
     boss:{ name:'THE UNSHIPPED', hp:18, regen:3, final:true },

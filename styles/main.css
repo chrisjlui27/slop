@@ -788,13 +788,19 @@
      The grain is an feTurbulence data URI rather than a file: it is
      an asset the game generates, so it costs no fetch, no SHELL
      entry and nothing to load offline. */
+  /* Two of the three lights are the Act's, set by Game.applyActTint from the
+     tint pair in lore.js. color-mix keeps the wash at the same strength
+     whatever colour arrives, so a new Act cannot accidentally ship a backdrop
+     that drowns the HUD. The third light is fixed: something pink is always
+     coming up from underneath. */
   #bgLayer{
     position:fixed; inset:0; z-index:-1; pointer-events:none;
     background:
-      radial-gradient(120% 80% at 12% -8%, rgba(201,255,47,0.10), transparent 58%),
-      radial-gradient(100% 70% at 92% 4%, rgba(47,225,255,0.09), transparent 60%),
+      radial-gradient(120% 80% at 12% -8%, color-mix(in srgb, var(--act-a, #c9ff2f) 16%, transparent), transparent 58%),
+      radial-gradient(100% 70% at 92% 4%, color-mix(in srgb, var(--act-b, #2fe1ff) 14%, transparent), transparent 60%),
       radial-gradient(130% 95% at 50% 112%, rgba(255,47,158,0.14), transparent 62%),
       var(--bg);
+    transition: background 1.2s ease;
     animation: bgBreathe 16s ease-in-out infinite;
   }
   #bgLayer::before{
