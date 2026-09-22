@@ -78,6 +78,14 @@ export const Save = {
         lifetimeGoo: g.understudy.lifetimeGoo,
         lifetimeXp: g.understudy.lifetimeXp
       },
+      /* The archive, minus the bout. The deck and the shelf are what the
+         player built and beat; a half-played duel is in-flight state in the
+         same sense as the perimeter's wave, and resuming into someone else's
+         turn three is worse than starting the fight again for free. */
+      archive: {
+        deck: g.archive.deck.slice(),
+        cleared: g.archive.cleared.slice()
+      },
       shopLevels: Object.assign({}, g.shopLevels),
       pot: { brew: g.pot.brew, brewMax: g.pot.brewMax },
       // Boss HP is the one mid-encounter value worth keeping: losing it would
@@ -129,6 +137,20 @@ export const Save = {
     if(d.hero) Object.assign(g.hero, d.hero);
     if(d.buddy){ g.buddy.level = d.buddy.level||1; g.buddy.feeds = d.buddy.feeds||0; }
     if(d.turret) Object.assign(g.turret, d.turret);
+    /* Unknown card ids are dropped rather than trusted: a save edited by hand
+       or written by an older build must not be able to put a card in the deck
+       that no resolver knows how to play. Same for the shelf. */
+    if(d.archive){
+      const known = id => g.archiveApi.cardById(id);
+      const isBuild = id => g.archiveApi.buildById(id);
+      if(Array.isArray(d.archive.deck) && d.archive.deck.length){
+        g.archive.deck = d.archive.deck.filter(known);
+      }
+      if(Array.isArray(d.archive.cleared)){
+        g.archive.cleared = d.archive.cleared.filter(isBuild);
+      }
+      g.archive.bout = null;
+    }
     g.shopLevels = Object.assign({}, d.shopLevels||{});
     if(d.pot){ g.pot.brew = d.pot.brew||0; g.pot.brewMax = d.pot.brewMax||100; }
     g.boss = d.boss || null;

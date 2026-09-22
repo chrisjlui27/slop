@@ -2,7 +2,9 @@
 
 A browser CRPG hiding inside a WarioWare-style microgame chassis.
 
-Twenty-four microgames, eight acts, eight bosses, a hero sheet with stats and XP, a
+Five loops behind one set of menus: twenty-four microgames, a tower defense, a
+turn-based card duel, an arcade honey pot and an idle company. Eight acts,
+eight bosses, a hero sheet with stats and XP, a
 shop, a real tower defense, a virtual pet, a second entire game inside a honey
 pot — and four creators who built all of it and can't agree on what it's for.
 
@@ -112,6 +114,7 @@ src/
   save.js              what survives closing the app
   defense.js           THE PERIMETER — the Crab's tower defense
   understudy.js        THE COMPANY — the Understudy's idle layer
+  archive.js           THE ARCHIVE — the card duel against unshipped builds
   ledger.js            THE LEDGER — the only state that outlives a run
   audio.js             one blip() primitive, ~30 named cues
   fx.js                shake, chroma, glitch bars, stamps, confetti
@@ -123,6 +126,7 @@ src/
     stats.js           hero stat definitions
     defense.js         towers, enemies, wave composition
     understudy.js      the company roster, idle rates, offline cap
+    archive.js         cards, the six builds, the measured difficulty ladder
     ledger.js          cross-run boons and what unlocks them
 docs/
   ARCHITECTURE.md      how the chassis works, how systems cross-feed

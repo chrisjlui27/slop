@@ -75,6 +75,13 @@ export const Sound = {
   // Played when the company reports back. Warm rather than triumphant — they
   // are pleased to see you, not claiming a victory.
   rehearsalReport(){ [523,659,784].forEach((f,i)=> setTimeout(()=>this.blip(f,0.14,'triangle',0.13), i*120)); },
+  /* THE ARCHIVE. Card sounds are short and dry — a bout is forty or fifty
+     taps long, so anything with a tail becomes unbearable by turn four. */
+  cardPlay(){ this.blip(520,0.035,'square',0.10); },
+  archiveOpen(){ [196,262,330].forEach((f,i)=> setTimeout(()=>this.blip(f,0.12,'triangle',0.11), i*90)); },
+  archiveHit(){ this.blip(150,0.09,'sawtooth',0.13); },
+  archiveWin(){ [392,494,659,784].forEach((f,i)=> setTimeout(()=>this.blip(f,0.13,'square',0.14), i*95)); },
+  archiveLose(){ [262,196,147].forEach((f,i)=> setTimeout(()=>this.blip(f,0.2,'triangle',0.12), i*130)); },
   bossAppear(){ [110,98,87,73].forEach((f,i)=> setTimeout(()=>this.blip(f,0.3,'sawtooth',0.16), i*140)); },
   bossHit(){ this.blip(240,0.07,'square',0.16); setTimeout(()=>this.blip(160,0.09,'sawtooth',0.12),50); },
   bossDown(){ [523,659,784,1046,1318].forEach((f,i)=> setTimeout(()=>this.blip(f,0.16,'square',0.16), i*110)); },

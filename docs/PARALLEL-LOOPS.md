@@ -260,3 +260,77 @@ each left a permanent check behind:
   harness drives the correct input for each new microgame at rounds 1 and 30
   and demands a win. It immediately found `trace` accepting a 46px grab into a
   27px corridor and then failing the player for it on the first move.
+
+## The fifth loop, and the character it does not have
+
+**THE ARCHIVE** is a turn-based card duel against six versions of this game
+that never shipped. It is the first loop added since the rescope above, and it
+breaks the pattern that section sets out: *each character owns a whole loop*.
+There is no fifth character.
+
+That was deliberate, and the reasoning is worth keeping, because the obvious
+move was to invent one.
+
+**What a fifth patron would have cost.** Standing is four independent bars in a
+32px HUD row, a save field, a stat that scales it, a hero-sheet section, a
+ledger boon and a voice in every bark table. A fifth of each is not a loop —
+it is a rewrite of the scaffolding around the loops, paid for by squeezing the
+part of the screen that is already tightest. A new voice also has to be worth
+hearing forever; four is already enough to make a bark table hard to write.
+
+**What the archive is instead.** It is *two* existing characters, disagreeing
+about the same object, which is the oldest joke in this project and still the
+best one:
+
+- The shelf is **THE ARTIFICER's**. He kept every build he abandoned, filed and
+  labelled, meaning never to look at them again — the same instinct that
+  produced Act VII's frozen roadmap. The builds' descriptions are his filing
+  labels, and they are the only place in the game he is sentimental.
+- The duel is **SLOP-GOBLIN's**. He found the shelf, noticed the builds still
+  execute, and made a card game out of them. Clearing one pays him four
+  standing and the Artificer two: one for playing it, one for finally closing
+  something that was left open.
+
+So the rule the rescope set out still holds in the form that matters — every
+system is attributed, and the attribution drives the voice. What it does not
+require is a new patron per loop.
+
+### Why a card game, specifically
+
+The four existing loops are reflex (the Acts), placement (the perimeter),
+arcade (the pot) and investment (the company). All four are real-time, and
+three of them want your attention *now*. The archive is the only loop in SLOP
+with no clock in it at all: it moves when a thumb moves it, which makes it the
+one you can play in a lift, one-handed, without losing anything by stopping.
+
+It also progresses differently on purpose. Hero level, stats and the Workshop
+do nothing inside a bout. What you take into the sixth build is the eleven to
+fifteen cards you drafted after the first five, so the loop's difficulty curve
+is about your deck rather than your character sheet — which is why it stays
+interesting to a level 20 hero who has stopped noticing microgame timers.
+
+### The fence
+
+The perimeter is still the only loop with a stake outside itself. A card bout
+can be lost, and losing costs *nothing*: no goo, no XP, no standing, no card,
+no change to the act ladder. `npm test` asserts that field by field, the same
+way it asserts the Crab's boundary. A wall is not a stake, and the difference
+is the whole reason the Crab's loop is special.
+
+### The numbers
+
+The ladder was measured, not guessed — a simulated player, drafting random
+cards rather than good ones, 1500 bouts per build:
+
+| Build | Win rate | Turns |
+|---|---|---|
+| THE PROTOTYPE | 100% | 3.6 |
+| THE VERTICAL SLICE | 100% | 5.1 |
+| THE DEMO | 95% | 6.7 |
+| THE PORT | 75% | 7.6 |
+| THE REMASTER | 63% | 7.8 |
+| THE SEQUEL | 46% | 7.4 |
+
+The measurement went through two non-monotonic ladders on the way here — one
+where the fourth build was harder than the sixth — neither of which was
+predictable from the numbers. If these are retuned, re-measure.

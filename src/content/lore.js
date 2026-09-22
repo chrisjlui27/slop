@@ -128,6 +128,35 @@ export const Barks = {
       "i offered to wire them into the pot. they said no. politely. weird"
     ]
   },
+  /* THE ARCHIVE. The shelf is the Artificer's — he filed every build he
+     abandoned and meant that to be the end of it. The card game played on it
+     is the goblin's, which is why one of them sounds delighted and the other
+     sounds like a man watching his filing cabinet be monetised. */
+  archiveOpen:{
+    goblin:[
+      "i found his shelf. every version of this he gave up on. they all still RUN",
+      "made a card game out of the corpses. they fight back. it's great",
+      "your deck is the only thing that matters in here. no stats. he HATES that",
+      "the sequel is on the bottom shelf. it was cancelled before it was written. it is furious",
+      "beat one and it gives you a card. that's how it works now. i decided"
+    ],
+    artificer:[
+      "Cold storage. Every build I abandoned, labelled and shelved. He has made them a leisure activity.",
+      "These are not enemies. They are drafts. I filed them so they would stop being my problem.",
+      "Nothing in here touches your level or your Acts. I insisted on that much.",
+      "You may lose in here. You lose the bout and nothing else — I checked his implementation twice."
+    ]
+  },
+  archiveClear:{
+    goblin:[
+      "it's filed!! take a card off the corpse. that's the loop",
+      "one down. he's pretending not to watch this"
+    ],
+    artificer:[
+      "That build is closed. I had not expected to feel anything about that.",
+      "Filed properly this time. Take something from it — it is owed to you."
+    ]
+  },
   idle:{
     artificer:[
       "The final boss is THE UNSHIPPED. Everything here is aimed at that.",

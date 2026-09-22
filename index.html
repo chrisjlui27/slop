@@ -63,10 +63,10 @@
   <div id="hudActions">
     <button id="sheetBtn">🧙</button>
     <button id="companyBtn">🎭</button>
+    <button id="archiveBtn">🗃️</button>
     <button id="shopBtn">🛒</button>
     <button id="codexBtn">📖</button>
     <button id="settingsBtn">⚙</button>
-    <button id="resetBtn">↺</button>
     <button id="muteBtn">🔊</button>
   </div>
 
@@ -176,6 +176,9 @@
     <div class="title" style="font-size:20px;">SETTINGS</div>
     <div class="subtitle" style="margin-bottom:8px; font-size:11px;">how much is the goblin allowed to do</div>
     <div id="chaosButtons" style="display:flex; gap:8px; margin-bottom:16px;"></div>
+    <!-- Moved off the HUD glyph row: eight glyphs do not fit a 353px column,
+         and of the eight this was the one that ends a run in a single tap. -->
+    <button class="btn" id="resetBtn" style="font-size:10px; padding:10px 16px; margin-bottom:14px; background:#2a1520; box-shadow:0 6px 0 #14090f; color:var(--pink);">START A NEW RUN</button>
     <button class="btn" id="settingsCloseBtn" style="font-size:11px; padding:10px 18px;">CLOSE</button>
   </div>
 
@@ -224,6 +227,44 @@
     <div id="coList" class="sheetBody"></div>
     <div id="coFooter"></div>
     <button class="btn" id="coDoneBtn">LET THEM WORK</button>
+  </div>
+
+  <!-- THE ARCHIVE. Turn-based, so unlike the perimeter and the pot there is
+       no canvas here at all: every card is a real DOM button at a real touch
+       size, which is also why the hand is capped at five. -->
+  <div id="archiveOverlay" class="overlay hidden">
+    <div class="title" style="font-size:15px;">🗃️ THE ARCHIVE</div>
+    <div id="arcProgress" class="arcade">0/6 FILED</div>
+
+    <!-- the shelf -->
+    <div id="arcList" class="sheetBody"></div>
+
+    <!-- a bout, in place of the shelf -->
+    <div id="arcBout" class="hidden">
+      <div id="arcFoeRow">
+        <span id="arcFoeName" class="arcade">THE PROTOTYPE</span>
+        <span id="arcIntent" class="arcade">⚔ ATTACK 6</span>
+      </div>
+      <div id="arcFoeTrack"><div id="arcFoeFill"></div></div>
+      <div id="arcFoeNum" class="arcade">28/28</div>
+      <div id="arcFoeArt" aria-hidden="true">🧱</div>
+
+      <div id="arcLog">the build loads. it still runs</div>
+
+      <div id="arcYouRow">
+        <span id="arcYouHp" class="arcade">❤ 46</span>
+        <span id="arcBlock" class="arcade">🛡 0</span>
+        <span id="arcEnergy" class="arcade">⚡ 3/3</span>
+        <span id="arcPiles" class="arcade">🂠 10 · 0</span>
+      </div>
+      <div id="arcHand"></div>
+      <div id="arcDraft" class="hidden"></div>
+    </div>
+
+    <div id="arcActions">
+      <button class="btn" id="arcEndBtn">END TURN</button>
+      <button class="btn" id="arcFleeBtn">LEAVE</button>
+    </div>
   </div>
 
   <div id="victoryOverlay" class="overlay hidden">

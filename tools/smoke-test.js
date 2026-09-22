@@ -406,6 +406,91 @@ function runChecks() {
   check("a breach does not touch the act ladder", G.actIdx === actBefore);
   check("a breach does not touch hero level", G.hero.level === levelBefore);
 
+  /* ---- THE ARCHIVE: the card duel ----
+     Driven the way a player drives it — through the chassis, one card at a
+     time — because the bout is the only loop in the game with no frame loop
+     to fall over in. What is checked is the shape of the thing: that a deck
+     exists, that playing correctly wins, that winning pays, and above all
+     that losing costs nothing outside the screen. */
+  const A = G.archiveApi;
+  check("the archive has a starting deck", G.archive.deck.length === 10);
+  check("the shelf starts closed after the first build",
+    A.isUnlocked(G, "prototype") && !A.isUnlocked(G, "slice"));
+
+  G.state = "menu";
+  G.openArchive();
+  check("archive screen opens", G.state === "archive");
+  check("the shelf renders", window.document.querySelectorAll("#arcList button").length > 0);
+
+  // A bout, played by the same greedy policy the ladder was tuned against:
+  // spend what you can afford, then end the turn.
+  const arcGooBefore = G.goo, arcXpBefore = G.hero.level * 100000 + G.hero.xp;
+  A.start(G, "prototype");
+  G.renderArchive();
+  check("a bout deals an opening hand", G.archive.bout.hand.length === 5);
+  let arcGuard = 0;
+  while (G.archive.bout && !G.archive.bout.over && arcGuard++ < 400) {
+    const b = G.archive.bout;
+    const i = b.hand.findIndex(id => A.cardById(id).cost <= b.energy);
+    if (i >= 0) A.play(G, i); else A.endTurn(G);
+  }
+  const won = G.archive.bout && G.archive.bout.over === "win";
+  check("the first build can be beaten: " + (G.archive.bout ? G.archive.bout.over : "no bout"), won);
+
+  if (won) {
+    G.renderArchive();
+    const options = G.archive.bout.draftOptions;
+    check("a clear offers three cards", options && options.length === 3);
+    G.claimArchive(options[0]);
+    check("the drafted card joins the deck", G.archive.deck.length === 11);
+    check("the build is filed", A.isCleared(G, "prototype"));
+    check("filing a build unlocks the next one", A.isUnlocked(G, "slice"));
+    check("a clear pays goo", G.goo > arcGooBefore);
+    check("a clear pays xp", G.hero.level * 100000 + G.hero.xp > arcXpBefore);
+    check("the bout is cleared away after claiming", G.archive.bout === null);
+  }
+
+  /* The fence, asserted the same way the Crab's is. Losing a bout must cost
+     the bout and nothing else: the perimeter is still the only loop in the
+     game with a stake outside itself. */
+  const arcAct = G.actIdx, arcLevel = G.hero.level, arcXp = G.hero.xp;
+  const arcGoo = G.goo, arcDeck = G.archive.deck.length, arcCleared = G.archive.cleared.length;
+  const arcPerimeter = G.defense.perimeter;
+  A.start(G, "slice");
+  G.archive.bout.hp = 1;
+  A.endTurn(G);          // whatever it does, it does more than 1
+  check("a bout can be lost", G.archive.bout.over === "lose");
+  check("losing does not touch the act ladder", G.actIdx === arcAct);
+  check("losing does not touch hero level", G.hero.level === arcLevel);
+  check("losing does not touch xp", G.hero.xp === arcXp);
+  check("losing does not touch goo", G.goo === arcGoo);
+  check("losing does not touch the deck", G.archive.deck.length === arcDeck);
+  check("losing does not file the build", G.archive.cleared.length === arcCleared);
+  check("losing does not touch the perimeter", G.defense.perimeter === arcPerimeter);
+  check("a lost bout pays nothing", G.claimArchive(null) === undefined && G.goo === arcGoo);
+
+  // Leaving mid-bout is free and always available.
+  A.start(G, "slice");
+  A.flee(G);
+  check("leaving a bout abandons it", G.archive.bout === null);
+  G.closeArchive();
+  check("archive screen closes back to play", G.state !== "archive");
+
+  // The deck and the shelf survive a save; a bout deliberately does not.
+  G.archive.deck.push("rewrite");
+  G.archive.cleared = ["prototype"];
+  const arcSnap = JSON.parse(JSON.stringify(G.saveApi.snapshot(G)));
+  G.archive = A.reset();
+  G.saveApi.apply(G, arcSnap);
+  check("the deck survives a save", G.archive.deck.indexOf("rewrite") >= 0);
+  check("the shelf survives a save", A.isCleared(G, "prototype"));
+  check("a save carries no bout", G.archive.bout === null);
+  // A hand-edited save must not be able to smuggle a card the resolver does
+  // not know how to play.
+  G.saveApi.apply(G, Object.assign({}, arcSnap, { archive: { deck: ["patch", "nonsense"], cleared: ["nope"] } }));
+  check("unknown cards are dropped from a restored deck", G.archive.deck.join() === "patch");
+  check("unknown builds are dropped from a restored shelf", G.archive.cleared.length === 0);
+
   // Opening and closing the Crab's screen must restore the prior state.
   G.state = "menu";
   G.openDefense();

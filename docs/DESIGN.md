@@ -12,15 +12,15 @@ living behind one set of menus, on one save, with one idle layer running under
 all of them and four narrators arguing about whose fault that is.
 
 ```
-                     ┌──────────────── the idle layer ────────────────┐
-                     │  runs while you are here, and while you are not │
-                     └────────────────────────────────────────────────┘
-   ┌──────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-   │ THE ACTS │   │ THE PERIMETER│   │ THE HONEY POT│   │  THE COMPANY │
-   │ microgame│   │ tower defense│   │  an entire   │   │  idle RPG    │
-   │ gauntlet │   │              │   │ second game  │   │              │
-   └──────────┘   └──────────────┘   └──────────────┘   └──────────────┘
-         └──────────────┴── the menus, which are places ──┴────────────┘
+              ┌──────────────── the idle layer ────────────────┐
+              │  runs while you are here, and while you are not │
+              └────────────────────────────────────────────────┘
+ ┌─────────┐ ┌────────────┐ ┌────────────┐ ┌───────────┐ ┌────────────┐
+ │THE ACTS │ │THE PERIMETER│ │THE ARCHIVE│ │THE HONEY  │ │THE COMPANY │
+ │microgame│ │tower defense│ │card duel  │ │POT        │ │idle RPG    │
+ │gauntlet │ │             │ │turn-based │ │arcade     │ │            │
+ └─────────┘ └────────────┘ └────────────┘ └───────────┘ └────────────┘
+      └────────────┴── the menus, which are places ──┴──────────┘
 ```
 
 Three rules hold that together, and they are the ones to defend:
@@ -28,6 +28,13 @@ Three rules hold that together, and they are the ones to defend:
 **1. A menu is a place you go, not a panel over the game.** You leave one game
 to get to another. That is why the menus became full-screen sheets: a sheet is
 somewhere you are, a panel is something in front of you. See *Sheets* below.
+
+**1a. Every loop is a different verb.** The Acts are reflex, the perimeter is
+placement, the pot is arcade, the company is investment, and the archive is a
+turn with no clock on it. A sixth loop that is a fifth kind of tapping is not a
+sixth loop. The archive earned its place by being the one you can play in a
+lift, one-handed, with nothing counting down — and by making the *deck*, not
+the hero, the thing that progresses.
 
 **2. Leaving pauses what you left — and only what you left.** The round stops.
 The Acts wait. The buddy, the turret lane and the honey pot brew keep ticking on
@@ -51,6 +58,7 @@ would someone play it?** Where each loop sits against that:
 | Loop | Owner | Has | Still owes |
 |---|---|---|---|
 | The Acts | ARTIFICER | 24 microgames, 8 acts, 8 bosses, 5 stats, XP, Workshop, double rounds, mutators | A reason to replay an act; more input syntaxes (see below) |
+| The Archive | GOBLIN, on the ARTIFICER's shelf | A turn-based card duel: 16 cards, 6 builds, a drafted deck, a measured difficulty ladder | Relics or a second axis of progression; a reason to keep playing it after the sixth build |
 | The Perimeter | THE CRAB | Waves, 4 tower types, placement that matters, integrity, the only loss state in the game | More board than 3 corridors; between-wave decisions; his own progression |
 | The Honey Pot | SLOP-GOBLIN | A second board with its own scoring, brew timer, harvest | Depth — it is currently a minute-long distraction, not a game |
 | The Company | THE UNDERSTUDY | A roster, recruitment, rehearsal levels, offline pay with a cap | Something to spend the company on besides more company |
@@ -145,7 +153,10 @@ Written down because each of these is a plausible-sounding suggestion:
   measured against 375x812.
 - **A fail state in the Acts.** There is none, on purpose. The perimeter is the
   single exception and it is fenced inside the Crab's own economy — it must
-  never touch `actIdx`, hero level or XP, and `npm test` asserts that.
+  never touch `actIdx`, hero level or XP, and `npm test` asserts that. The
+  archive can be lost too, but losing a bout costs literally nothing — no goo,
+  no XP, no standing, no card — so it is a wall, not a stake. `npm test`
+  asserts that boundary field by field, the same way it asserts the Crab's.
 - **Offline credit for a second system.** One system is paid for time away.
   Two is an idle game with a microgame skin.
 - **Defensive microgames.** The chassis catches everything a module throws and

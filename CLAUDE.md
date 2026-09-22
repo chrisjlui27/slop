@@ -15,7 +15,7 @@ preprocessor. Keep it that way unless explicitly asked.
 added to the home screen, opening fullscreen and running offline. Same route
 as the sibling project `eldritch-garden`. See `DEPLOY.md`.
 
-`docs/DESIGN.md` is the fuller statement of that: SLOP is a console — four
+`docs/DESIGN.md` is the fuller statement of that: SLOP is a console — five
 genuinely different games behind one set of menus, one save, and one idle layer
 that runs under all of them. Read it before reshaping a screen or adding a loop.
 
@@ -85,6 +85,8 @@ have to be.
 | Change what survives closing the app | `src/save.js` |
 | Add a tower, enemy or reshape waves | `src/content/defense.js` — data only |
 | Change how the perimeter plays | `src/defense.js` — see `docs/PARALLEL-LOOPS.md` |
+| Add a card or a build to the archive | `src/content/archive.js` — data only |
+| Change how the card duel plays | `src/archive.js` — see `docs/PARALLEL-LOOPS.md` |
 | Add to the company or retune idle rates | `src/content/understudy.js` — data only |
 | Change how offline time pays | `src/understudy.js` |
 | Add or retune a cross-run boon | `src/content/ledger.js` — data only |
@@ -186,6 +188,11 @@ voices wrong is the most common way to damage this project.
   touch `actIdx`, hero level, or XP. The Artificer removed death from the
   build and that has not been reversed; the Crab was simply allowed a stake of
   his own. `npm test` asserts this boundary directly.
+  **The archive is not a second exception.** A card bout can be lost, but
+  losing one costs nothing whatsoever — not goo, not XP, not standing, not the
+  card you would have drafted. It is a wall you may walk into as often as you
+  like. Giving it a real cost would make it the second losable stake in the
+  game, which is a canon decision rather than a balance tweak.
 - **A `filter` on an ancestor breaks every sheet.** The menus are
   `position:fixed` siblings of `#app`, and any filtered ancestor becomes
   their containing block — which silently re-anchors a full-screen sheet to the

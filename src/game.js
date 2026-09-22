@@ -9,12 +9,19 @@ import { Save } from "./save.js";
 import { Defense } from "./defense.js";
 import { Understudy } from "./understudy.js";
 import { Ledger } from "./ledger.js";
+import { Archive } from "./archive.js";
 
 /* ============================== CHASSIS ============================== */
 export const $ = id => document.getElementById(id);
 const laneRow=$('laneRow'), scoreEl=$('scoreVal'), roundEl=$('roundVal'), timerFill=$('timerFill');
 const meterFill=$('meterFill'), mutChip=$('mutChip'), gooCountEl=$('gooCount');
 const turretCostEl=$('turretCostVal'), rerollCostEl=$('rerollCostVal');
+const archiveOverlay=$('archiveOverlay'), archiveBtn=$('archiveBtn');
+const arcList=$('arcList'), arcBout=$('arcBout'), arcProgress=$('arcProgress');
+const arcFoeName=$('arcFoeName'), arcIntent=$('arcIntent'), arcFoeFill=$('arcFoeFill'), arcFoeNum=$('arcFoeNum');
+const arcLog=$('arcLog'), arcYouHp=$('arcYouHp'), arcBlock=$('arcBlock'), arcEnergy=$('arcEnergy'), arcPiles=$('arcPiles');
+const arcHand=$('arcHand'), arcDraft=$('arcDraft'), arcEndBtn=$('arcEndBtn'), arcFleeBtn=$('arcFleeBtn');
+const arcFoeArt=$('arcFoeArt');
 const defenseOverlay=$('defenseOverlay'), tdCanvas=$('tdCanvas'), tdCtx=tdCanvas.getContext('2d');
 const tdStatus=$('tdStatus'), tdIntegrityFill=$('tdIntegrityFill'), tdBuildMenu=$('tdBuildMenu');
 const tdReinforceBtn=$('tdReinforceBtn'), tdDoneBtn=$('tdDoneBtn'), perimeterPctEl=$('perimeterPct');
@@ -63,6 +70,7 @@ export const Game = {
   turret:{ level:1, fireInterval:1100, dmg:1 },
   defense:Defense.reset(),
   understudy:Understudy.reset(),
+  archive:Archive.reset(),
   shopLevels:{}, rerollsThisRound:0, chaosLevel:1, ambientT:1500,
   pot:{ brew:0, brewMax:100 }, potBuffT:0, potGame:null,
   pausedState:null, pausedRemain:null,
@@ -81,6 +89,8 @@ export const Game = {
   // way in.
   cast: Cast,
   defenseApi: Defense,
+  archiveApi: Archive,
+  saveApi: Save,
   modules: Modules,
   acts: Acts,
   understudyApi: Understudy,
@@ -547,6 +557,7 @@ export const Game = {
     this.turret={ level:1, fireInterval:1100, dmg:1 };
     this.defense=Defense.reset();
     this.understudy=Understudy.reset();
+    this.archive=Archive.reset();
     this.shopLevels={}; this.rerollsThisRound=0; this.ambientT=1500;
     this.pot={ brew:0, brewMax:100 }; this.potBuffT=0; this.potGame=null;
     this.pausedState=null; this.pausedRemain=null;
@@ -1122,6 +1133,175 @@ export const Game = {
     tdReinforceBtn.disabled=this.goo<this.turretCost();
   },
 
+  /* ---------------- the archive: the card duel ----------------
+     The rules are in src/archive.js. What lives here is the door, the screen
+     and the payout — the three things that have to touch the rest of the game.
+
+     Nothing ticks. The duel is turn-based, so unlike the perimeter and the pot
+     this loop adds no per-frame work at all; the other loops keep running
+     underneath it exactly as they do behind any other menu. */
+
+  openArchive(){
+    if(this.state==='archive') return;
+    this.pausedState=this.state;
+    this.pausedRemain=(this.state==='playing'||this.state==='bonus') ? Math.max(0,this.deadline-performance.now()) : null;
+    this.state='archive';
+    Sound.menuOpen();
+    this.bark(Barks.archiveOpen);
+    this.renderArchive();
+    archiveOverlay.classList.remove('hidden');
+  },
+
+  closeArchive(){
+    // Leaving mid-bout abandons it. That costs nothing — see the header of
+    // src/archive.js — so there is no confirmation and no penalty.
+    this.safeSubsystem(()=> Archive.flee(this), 'archive leave');
+    archiveOverlay.classList.add('hidden');
+    Sound.potClose();
+    const back=this.pausedState; this.pausedState=null;
+    if(back==='playing'||back==='bonus'){
+      this.state=back;
+      if(this.pausedRemain!=null) this.deadline=performance.now()+this.pausedRemain;
+    }else{
+      this.state = back || 'menu';
+    }
+  },
+
+  /* One render for both halves of the screen: the shelf when there is no bout,
+     the table when there is. Called after every action rather than on a timer,
+     because a turn-based loop has no frames to hang a refresh on. */
+  renderArchive(){
+    const a=this.archive, bout=a.bout;
+    arcProgress.textContent = Archive.progress(this).replace('/',' / ') + ' FILED';
+    arcList.classList.toggle('hidden', !!bout);
+    arcBout.classList.toggle('hidden', !bout);
+    arcEndBtn.classList.toggle('hidden', !bout || !!bout.over);
+    arcFleeBtn.textContent = bout ? 'LEAVE BOUT' : 'CLOSE';
+
+    if(!bout){ this.renderArchiveShelf(); return; }
+    this.renderArchiveBout(bout);
+  },
+
+  renderArchiveShelf(){
+    arcList.innerHTML='';
+    Archive.Builds.forEach(b=>{
+      const unlocked=Archive.isUnlocked(this,b.id), filed=Archive.isCleared(this,b.id);
+      const btn=document.createElement('button');
+      if(filed) btn.className='filed';
+      btn.disabled=!unlocked;
+      btn.innerHTML=
+        '<span class="arcGlyph">'+(unlocked?b.glyph:'🔒')+'</span>'+
+        '<span><span class="arcName">'+b.name+'</span><br>'+
+        '<span class="arcDesc">'+(unlocked?b.desc:'Filed behind the one above it.')+'</span></span>'+
+        '<span class="arcStat">'+b.hp+' HP<small>'+(filed?'filed · 🟢'+Math.round(b.reward.goo*0.3):'🟢'+b.reward.goo+' · '+b.reward.xp+'xp')+'</small></span>';
+      btn.addEventListener('click', ()=>{
+        Sound.ensure(); Sound.select();
+        this.safeSubsystem(()=> Archive.start(this, b.id), 'archive start');
+        this.renderArchive();
+      });
+      arcList.appendChild(btn);
+    });
+  },
+
+  renderArchiveBout(b){
+    const build=Archive.buildById(b.buildId);
+    arcFoeName.textContent=build.name;
+    arcIntent.textContent=b.over ? '—' : Archive.intentText(this);
+    arcFoeFill.style.width=(b.foeHp/b.foeMax*100)+'%';
+    arcFoeNum.textContent=b.foeHp+'/'+b.foeMax+(b.foeBlock?' · BLOCK '+b.foeBlock:'')+(b.bugs?' · 🐛 '+b.bugs:'');
+    arcLog.textContent=b.log;
+    arcFoeArt.textContent=b.over==='win' ? '🗃️' : build.glyph;
+    // Restarting the animation by reflow rather than a timer: the build should
+    // flinch on the turn it acts, and nothing else in this loop is timed.
+    if(b.turn!==this._arcLastTurn){
+      this._arcLastTurn=b.turn;
+      arcFoeArt.classList.remove('act'); void arcFoeArt.offsetWidth; arcFoeArt.classList.add('act');
+    }
+    arcYouHp.textContent='HP '+b.hp+'/'+b.hpMax;
+    arcBlock.textContent='BLK '+b.block;
+    arcEnergy.textContent='NRG '+b.energy+'/'+b.energyMax;
+    arcPiles.textContent='PILES '+b.draw.length+'·'+b.discard.length;
+    arcEndBtn.disabled=!!b.over;
+
+    arcHand.innerHTML='';
+    if(!b.over){
+      b.hand.forEach((id,i)=>{
+        const c=Archive.cardById(id);
+        const btn=document.createElement('button');
+        btn.className='arcCard';
+        btn.style.borderColor=c.color;
+        btn.disabled=c.cost>b.energy;
+        btn.innerHTML='<span class="arcCost">'+c.cost+'</span>'+
+          '<span class="arcCardName" style="color:'+c.color+'">'+c.name+'</span>'+
+          '<span class="arcCardText">'+Archive.cardText(c)+'</span>';
+        btn.addEventListener('click', ()=>{
+          Sound.ensure();
+          this.safeSubsystem(()=> Archive.play(this, i), 'archive play');
+          this.renderArchive();
+        });
+        arcHand.appendChild(btn);
+      });
+    }
+
+    arcDraft.classList.toggle('hidden', b.over!=='win');
+    if(b.over==='win') this.renderArchiveDraft(b);
+    // A loss resolves itself: there is nothing to claim, so the only thing the
+    // screen owes the player is the way back to the shelf.
+    if(b.over) arcFleeBtn.textContent='BACK TO THE SHELF';
+  },
+
+  renderArchiveDraft(b){
+    arcDraft.innerHTML='';
+    const head=document.createElement('div');
+    head.className='arcDraftHead';
+    head.textContent='FILED · 🟢'+b.reward.goo+(b.reward.xp?' · '+b.reward.xp+' XP':'')+
+      (b.draftOptions?' · TAKE ONE':' · ALREADY FILED');
+    arcDraft.appendChild(head);
+
+    const options=b.draftOptions||[];
+    options.forEach(id=>{
+      const c=Archive.cardById(id);
+      const btn=document.createElement('button');
+      btn.style.borderColor=c.color;
+      btn.innerHTML='<span class="arcCost">'+c.cost+'</span>'+
+        '<span><span class="arcCardName" style="color:'+c.color+'">'+c.name+'</span><br>'+
+        '<span class="arcDesc">'+Archive.cardText(c)+'</span></span>'+
+        '<span class="arcOwned">have '+Archive.countOf(this,id)+'</span>';
+      btn.addEventListener('click', ()=>{ Sound.ensure(); this.claimArchive(id); });
+      arcDraft.appendChild(btn);
+    });
+
+    if(!options.length){
+      const btn=document.createElement('button');
+      btn.innerHTML='<span class="arcCardName">TAKE THE GOO</span>';
+      btn.addEventListener('click', ()=>{ Sound.ensure(); this.claimArchive(null); });
+      arcDraft.appendChild(btn);
+    }
+  },
+
+  /* The payout, and the only place the archive touches the rest of the game.
+     Goo and XP go through the existing paths so multipliers, the pot's cut and
+     the level-up ladder all behave exactly as they do everywhere else. */
+  claimArchive(cardId){
+    const paid=this.safeSubsystem(()=> Archive.claim(this, cardId), 'archive claim');
+    if(paid){
+      this.addGoo(paid.goo);
+      if(paid.xp) this.gainXp(paid.xp);
+      if(paid.first){
+        // The duel is the goblin's work and the shelf is the Artificer's, so a
+        // clear pays both of them — one for playing it, one for closing a
+        // build he left open.
+        this.shiftFavor('goblin', 4);
+        this.shiftFavor('artificer', 2);
+        this.noteCodex('ARCHIVE: '+paid.buildName);
+        this.bark(Barks.archiveClear);
+      }
+      Sound.upgrade();
+      this.updateHUD();
+    }
+    this.renderArchive();
+  },
+
   /* ---------------- the company: THE UNDERSTUDY ----------------
      The loop is in src/understudy.js. What lives here is the overlay and the
      one moment that matters — the report, when they show you what they did
@@ -1395,7 +1575,13 @@ $('startBtn').addEventListener('click', ()=>{ Sound.ensure(); Game.start(false);
   });
 })();
 $('victoryBtn').addEventListener('click', ()=>{ Game.ngPlus++; Game.start(true); });
-resetBtn.addEventListener('click', ()=>{ Sound.ensure(); Game.start(false); });
+resetBtn.addEventListener('click', ()=>{
+  // Lives inside SETTINGS now, so it has to close the sheet behind it or the
+  // player is left looking at a menu over a brand new Act I.
+  Sound.ensure();
+  settingsOverlay.classList.add('hidden');
+  Game.start(false);
+});
 muteBtn.addEventListener('click', ()=>{ Sound.muted=!Sound.muted; muteBtn.textContent=Sound.muted?'🔇':'🔊'; });
 
 $('storyContinueBtn').addEventListener('click', ()=>{
@@ -1418,7 +1604,7 @@ defenseCanvas.addEventListener('pointerdown', e=>{
 });
 turretUpgradeBtn.addEventListener('click', ()=>{
   Sound.ensure();
-  if(Game.state==='boot'||Game.state==='tdgame'||Game.state==='company') return;
+  if(Game.state==='boot'||Game.state==='tdgame'||Game.state==='company'||Game.state==='archive') return;
   if(Game.state==='draft'||Game.state==='story'||Game.state==='levelup'||Game.state==='potgame') return;
   Game.openDefense();
 });
@@ -1475,13 +1661,36 @@ tdCanvas.addEventListener('pointerdown', e=>{
 rerollBtn.addEventListener('click', ()=>{ Sound.ensure(); Game.reroll(); });
 potBtn.addEventListener('pointerdown', e=>{
   e.stopPropagation(); Sound.ensure();
-  if(Game.state==='boot'||Game.state==='tdgame'||Game.state==='company'||Game.state==='draft'||Game.state==='potgame'||Game.state==='story'||Game.state==='levelup') return;
+  if(Game.state==='boot'||Game.state==='tdgame'||Game.state==='company'||Game.state==='archive'||Game.state==='draft'||Game.state==='potgame'||Game.state==='story'||Game.state==='levelup') return;
   Game.openPotGame();
 });
 potCanvas.addEventListener('pointerdown', e=>{ Sound.ensure(); Game.potPointer(e); });
 potCanvas.addEventListener('pointermove', e=>{ Game.potPointer(e); });
 potHarvestBtn.addEventListener('click', ()=>{ Sound.ensure(); Game.harvestPot(); });
 potDoneBtn.addEventListener('click', ()=>{ Game.closePotGame(); });
+
+archiveBtn.addEventListener('click', ()=>{
+  Sound.ensure();
+  if(menuGuard()) return;
+  Game.openArchive();
+});
+arcEndBtn.addEventListener('click', ()=>{
+  Sound.ensure();
+  Game.safeSubsystem(()=> Archive.endTurn(Game), 'archive end turn');
+  Game.renderArchive();
+});
+/* One button for both jobs: it abandons a bout if there is one and closes the
+   screen if there is not. Two separate buttons that both mean "out" is how a
+   player learns to distrust the way out. */
+arcFleeBtn.addEventListener('click', ()=>{
+  Sound.ensure();
+  if(Game.archive.bout){
+    Game.safeSubsystem(()=> Archive.flee(Game), 'archive flee');
+    Game.renderArchive();
+  }else{
+    Game.closeArchive();
+  }
+});
 
 $('draftSkipBtn').addEventListener('click', ()=>{
   Sound.select(); Game.shiftFavor('artificer', 8);
@@ -1490,7 +1699,7 @@ $('draftSkipBtn').addEventListener('click', ()=>{
   Game.continueModuleRound();
 });
 
-const menuGuard = ()=> Game.state==='boot'||Game.state==='tdgame'||Game.state==='company'||Game.state==='potgame'||Game.state==='draft'||Game.state==='story'||Game.state==='levelup';
+const menuGuard = ()=> Game.state==='boot'||Game.state==='tdgame'||Game.state==='company'||Game.state==='archive'||Game.state==='potgame'||Game.state==='draft'||Game.state==='story'||Game.state==='levelup';
 $('shopBtn').addEventListener('click', ()=>{
   Sound.ensure(); Sound.menuOpen();
   if(menuGuard()) return;
