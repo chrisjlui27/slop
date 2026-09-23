@@ -9,6 +9,7 @@ import { Save } from "./save.js";
 import { Defense } from "./defense.js";
 import { Understudy } from "./understudy.js";
 import { Ledger } from "./ledger.js";
+import { MASTERY_XP, MASTERY_GOO } from "./content/ledger.js";
 import { Archive } from "./archive.js";
 import { Pot } from "./pot.js";
 
@@ -92,6 +93,10 @@ export const Game = {
   // tests and the console can reach them without importing content directly —
   // the bundled build wraps every module in one closure, so there is no other
   // way in.
+  // The ledger's per-trial win counts, read once at boot and kept in step by
+  // Ledger.recordTrial. Reading localStorage every time a lane resolves would
+  // put a synchronous disk hit in the middle of a WarioWare round.
+  mastery: {},
   cast: Cast,
   defenseApi: Defense,
   archiveApi: Archive,
@@ -390,6 +395,9 @@ export const Game = {
       'Boss damage per win: <b>'+this.bossDamage()+'</b><br>'+
       'Current act: <b>'+a.n+' — '+a.title+'</b><br>'+
       'Allegiance: <b style="color:'+favColor+'">'+favName+'</b>'+
+      /* The record, in one line: the Acts' answer to 'is there anything left
+         in here' once the eighth gate is down. */
+      '<br>Trials mastered: <b style="color:#fff02f">'+Ledger.mastered(this)+'/'+this.modules.length+'</b>'+
       '</div>'+
       '<hr style="border-color:#241d33;margin:10px 0;">'+
       '<div style="font-size:11px;line-height:1.6;">'+
@@ -596,6 +604,9 @@ export const Game = {
     /* The ledger is the only state that survives a run, so its boons are
        applied after the reset rather than being part of it. Newly earned ones
        are announced — a silent buff is indistinguishable from a bug. */
+    // The record of every trial ever won, loaded once per run rather than
+    // read from storage in the middle of a round.
+    this.mastery = (this.safeSubsystem(()=> Ledger.read(), 'mastery load') || {}).mastery || {};
     const boons = this.safeSubsystem(()=> Ledger.applyBoons(this), 'boons');
     if(boons && boons.fresh.length){
       this._boonIntro = boons.fresh;
@@ -734,7 +745,8 @@ export const Game = {
         }
       };
       this.safeLane(lane, ()=> def.init(lane.g));
-      lane.labelEl.textContent = def.verb;
+      const rank = this.safeSubsystem(()=> Ledger.rankOf(this, def.id), 'mastery rank') || 0;
+      lane.labelEl.textContent = def.verb + (rank ? ' ' + Ledger.masteryStars(rank) : '');
       lane.labelEl.style.color = def.color;
       // Painted before the first frame, so the instruction is on screen while
       // the banner is still slamming rather than one frame later.
@@ -775,7 +787,25 @@ export const Game = {
     const mult = this.mutator ? (this.mutator.scoreMult||1) : 1;
     if(wonCount>0){
       this.score += Math.round(wonCount*(100+this.combo*20)*mult);
-      this.gainXp(28*wonCount);
+      /* Mastery is per lane, not per round: in a DOUBLE SLOP round one of the
+         two trials may be one you have played two hundred times and the other
+         one you have never seen, and paying the average of that would make
+         both of them feel like neither. */
+      let xp = 0;
+      this.lanes.forEach(lane=>{
+        if(!lane.result || !lane.def) return;
+        const rank = this.safeSubsystem(()=> Ledger.recordTrial(this, lane.def.id), 'mastery');
+        const r = this.safeSubsystem(()=> Ledger.rankOf(this, lane.def.id), 'mastery rank') || 0;
+        xp += 28 * (1 + MASTERY_XP * r);
+        if(r > 0) this.addGoo(MASTERY_GOO * r);
+        // The third rank is a thing worth saying out loud, once.
+        if(rank === Ledger.MASTERY_RANKS[Ledger.MASTERY_RANKS.length-1]){
+          FX.stamp('MASTERED ' + lane.def.verb, '#fff02f', '#2fe1ff');
+          this.noteCodex('MASTERED: ' + lane.def.verb);
+          this.say('artificer','Twenty clean runs of that trial. I have recorded it. You will not see me do that often.');
+        }
+      });
+      this.gainXp(Math.round(xp));
       this.shiftFavor('artificer', 3);
     }else{
       this.shiftFavor('goblin', 2);
@@ -1983,6 +2013,7 @@ function measureChrome(){
   const next = Math.round(top + 30);            // + the margin under the board
   if(Math.abs(next-prev) > 2) document.documentElement.style.setProperty('--chrome', next+'px');
 }
+Game.mastery = (Game.safeSubsystem(()=> Ledger.read(), 'mastery boot') || {}).mastery || {};
 measureChrome();
 Game.applyActTint();          // Act I lights the title screen too
 addEventListener('resize', measureChrome);

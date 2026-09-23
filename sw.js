@@ -10,7 +10,7 @@
 
    Bump CACHE on every deploy that touches any shell file. Forget and phones
    keep running the previous build until they evict it themselves. */
-const CACHE = 'slop-v10';
+const CACHE = 'slop-v11';
 
 const SHELL = [
   '.',
@@ -65,7 +65,9 @@ const SHELL = [
   'src/modules/flee.js',
   'src/modules/peel.js',
   'src/modules/crank.js',
-  'src/modules/split.js'
+  'src/modules/split.js',
+  'src/modules/steady.js',
+  'src/modules/sling.js'
 ];
 
 self.addEventListener('install', e => {

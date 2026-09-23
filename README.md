@@ -2,7 +2,7 @@
 
 A browser CRPG hiding inside a WarioWare-style microgame chassis.
 
-Five loops behind one set of menus: twenty-four microgames, a tower defense, a
+Five loops behind one set of menus: twenty-six microgames, a tower defense, a
 turn-based card duel, an arcade honey pot and an idle company. Eight acts,
 eight bosses, a hero sheet with stats and XP, a
 shop, a real tower defense, a virtual pet, a second entire game inside a honey
@@ -119,7 +119,7 @@ src/
   ledger.js            THE LEDGER — the only state that outlives a run
   audio.js             one blip() primitive, ~30 named cues
   fx.js                shake, chroma, glitch bars, stamps, confetti
-  modules/             24 microgames, one file each, fully isolated
+  modules/             26 microgames, one file each, fully isolated
   content/
     lore.js            the four creators, their barks, the eight Acts
     mutators.js        sabotage effects

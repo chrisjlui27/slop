@@ -79,7 +79,7 @@ function runChecks() {
   // the page, it just quietly stops being a game. So every module is driven
   // here, outside safeLane, where a throw is a failure rather than a feature.
   const mods = G.modules || [];
-  check("every microgame is registered", mods.length >= 24);
+  check("every microgame is registered", mods.length >= 26);
   check("microgame ids are unique", new Set(mods.map(m => m.id)).size === mods.length);
 
   const shapeBad = mods.filter(m =>
@@ -183,6 +183,32 @@ function runChecks() {
       });
     },
     weigh(m, g) { m.onDown(g, g.local.heavy === "L" ? 100 : 380, 240); },
+    sling(m, g) {
+      // Aim by geometry: pull the opposite way from the target, with the pull
+      // length the flight needs. Solved rather than searched, because a
+      // strategy that brute-forces a launch angle would pass on a module that
+      // had stopped being aimable.
+      const l = g.local;
+      const dx = l.tx - l.ox, dy = l.ty - l.oy;
+      const d = Math.hypot(dx, dy) || 1;
+      m.onDown(g, l.ox, l.oy);
+      for (let pull = 20; pull <= 120 && !g.won; pull += 2) {
+        m.onMove(g, l.ox - dx / d * pull, l.oy - dy / d * pull);
+        // Fire a copy of the shot and see where it lands, then commit to the
+        // one that hits.
+        const save = { px: l.px, py: l.py, vx: l.vx, vy: l.vy, flying: l.flying, done: l.done };
+        m.onUp(g);
+        for (let i = 0; i < 400 && !g.won && !g.lost; i++) m.update(g, 16);
+        if (g.won) return;
+        g.lost = false;
+        Object.assign(l, save, { dragging: true });
+      }
+    },
+    steady(m, g) {
+      // Played correctly means a thumb that goes down and does not move.
+      m.onDown(g, 240, 240);
+      for (let i = 0; i < 400; i++) { m.update(g, 16); m.onMove(g, 240, 240); }
+    },
     crank(m, g) {
       const l = g.local, dir = l.cw ? 1 : -1;
       m.onDown(g, l.hx, l.hy + l.r);
@@ -212,7 +238,7 @@ function runChecks() {
   };
 
   const unwinnable = [];
-  Object.keys(strategies).forEach(id => {
+  Object.keys(strategies).filter(id => id !== "steady").forEach(id => {
     const m = byId(id);
     if (!m) { unwinnable.push(id + " (missing)"); return; }
     // Two rounds apart, so a difficulty curve that becomes impossible late is
@@ -227,6 +253,19 @@ function runChecks() {
     });
   });
   check("playing correctly wins: " + (unwinnable[0] || "all"), unwinnable.length === 0);
+
+  // steady is the other survive-on-timeout module: holding still must not lose.
+  const steadyMod = byId("steady");
+  if (steadyMod) {
+    const g = fakeG(30);
+    steadyMod.init(g);
+    strategies.steady(steadyMod, g);
+    check("holding still is survivable", !g.lost);
+    const g2 = fakeG(1);
+    steadyMod.init(g2);
+    for (let i = 0; i < 200 && !g2.lost; i++) g2 && steadyMod.update(g2, 16);
+    check("never touching the board loses steady", g2.lost);
+  }
 
   // flee survives on the clock rather than resolving, so it is checked the
   // other way round: running from the pack must not get you caught.
@@ -405,6 +444,60 @@ function runChecks() {
   check("a breach leaves integrity above zero", d.perimeter > 0);
   check("a breach does not touch the act ladder", G.actIdx === actBefore);
   check("a breach does not touch hero level", G.hero.level === levelBefore);
+
+  /* ---- THE ACTS: mastery ----
+     The only loop with nothing to come back for. Mastery is per trial, lives
+     in the ledger so it outlives a run, and pays a learned trial more than an
+     unlearned one. */
+  const Lg = G.ledgerApi;
+  Lg.clear();
+  G.mastery = {};
+  check("a trial starts unmastered", Lg.rankOf(G, "smash") === 0);
+  for (let i = 0; i < Lg.MASTERY_RANKS[0]; i++) Lg.recordTrial(G, "smash");
+  check("wins earn a rank", Lg.rankOf(G, "smash") === 1);
+  for (let i = 0; i < Lg.MASTERY_RANKS[2]; i++) Lg.recordTrial(G, "smash");
+  check("enough wins master a trial", Lg.rankOf(G, "smash") === Lg.MASTERY_RANKS.length);
+  check("mastery counts the mastered", Lg.mastered(G) === 1);
+  check("mastery is per trial", Lg.rankOf(G, "dodge") === 0);
+
+  // It survives a run ending, which is the whole reason it is in the ledger.
+  G.start(false);
+  check("mastery outlives a run", Lg.rankOf(G, "smash") === Lg.MASTERY_RANKS.length);
+  check("a run starts with the record loaded", (G.mastery.smash | 0) > 0);
+
+  // A mastered trial pays more. Driven through the real round resolution so
+  // the reward path is what is tested, not a copy of it.
+  const payFor = (trialId) => {
+    G.lanes = [{ result: true, def: G.modules.find(m => m.id === trialId) }];
+    const xpBefore = G.hero.level * 1000000 + G.hero.xp, gooBefore = G.goo;
+    G.state = "playing";
+    G.finishRound();
+    return { xp: (G.hero.level * 1000000 + G.hero.xp) - xpBefore, goo: G.goo - gooBefore };
+  };
+  const plain = payFor("dodge");
+  const learned = payFor("smash");
+  check("a mastered trial pays more xp", learned.xp > plain.xp);
+  check("a mastered trial pays goo", learned.goo > 0);
+
+  // A hand-edited ledger must degrade to "no mastery", not to a broken boot.
+  try {
+    window.localStorage.setItem("slop.ledger.v1",
+      JSON.stringify({ v: 1, runs: 1, actsCleared: 1, bestAct: 1, bestNg: 0, seen: [], mastery: { smash: "lots", dodge: -4, odd: 9 } }));
+  } catch (e) {}
+  const junked = Lg.read();
+  check("a junk mastery entry is dropped", !junked.mastery.smash && !junked.mastery.dodge);
+  check("a sound mastery entry survives beside it", junked.mastery.odd === 9);
+  // A ledger written before mastery existed keeps its history rather than
+  // being thrown away for missing a counter.
+  try {
+    window.localStorage.setItem("slop.ledger.v1",
+      JSON.stringify({ v: 1, runs: 3, actsCleared: 7, bestAct: 4, bestNg: 1, seen: [] }));
+  } catch (e) {}
+  const old = Lg.read();
+  check("a ledger from before mastery is not discarded", old.actsCleared === 7);
+  check("it simply has no record yet", Object.keys(old.mastery).length === 0);
+  Lg.clear();
+  G.mastery = {};
 
   /* ---- THE ARCHIVE: relics, thinning and the endless rung ----
      The two things the loop owed: a progression that is not the deck, and

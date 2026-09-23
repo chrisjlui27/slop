@@ -57,7 +57,7 @@ would someone play it?** Where each loop sits against that:
 
 | Loop | Owner | Has | Still owes |
 |---|---|---|---|
-| The Acts | ARTIFICER | 24 microgames, 8 acts, 8 bosses, 5 stats, XP, Workshop, double rounds, mutators | A reason to replay an act; more input syntaxes (see below) |
+| The Acts | ARTIFICER | 26 microgames, 8 acts, 8 bosses, 5 stats, XP, Workshop, double rounds, mutators, and per-trial mastery kept in the ledger | An act you can re-enter on purpose; a mutator earned rather than drafted |
 | The Archive | GOBLIN, on the ARTIFICER's shelf | A turn-based card duel: 16 cards, 6 builds, a drafted deck, six relics, deck-thinning, and THE UNSHIPPED BUILD — an endless rung that climbs | Bout modifiers; a reason to take a small deck over a wide one |
 | The Perimeter | THE CRAB | Waves, 4 tower types, placement, integrity, the only loss state, seven doctrines taken every fourth wave, a board that grows, surges with elites, and waves you can call in early | A fourth corridor; a reason to sell a tower other than a mistake |
 | The Honey Pot | SLOP-GOBLIN | Two currencies, five drop types, a combo, a hazard that ends the session, six upgrades bought with its own money, escalation | A reason to reach a deep session other than honey; a second board |
@@ -68,12 +68,19 @@ ones — as much as lengthwise.
 
 ### The microgame gauntlet
 
-Twenty-four games is a pool, not a gauntlet. What makes it a gauntlet is
+Twenty-six games is a pool, not a gauntlet. What makes it a gauntlet is
 **variety of input syntax**, because two games run side by side in a DOUBLE
 SLOP round and the pair has to read as two games rather than one twice. The
 pool currently covers: tap, tap-spam, precise tap, drag, drag-precision,
 steady-drag, pursuit, swipe, hold-and-release, timing, rhythm, memory,
-judgement, survive, rotational drag, and judgement-on-release.
+judgement, survive, rotational drag, judgement-on-release, stillness, and
+aim-and-release.
+
+The pool is also the one thing in the game worth getting good at rather than
+through, which is what mastery is for: every trial counts its own wins in the
+ledger, across every run, and a trial you have learned pays more than one you
+have not. Three ranks, stars on the lane label, and a line on the hero sheet
+that says how much of the pool you actually know.
 
 Before adding another, check what the pool leans on — `add-microgame` says the
 same thing and is the workflow to use.

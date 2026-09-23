@@ -22,6 +22,8 @@ import flee from "./flee.js";
 import peel from "./peel.js";
 import crank from "./crank.js";
 import split from "./split.js";
+import steady from "./steady.js";
+import sling from "./sling.js";
 
 // Order here is only the default pool order; the chassis picks at random.
 export const Modules = [
@@ -49,4 +51,6 @@ export const Modules = [
   peel,
   crank,
   split,
+  steady,
+  sling,
 ];

@@ -13,7 +13,7 @@ index.html          DOM skeleton — every element the chassis binds to
           ├ src/defense.js  THE PERIMETER — the Crab's tower defense
           ├ src/understudy.js THE COMPANY — the Understudy's idle layer
           ├ src/ledger.js   THE LEDGER — cross-run boons, its own storage key
-          ├ src/modules/    24 microgames, each fully isolated
+          ├ src/modules/    26 microgames, each fully isolated
           └ src/content/    Acts, dialogue, mutators, shop, stats — pure data
 
 sw.js                 offline cache, registered from index.html

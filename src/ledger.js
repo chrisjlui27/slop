@@ -16,15 +16,15 @@
 ==================================================== */
 
 import { store } from "./save.js";
-import { Boons, BoonLines } from "./content/ledger.js";
+import { Boons, BoonLines, masteryRank, masteryStars, MASTERY_RANKS } from "./content/ledger.js";
 
 const LEDGER_KEY = 'slop.ledger.v1';
 const LEDGER_VERSION = 1;
 
-const blank = () => ({ v: LEDGER_VERSION, runs: 0, actsCleared: 0, bestAct: 0, bestNg: 0, seen: [] });
+const blank = () => ({ v: LEDGER_VERSION, runs: 0, actsCleared: 0, bestAct: 0, bestNg: 0, seen: [], mastery: {} });
 
 export const Ledger = {
-  Boons, BoonLines,
+  Boons, BoonLines, MASTERY_RANKS, masteryRank, masteryStars,
 
   read(){
     const s = store();
@@ -40,7 +40,19 @@ export const Ledger = {
         actsCleared: Math.max(0, d.actsCleared|0),
         bestAct: Math.max(0, d.bestAct|0),
         bestNg: Math.max(0, d.bestNg|0),
-        seen: Array.isArray(d.seen) ? d.seen.filter(x => typeof x === 'string') : []
+        seen: Array.isArray(d.seen) ? d.seen.filter(x => typeof x === 'string') : [],
+        /* Per-trial win counts. Added to the schema without a version bump on
+           purpose: a ledger written before mastery existed is not wrong, it
+           simply has no record yet, and discarding someone's whole history to
+           introduce a counter would be the opposite of what this file is for.
+           Anything that is not a plain positive number is dropped. */
+        mastery: (d.mastery && typeof d.mastery === 'object')
+          ? Object.keys(d.mastery).reduce((acc, k) => {
+              const n = d.mastery[k]|0;
+              if(n > 0) acc[k] = n;
+              return acc;
+            }, {})
+          : {}
       };
     }catch(e){ return blank(); }
   },
@@ -56,6 +68,29 @@ export const Ledger = {
     const s = store();
     if(!s) return;
     try{ s.removeItem(LEDGER_KEY); }catch(e){}
+  },
+
+  /* ---------------- mastery ---------------- */
+
+  /* One write per won trial. The ledger is localStorage and this is the
+     hottest path that touches it, so the caller keeps the live copy on the
+     chassis (g.mastery) and this only has to be durable, not fast. */
+  recordTrial(g, id){
+    if(!id) return 0;
+    const l = this.read();
+    l.mastery[id] = (l.mastery[id]|0) + 1;
+    this.write(l);
+    g.mastery = l.mastery;
+    return l.mastery[id];
+  },
+
+  masteryOf(g, id){ return (g.mastery && g.mastery[id]) || 0; },
+  rankOf(g, id){ return masteryRank(this.masteryOf(g, id)); },
+  // How many trials are mastered outright, for the hero sheet's one-line
+  // answer to "is there anything left in here".
+  mastered(g){
+    const m = g.mastery || {};
+    return Object.keys(m).filter(id => masteryRank(m[id]) >= MASTERY_RANKS.length).length;
   },
 
   /* ---------------- recording ---------------- */
