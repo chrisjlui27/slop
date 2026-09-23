@@ -97,7 +97,13 @@ export const Save = {
          turn three is worse than starting the fight again for free. */
       archive: {
         deck: g.archive.deck.slice(),
-        cleared: g.archive.cleared.slice()
+        cleared: g.archive.cleared.slice(),
+        // The second axis: relics held, cards struck out, and how far up the
+        // endless ladder this run has got.
+        relics: g.archive.relics.slice(),
+        purges: g.archive.purges,
+        tier: g.archive.tier,
+        bestTier: g.archive.bestTier
       },
       shopLevels: Object.assign({}, g.shopLevels),
       /* The pot, minus the session. Honey and the upgrades bought with it are
@@ -171,6 +177,12 @@ export const Save = {
       if(Array.isArray(d.archive.cleared)){
         g.archive.cleared = d.archive.cleared.filter(isBuild);
       }
+      if(Array.isArray(d.archive.relics)){
+        g.archive.relics = d.archive.relics.filter(id => g.archiveApi.relicById(id));
+      }
+      g.archive.purges = Math.max(0, d.archive.purges|0);
+      g.archive.tier = Math.max(1, d.archive.tier|0 || 1);
+      g.archive.bestTier = Math.max(0, d.archive.bestTier|0);
       g.archive.bout = null;
     }
     g.shopLevels = Object.assign({}, d.shopLevels||{});

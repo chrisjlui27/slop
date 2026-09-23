@@ -406,6 +406,102 @@ function runChecks() {
   check("a breach does not touch the act ladder", G.actIdx === actBefore);
   check("a breach does not touch hero level", G.hero.level === levelBefore);
 
+  /* ---- THE ARCHIVE: relics, thinning and the endless rung ----
+     The two things the loop owed: a progression that is not the deck, and
+     something past the sixth build. */
+  const Ar = G.archiveApi;
+  G.archive = Ar.reset();
+  G.goo = 9000;
+  check("a fresh archive holds no relics", G.archive.relics.length === 0);
+  check("the endless rung is shut until the shelf is filed", !Ar.endlessOpen(G));
+
+  // Relics are the state of the table before a card is drawn.
+  Ar.takeRelic(G, "order");
+  Ar.start(G, "prototype");
+  check("standing order starts the bout blocked", G.archive.bout.block === 6);
+  Ar.takeRelic(G, "spare");
+  Ar.start(G, "prototype");
+  check("first draft adds energy on turn one", G.archive.bout.energy === 4);
+  Ar.takeRelic(G, "cache");
+  Ar.start(G, "prototype");
+  check("a warm cache draws six", G.archive.bout.hand.length === 6);
+  Ar.takeRelic(G, "flag");
+  Ar.start(G, "prototype");
+  const energyBeforeFree = G.archive.bout.energy;
+  Ar.play(G, G.archive.bout.hand.findIndex(id => Ar.cardById(id).cost > 0));
+  check("the feature flag makes the first card free", G.archive.bout.energy === energyBeforeFree);
+  Ar.play(G, 0);
+  check("the flag is spent after one card", G.archive.bout.energy < energyBeforeFree);
+  check("a relic cannot be taken twice", Ar.takeRelic(G, "flag") === false);
+
+  // Thinning: goo out, cards out, and a floor.
+  G.archive = Ar.reset();
+  G.goo = 9000;
+  const deckBefore = G.archive.deck.length, gooBeforePurge = G.goo;
+  check("a card can be struck out", Ar.purge(G, 0) === true);
+  check("thinning shrinks the deck", G.archive.deck.length === deckBefore - 1);
+  check("thinning costs goo", G.goo < gooBeforePurge);
+  const firstCost = 40, secondCost = Ar.purgeCost(G);
+  check("thinning gets dearer", secondCost > firstCost);
+  for (let i = 0; i < 20 && Ar.canPurge(G); i++) Ar.purge(G, 0);
+  check("a deck cannot be thinned past its floor", G.archive.deck.length === 6);
+  G.goo = 0;
+  check("thinning refuses when the goo is not there", Ar.purge(G, 0) === false);
+
+  // The endless rung: generated, repeatable, and it climbs.
+  G.archive = Ar.reset();
+  G.archive.cleared = Ar.Builds.map(b => b.id);
+  check("filing the shelf opens the endless rung", Ar.endlessOpen(G));
+  const tierOne = Ar.endlessBuild(G);
+  G.archive.tier = 4;
+  const tierFour = Ar.endlessBuild(G);
+  check("a later tier is larger", tierFour.hp > tierOne.hp);
+  check("a later tier pays more", tierFour.reward.goo > tierOne.reward.goo);
+
+  G.archive.tier = 1;
+  G.goo = 0;
+  check("the endless rung can be started", Ar.start(G, "unshipped") === true);
+  G.archive.bout.foeHp = 0;
+  Ar.settle(G, G.archive.bout);
+  check("an endless tier can be won", G.archive.bout.over === "win");
+  const endlessPaid = Ar.claim(G, null);
+  check("an endless tier pays", endlessPaid && endlessPaid.goo > 0);
+  check("winning a tier raises the tier", G.archive.tier === 2);
+  check("the best tier is remembered", G.archive.bestTier === 1);
+  check("an endless tier is never 'already filed'", endlessPaid.first === true);
+
+  // A relic every second clear, offered as a choice and instead of a card.
+  G.archive = Ar.reset();
+  Ar.start(G, "prototype");
+  G.archive.bout.foeHp = 0; Ar.settle(G, G.archive.bout);
+  check("the first clear offers cards", !!G.archive.bout.draftOptions);
+  Ar.claim(G, G.archive.bout.draftOptions[0]);
+  Ar.start(G, "slice");
+  G.archive.bout.foeHp = 0; Ar.settle(G, G.archive.bout);
+  check("the second clear offers relics instead", !!G.archive.bout.relicOptions && !G.archive.bout.draftOptions);
+  const relicPick = G.archive.bout.relicOptions[0];
+  Ar.claim(G, relicPick);
+  check("the relic is taken", Ar.hasRelic(G, relicPick));
+
+  // All of it survives a save, and none of it can be forged.
+  G.archive.purges = 3; G.archive.tier = 5; G.archive.bestTier = 4;
+  const relSnap = JSON.parse(JSON.stringify(G.saveApi.snapshot(G)));
+  G.archive = Ar.reset();
+  G.saveApi.apply(G, relSnap);
+  check("relics survive a save", Ar.hasRelic(G, relicPick));
+  check("the tier survives a save", G.archive.tier === 5 && G.archive.bestTier === 4);
+  check("the thinning count survives a save", G.archive.purges === 3);
+  G.saveApi.apply(G, Object.assign({}, relSnap, {
+    archive: Object.assign({}, relSnap.archive, { relics: ["nonsense"], tier: -9 })
+  }));
+  check("an unknown relic is dropped", G.archive.relics.length === 0);
+  check("a nonsense tier becomes one", G.archive.tier === 1);
+
+  // Handed back clean: the older archive checks further down drive a fresh
+  // shelf, and a test that leaves state behind is a test that breaks its
+  // neighbours rather than itself.
+  G.archive = Ar.reset();
+
   /* ---- THE PERIMETER: doctrine, surges and calling waves in ----
      The three things the loop owed: a decision between waves, a board that
      grows, and a progression that is the Crab's rather than the shop's. */

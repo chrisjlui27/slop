@@ -29,19 +29,67 @@
 import { Sound } from "./audio.js";
 import {
   Cards, Builds, cardById, buildById, starterDeck, cardText,
-  REPEAT_RATE, YOU_HP, ENERGY, HAND
+  REPEAT_RATE, YOU_HP, ENERGY, HAND,
+  Relics, relicById, RELIC_EVERY, purgeCost, PURGE_FLOOR,
+  ENDLESS, endlessBuild
 } from "./content/archive.js";
 
 export const Archive = {
   Cards, Builds, cardById, buildById, cardText, YOU_HP,
+  Relics, relicById, ENDLESS,
 
   reset(){
     return {
       deck: starterDeck(),
       cleared: [],
+      // The second axis, and the ladder past the sixth build.
+      relics: [], purges: 0, tier: 1, bestTier: 0,
       bout: null
     };
   },
+
+  /* ---------------- relics ---------------- */
+
+  hasRelic(g, id){ return g.archive.relics.indexOf(id) >= 0; },
+  // Two at a time from what is left, the same shape as a card draft — a relic
+  // handed over with no choice attached is a patch note, not a reward.
+  offerRelics(g){
+    const pool = Relics.filter(r => !this.hasRelic(g, r.id)).map(r => r.id);
+    if(!pool.length) return null;
+    shuffle(pool);
+    return pool.slice(0, 2);
+  },
+  takeRelic(g, id){
+    if(!relicById(id) || this.hasRelic(g, id)) return false;
+    g.archive.relics.push(id);
+    Sound.upgrade();
+    return true;
+  },
+
+  /* ---------------- thinning ---------------- */
+
+  purgeCost(g){ return purgeCost(g.archive.purges); },
+  canPurge(g){ return g.archive.deck.length > PURGE_FLOOR && !g.archive.bout; },
+  /* Removing a card costs goo rather than anything of the archive's own: it is
+     the one place this loop asks the campaign for something, which is what
+     stops the deck from being filed down to three REWRITEs for free. */
+  purge(g, idx){
+    const a = g.archive;
+    if(!this.canPurge(g) || idx < 0 || idx >= a.deck.length) return false;
+    const cost = this.purgeCost(g);
+    if(g.goo < cost){ Sound.deny(); return false; }
+    g.goo -= cost;
+    a.deck.splice(idx, 1);
+    a.purges++;
+    Sound.crunch();
+    g.updateHUD();
+    return true;
+  },
+
+  /* ---------------- the endless tier ---------------- */
+
+  endlessOpen(g){ return Builds.every(b => this.isCleared(g, b.id)); },
+  endlessBuild(g){ return endlessBuild(g.archive.tier); },
 
   /* ---------------- the shelf ---------------- */
 
@@ -56,9 +104,14 @@ export const Archive = {
 
   /* ---------------- a bout ---------------- */
 
+  buildFor(g, id){
+    return id === ENDLESS.id ? this.endlessBuild(g) : buildById(id);
+  },
+
   start(g, buildId){
-    const build = buildById(buildId);
-    if(!build || !this.isUnlocked(g, buildId)) return false;
+    const build = this.buildFor(g, buildId);
+    const ok = buildId === ENDLESS.id ? this.endlessOpen(g) : this.isUnlocked(g, buildId);
+    if(!build || !ok) return false;
     const b = {
       buildId,
       foeHp: build.hp, foeMax: build.hp, foeBlock: 0, bugs: 0,
@@ -67,10 +120,15 @@ export const Archive = {
       energy: ENERGY, energyMax: ENERGY,
       draw: shuffle(g.archive.deck.slice()), hand: [], discard: [],
       turn: 1, over: null, log: 'the build loads. it still runs',
-      draftOptions: null
+      draftOptions: null, relicOptions: null,
+      // FEATURE FLAG is spent once per bout, so the bout has to remember.
+      freeCard: this.hasRelic(g,'flag')
     };
     g.archive.bout = b;
-    this.deal(b, HAND);
+    // Relics are the state of the table before the first card is drawn.
+    if(this.hasRelic(g,'order')) b.block += 6;
+    if(this.hasRelic(g,'spare')) b.energy += 1;
+    this.deal(b, HAND + (this.hasRelic(g,'cache') ? 1 : 0));
     Sound.archiveOpen();
     return true;
   },
@@ -96,11 +154,12 @@ export const Archive = {
     if(!b || b.over) return false;
     const id = b.hand[handIdx];
     const c = cardById(id);
-    if(!c || c.cost > b.energy) return false;
+    const free = b.freeCard;
+    if(!c || (!free && c.cost > b.energy)) return false;
 
     b.hand.splice(handIdx, 1);
     b.discard.push(id);
-    b.energy -= c.cost;
+    if(free){ b.freeCard = false; } else { b.energy -= c.cost; }
 
     if(c.energy) b.energy += c.energy;
     if(c.block) b.block += c.block;
@@ -137,13 +196,13 @@ export const Archive = {
     // The build's turn: its bugs bite first, then it acts. Block it gained
     // last time is spent whether or not anything hit it.
     if(b.bugs > 0){
-      this.hitBuild(b, b.bugs);
+      this.hitBuild(b, b.bugs + (this.hasRelic(g,'linter') ? 2 : 0));
       b.bugs = Math.max(0, b.bugs - 1);
       if(this.settle(g, b)) return true;
     }
     b.foeBlock = 0;
 
-    const build = buildById(b.buildId);
+    const build = this.buildFor(g, b.buildId);
     const [kind, baseVal] = build.intents[b.intentIdx % build.intents.length];
     const val = kind === 'g' ? baseVal + Math.floor(b.cycles) * baseVal : baseVal;
     if(kind === 'a' || kind === 'g'){
@@ -164,8 +223,9 @@ export const Archive = {
     if(b.intentIdx % build.intents.length === 0) b.cycles++;
 
     // Your turn. Block does not carry: it was for the hit that just landed.
-    b.block = 0;
+    b.block = this.hasRelic(g,'order') ? 6 : 0;
     b.energy = b.energyMax;
+    if(this.hasRelic(g,'green')) b.hp = Math.min(b.hpMax, b.hp + 3);
     b.turn++;
     this.deal(b, HAND);
     this.settle(g, b);
@@ -208,19 +268,29 @@ export const Archive = {
   /* ---------------- rewards ---------------- */
 
   offerDraft(g, b){
-    const build = buildById(b.buildId);
-    const first = !this.isCleared(g, b.buildId);
+    const endless = b.buildId === ENDLESS.id;
+    const build = this.buildFor(g, b.buildId);
+    // An endless tier is always "first": there is no such thing as repeating
+    // tier four, because clearing it is what makes the next one tier five.
+    const first = endless || !this.isCleared(g, b.buildId);
     const mult = first ? 1 : REPEAT_RATE;
 
     b.reward = {
-      first,
+      first, endless,
       goo: Math.round(build.reward.goo * mult),
       xp: first ? build.reward.xp : 0
     };
-    // A repeat clear pays a trickle and offers no card: the shelf stays a
-    // ladder rather than becoming a deck-building machine you farm the bottom
-    // rung of.
-    b.draftOptions = first ? drawDraft() : null;
+
+    /* A repeat clear pays a trickle and offers nothing: the shelf stays a
+       ladder rather than a deck-building machine you farm the bottom rung of.
+       Every second first-clear pays a relic INSTEAD of a card — two picks
+       stacked on one screen is two decisions taken as one, and the relic is by
+       far the larger of them. */
+    const milestone = endless
+      ? (g.archive.tier % RELIC_EVERY === 0)
+      : ((g.archive.cleared.length + 1) % RELIC_EVERY === 0);
+    b.relicOptions = (first && milestone) ? this.offerRelics(g) : null;
+    b.draftOptions = (first && !b.relicOptions) ? drawDraft() : null;
   },
 
   // Applied by the chassis so goo, XP and standing all move through the paths
@@ -229,13 +299,22 @@ export const Archive = {
     const b = g.archive.bout;
     if(!b || b.over !== 'win' || !b.reward) return null;
     const paid = b.reward;
-    paid.buildName = buildById(b.buildId).name;
+    paid.buildName = this.buildFor(g, b.buildId).name;
 
     if(cardId && b.draftOptions && b.draftOptions.indexOf(cardId) >= 0){
       g.archive.deck.push(cardId);
       paid.card = cardById(cardId);
     }
-    if(paid.first && !this.isCleared(g, b.buildId)) g.archive.cleared.push(b.buildId);
+    if(cardId && b.relicOptions && b.relicOptions.indexOf(cardId) >= 0){
+      this.takeRelic(g, cardId);
+      paid.relic = relicById(cardId);
+    }
+    if(paid.endless){
+      g.archive.bestTier = Math.max(g.archive.bestTier, g.archive.tier);
+      g.archive.tier++;
+    } else if(paid.first && !this.isCleared(g, b.buildId)){
+      g.archive.cleared.push(b.buildId);
+    }
 
     g.archive.bout = null;
     return paid;
@@ -246,7 +325,7 @@ export const Archive = {
   intentText(g){
     const b = g.archive.bout;
     if(!b) return '';
-    const build = buildById(b.buildId);
+    const build = this.buildFor(g, b.buildId);
     const [kind, baseVal] = build.intents[b.intentIdx % build.intents.length];
     const val = kind === 'g' ? baseVal + Math.floor(b.cycles) * baseVal : baseVal;
     if(kind === 'a') return 'ATTACK ' + val;

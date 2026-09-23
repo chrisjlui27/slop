@@ -1248,3 +1248,19 @@
   /* The status line carries a whole sentence once SPOTTERS is taken, so it
      stops being a single 8px line and is allowed to wrap. */
   #tdStatus{ line-height:1.5; max-width:min(100%, 420px); }
+
+  /* --- relics and thinning -----------------------------------
+     The shelf carries three things now: what you hold, what you
+     can fight, and what you can cut. The first is a strip rather
+     than a list — relics are read once and then remembered. */
+  .arcRelicRow{ display:flex; flex-wrap:wrap; gap:4px; padding:2px 0 4px; }
+  .arcRelic{
+    font-family:'Press Start 2P',monospace; font-size:7px; line-height:1.6;
+    padding:4px 6px; border-radius:6px; background:#16200f;
+    border:1px solid #3a5a12; color:var(--acid);
+  }
+  .arcRelicNone{ font-size:10px; opacity:0.45; line-height:1.4; }
+  #arcList button.endless{ border-color:#7a3cff88; background:#170f24; }
+  #arcList button.endless .arcName{ color:var(--violet); }
+  #arcList button.arcThin{ border-style:dashed; opacity:0.9; }
+  #arcDraft button.arcRelicPick{ border-color:#3a5a12; background:#16200f; }

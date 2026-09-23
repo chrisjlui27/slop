@@ -1212,7 +1212,9 @@ export const Game = {
      because a turn-based loop has no frames to hang a refresh on. */
   renderArchive(){
     const a=this.archive, bout=a.bout;
-    arcProgress.textContent = Archive.progress(this).replace('/',' / ') + ' FILED';
+    arcProgress.textContent = Archive.progress(this).replace('/',' / ') + ' FILED'
+      + (this.archive.bestTier ? ' · TIER ' + this.archive.bestTier : '')
+      + (this.archive.relics.length ? ' · ' + this.archive.relics.length + ' RELICS' : '');
     arcList.classList.toggle('hidden', !!bout);
     arcBout.classList.toggle('hidden', !bout);
     arcEndBtn.classList.toggle('hidden', !bout || !!bout.over);
@@ -1223,7 +1225,17 @@ export const Game = {
   },
 
   renderArchiveShelf(){
+    if(this._arcPurge){ this.renderArchivePurge(); return; }
     arcList.innerHTML='';
+
+    const relics=this.archive.relics;
+    const held=document.createElement('div');
+    held.className='arcRelicRow';
+    held.innerHTML = relics.length
+      ? relics.map(id=>{ const r=Archive.relicById(id);
+          return '<span class="arcRelic" title="'+r.desc+'">'+r.glyph+' '+r.name+'</span>'; }).join('')
+      : '<span class="arcRelicNone">no relics yet — one every second build filed</span>';
+    arcList.appendChild(held);
     Archive.Builds.forEach(b=>{
       const unlocked=Archive.isUnlocked(this,b.id), filed=Archive.isCleared(this,b.id);
       const btn=document.createElement('button');
@@ -1241,6 +1253,75 @@ export const Game = {
       });
       arcList.appendChild(btn);
     });
+
+    // The rung past the sixth build. Generated rather than filed, and it does
+    // not end.
+    if(Archive.endlessOpen(this)){
+      const e=Archive.endlessBuild(this);
+      const btn=document.createElement('button');
+      btn.className='endless';
+      btn.innerHTML=
+        '<span class="arcGlyph">'+e.glyph+'</span>'+
+        '<span><span class="arcName">'+e.name+'</span><br>'+
+        '<span class="arcDesc">'+e.desc+'</span></span>'+
+        '<span class="arcStat">'+e.hp+' HP<small>🟢'+e.reward.goo+' · '+e.reward.xp+'xp</small></span>';
+      btn.addEventListener('click', ()=>{
+        Sound.ensure(); Sound.select();
+        this.safeSubsystem(()=> Archive.start(this, Archive.ENDLESS.id), 'endless');
+        this.renderArchive();
+      });
+      arcList.appendChild(btn);
+    }
+
+    // Thinning: the other half of a deckbuilder, and the only thing in here
+    // that costs the campaign's own currency.
+    const thin=document.createElement('button');
+    thin.className='arcThin';
+    thin.disabled=!Archive.canPurge(this);
+    thin.innerHTML='<span class="arcGlyph">✂️</span>'+
+      '<span><span class="arcName">THIN THE DECK</span><br>'+
+      '<span class="arcDesc">'+this.archive.deck.length+' cards · removing one costs 🟢'+Archive.purgeCost(this)+'</span></span>';
+    thin.addEventListener('click', ()=>{ Sound.ensure(); Sound.select(); this._arcPurge=true; this.renderArchive(); });
+    arcList.appendChild(thin);
+  },
+
+  /* The deck, laid out to be cut down. Sorted so the four copies of a starter
+     sit together — the whole point of thinning is removing one of those, and
+     hunting for it in draw order would be busywork. */
+  renderArchivePurge(){
+    arcList.innerHTML='';
+    const head=document.createElement('div');
+    head.className='arcRelicRow';
+    head.innerHTML='<span class="arcRelicNone">tap a card to strike it from the deck · 🟢'+
+      Archive.purgeCost(this)+' each · floor of six cards</span>';
+    arcList.appendChild(head);
+
+    const order=this.archive.deck
+      .map((id,i)=>({id,i}))
+      .sort((a,b)=> a.id===b.id ? a.i-b.i : (a.id<b.id?-1:1));
+    order.forEach(({id,i})=>{
+      const c=Archive.cardById(id);
+      const btn=document.createElement('button');
+      btn.style.borderColor=c.color;
+      btn.disabled=this.goo<Archive.purgeCost(this) || !Archive.canPurge(this);
+      btn.innerHTML='<span class="arcGlyph">'+c.cost+'</span>'+
+        '<span><span class="arcName" style="color:'+c.color+'">'+c.name+'</span><br>'+
+        '<span class="arcDesc">'+Archive.cardText(c)+'</span></span>';
+      btn.addEventListener('click', ()=>{
+        Sound.ensure();
+        if(this.safeSubsystem(()=> Archive.purge(this, i), 'purge')){
+          this.say('artificer','Struck from the deck. Fewer things to draw is a kind of progress. I did not expect to say that.');
+        }
+        this.renderArchive();
+      });
+      arcList.appendChild(btn);
+    });
+
+    const back=document.createElement('button');
+    back.className='arcThin';
+    back.innerHTML='<span class="arcGlyph">🗃️</span><span><span class="arcName">BACK TO THE SHELF</span></span>';
+    back.addEventListener('click', ()=>{ Sound.ensure(); this._arcPurge=false; this.renderArchive(); });
+    arcList.appendChild(back);
   },
 
   renderArchiveBout(b){
@@ -1295,8 +1376,19 @@ export const Game = {
     const head=document.createElement('div');
     head.className='arcDraftHead';
     head.textContent='FILED · 🟢'+b.reward.goo+(b.reward.xp?' · '+b.reward.xp+' XP':'')+
-      (b.draftOptions?' · TAKE ONE':' · ALREADY FILED');
+      (b.relicOptions?' · TAKE A RELIC':(b.draftOptions?' · TAKE ONE':' · ALREADY FILED'));
     arcDraft.appendChild(head);
+
+    (b.relicOptions||[]).forEach(id=>{
+      const r=Archive.relicById(id);
+      const btn=document.createElement('button');
+      btn.className='arcRelicPick';
+      btn.innerHTML='<span class="arcCost">'+r.glyph+'</span>'+
+        '<span><span class="arcCardName" style="color:var(--acid)">'+r.name+'</span><br>'+
+        '<span class="arcDesc">'+r.desc+'</span></span>';
+      btn.addEventListener('click', ()=>{ Sound.ensure(); this.claimArchive(id); });
+      arcDraft.appendChild(btn);
+    });
 
     const options=b.draftOptions||[];
     options.forEach(id=>{
@@ -1311,7 +1403,7 @@ export const Game = {
       arcDraft.appendChild(btn);
     });
 
-    if(!options.length){
+    if(!options.length && !(b.relicOptions||[]).length){
       const btn=document.createElement('button');
       btn.innerHTML='<span class="arcCardName">TAKE THE GOO</span>';
       btn.addEventListener('click', ()=>{ Sound.ensure(); this.claimArchive(null); });
@@ -1323,6 +1415,7 @@ export const Game = {
      Goo and XP go through the existing paths so multipliers, the pot's cut and
      the level-up ladder all behave exactly as they do everywhere else. */
   claimArchive(cardId){
+    this._arcPurge=false;
     const paid=this.safeSubsystem(()=> Archive.claim(this, cardId), 'archive claim');
     if(paid){
       this.addGoo(paid.goo);

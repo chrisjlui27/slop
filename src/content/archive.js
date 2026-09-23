@@ -147,3 +147,73 @@ export function cardText(c){
   if(c.selfDmg) bits.push('take ' + c.selfDmg);
   return bits.join(' · ');
 }
+
+/* ==================== RELICS ====================
+
+   The second axis. Cards are what you draw; relics are what is true before
+   you draw anything, and they are why a deck that lost to THE REMASTER can
+   beat it a rung later without a single card changing.
+
+   They are handed out on filing every second build, and then every second
+   endless tier, so the ladder keeps paying in something other than numbers. */
+export const Relics = [
+  { id:'spare',  name:'FIRST DRAFT',    glyph:'📝', desc:'+1 energy on the first turn of a bout' },
+  { id:'linter', name:'THE LINTER',     glyph:'🔍', desc:'bugs bite for 2 more' },
+  { id:'cache',  name:'WARM CACHE',     glyph:'🔥', desc:'draw six on the first turn' },
+  { id:'order',  name:'STANDING ORDER', glyph:'🧱', desc:'start every bout with 6 block' },
+  { id:'green',  name:'GREEN TESTS',    glyph:'✅', desc:'repair 3 at the start of each of your turns' },
+  { id:'flag',   name:'FEATURE FLAG',   glyph:'🚩', desc:'the first card each bout costs nothing' }
+];
+
+export const relicById = id => Relics.find(r => r.id === id);
+
+/* A relic every second build filed, and every second endless tier. */
+export const RELIC_EVERY = 2;
+
+/* ==================== THINNING ====================
+
+   Deck-thinning is the other half of a deckbuilder and the archive had none:
+   drafting only ever made the deck bigger, which made every drafted card
+   worth less than the last. Removing a card costs goo — the campaign's
+   currency, deliberately, because it is the one place the archive asks the
+   rest of the game for something — and the price climbs, so a deck cannot be
+   filed down to three REWRITEs. */
+export const PURGE_BASE = 40;
+export const PURGE_STEP = 1.55;
+export const PURGE_FLOOR = 6;          // never thinner than this
+
+export function purgeCost(done){ return Math.round(PURGE_BASE * Math.pow(PURGE_STEP, done)); }
+
+/* ==================== THE UNSHIPPED BUILD ====================
+
+   What is past the sixth build. Every version of this game that did not ship,
+   at once, and it does not stop coming — tier after tier, each one larger and
+   angrier than the last.
+
+   It is the same resolver as any other build; only the numbers are generated.
+   Beating a tier pays, raises the tier, and every second one hands over a
+   relic while any are left. */
+export const ENDLESS = {
+  id:'unshipped', name:'THE UNSHIPPED BUILD', glyph:'🗄️',
+  desc:'everything that did not ship, at once. it does not stop coming',
+  baseHp: 96, hpStep: 26,
+  basePay: 200, payStep: 60,
+  baseXp: 50, xpStep: 12
+};
+
+export function endlessBuild(tier){
+  const t = Math.max(1, tier|0);
+  return {
+    id: ENDLESS.id, name: ENDLESS.name + ' · TIER ' + t, glyph: ENDLESS.glyph,
+    hp: ENDLESS.baseHp + (t-1) * ENDLESS.hpStep,
+    // The shape stays the same as the shelf's hardest build so the fight is
+    // familiar; what climbs is every number in it, and the growing attacks
+    // mean a long tier eventually out-scales any deck.
+    intents: [
+      ['a', 14 + t*2], ['g', 7 + t], ['b', 13 + t], ['a', 18 + t*2], ['h', 8 + t]
+    ],
+    desc: ENDLESS.desc,
+    reward: { goo: ENDLESS.basePay + (t-1) * ENDLESS.payStep, xp: ENDLESS.baseXp + (t-1) * ENDLESS.xpStep },
+    endless: true, tier: t
+  };
+}
