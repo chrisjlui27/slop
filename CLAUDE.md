@@ -180,9 +180,14 @@ voices wrong is the most common way to damage this project.
   the presence and the length.
 - **`dist/` is generated.** Never edit `dist/slop.html` by hand; it is
   overwritten by every build and is gitignored.
-- **Everything runs on one rAF loop.** The buddy, turret lane, and honey pot
-  brew keep ticking during menus and even during the pot minigame. Only the
-  *round* pauses. That asymmetry is intentional.
+- **Only the loop on screen runs.** Leaving a loop pauses it — a wave, a jar,
+  a bout and a half-routed panel all wait exactly where they were — and the
+  buddy and the GLAZED clock pause with the Acts. **THE UNDERSTUDY's company is
+  the one exception**: it is the idle layer and runs everywhere, all the time.
+  This reverses the original "everything ticks, only the round pauses" rule,
+  which made every screen a tax on every other one. `Game.tickLoops()` is the
+  frame's share for the loops and the one place the rule lives; returning from
+  a loop goes through `Game.returnToActs()`, never a hand-rolled restore.
 - **There is no lose state _in the campaign_.** No lives, no game over.
   Failing a round costs momentum (combo, boss regen), never progress. Do not
   add a fail state to the Act ladder.

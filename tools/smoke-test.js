@@ -50,9 +50,13 @@ const { window } = dom;
    throws would therefore skip process.exit() and leave the run hanging until
    something kills it, reporting nothing — which is precisely the least useful
    way for a test suite to fail. The finally clause guarantees an exit code. */
-setTimeout(() => {
+setTimeout(async () => {
   try {
-    runChecks();
+    // Async since the console checks: 'a round resumes with the time it had'
+    // and 'the next round starts after coming back between rounds' are claims
+    // about wall-clock time, and the only honest way to test those is to let
+    // some pass.
+    await runChecks();
   } catch (e) {
     failures++;
     console.log(" FAIL  smoke test threw: " + (e && e.stack ? e.stack : e));
@@ -66,7 +70,7 @@ setTimeout(() => {
   }
 }, 120);
 
-function runChecks() {
+async function runChecks() {
   const G = window.SLOP;
   check("game object exposed on window.SLOP", !!G);
   if (!G) return;
@@ -444,6 +448,98 @@ function runChecks() {
   check("a breach leaves integrity above zero", d.perimeter > 0);
   check("a breach does not touch the act ladder", G.actIdx === actBefore);
   check("a breach does not touch hero level", G.hero.level === levelBefore);
+
+  /* ---- THE CONSOLE: loops pause when you leave them ----
+     Exactly one loop runs — the one on screen — and the company, which is the
+     idle layer, runs everywhere. Driven through tickLoops(), the frame's share
+     for the loops, so the rule is tested without a second animation loop. */
+  const Dz = G.defenseApi, Uz = G.understudyApi;
+  const fresh = () => {
+    G.defense = Dz.reset(); G.defense.restT = 0;
+    G.understudy = Uz.reset(); G.understudy.members = { understudy: 3, standin: 3 };
+    G.buddy.hunger = 1; G.potBuffT = 5000;
+  };
+  const run = (state, ms) => { G.state = state; for (let i = 0; i < ms / 50; i++) G.tickLoops(50); };
+
+  fresh();
+  run("archive", 20000);
+  check("the perimeter does not fight while you are elsewhere", G.defense.wave === 0 && G.defense.enemies.length === 0);
+  check("the buddy does not starve while you are elsewhere", G.buddy.hunger === 1);
+  check("the GLAZED clock does not run while you are elsewhere", G.potBuffT === 5000);
+  check("the company works while you are elsewhere", G.understudy.lifetimeGoo > 0 || G.understudy.accGoo > 0);
+
+  fresh();
+  run("tdgame", 8000);
+  check("the perimeter fights while you are at your post", G.defense.wave >= 1);
+  check("the buddy waits while you are at the perimeter", G.buddy.hunger === 1);
+
+  fresh();
+  run("playing", 8000);
+  check("the buddy gets hungry while the Acts are live", G.buddy.hunger < 1);
+  check("GLAZED runs down while the Acts are live", G.potBuffT < 5000);
+  check("the perimeter waits while the Acts are live", G.defense.wave === 0);
+
+  fresh();
+  run("menu", 8000);
+  check("a menu over the Acts pauses the buddy too", G.buddy.hunger === 1);
+
+  // The pot no longer brews on a clock; it fills from goo and from catching.
+  // Goo earned while running — the buddy, the company — still skims in, so
+  // the claim is that brew rises by exactly that skim and not a drop more.
+  G.pot = G.potApi.reset();
+  const gooBeforeBrew = G.goo;
+  run("playing", 8000);
+  const skim = Math.abs(G.goo - gooBeforeBrew) * 0.15;
+  check("the pot does not brew on its own", Math.abs(G.pot.brew - skim) < 1e-6);
+  G.addGoo(100);
+  check("goo still skims into the pot", G.pot.brew > 0);
+
+  // Leaving pauses a loop's work in progress rather than throwing it away.
+  G.state = "menu";
+  G.openArchive();
+  G.archiveApi.start(G, "prototype");
+  const bout = G.archive.bout, handBefore = bout.hand.join();
+  G.closeArchive();
+  check("leaving the archive keeps the bout", G.archive.bout === bout && bout.hand.join() === handBefore);
+  G.openArchive();
+  check("coming back finds the same bout", G.archive.bout === bout);
+  G.closeArchive();
+
+  G.openBay();
+  const panel = G.bayApi.open(G, "front", 0);
+  G.bayApi.tap(G, panel.cells.findIndex((c, i) => !c.locked && i !== panel.core));
+  G.closeBay();
+  G.openBay();
+  check("leaving the patch bay keeps the half-routed panel", G.bay.board === panel && panel.turns === 1);
+  G.closeBay();
+
+  G.openPotGame();
+  const jar = G.pot.session;
+  G.closePotGame();
+  G.openPotGame();
+  check("leaving the pot keeps the jar", G.pot.session === jar);
+  jar.over = true;
+  G.closePotGame();
+  G.openPotGame();
+  check("a broken jar is replaced when you come back", G.pot.session !== jar && !G.pot.session.over);
+  G.closePotGame();
+
+  // The stall: leaving for a loop in the gap between rounds, then coming back.
+  G.state = "resolve";
+  G.openDefense();
+  G.closeDefense();
+  check("coming back between rounds does not strand the Acts", G.state === "resolve");
+  await new Promise(r => setTimeout(r, 400));
+  check("the next round starts after coming back between rounds", G.state !== "resolve");
+
+  // A live round resumes with the clock it had, not a fresh one.
+  G.state = "playing";
+  G.deadline = performance.now() + 2000;
+  G.openCompany();
+  await new Promise(r => setTimeout(r, 300));
+  G.closeCompany();
+  const left = G.deadline - performance.now();
+  check("a live round resumes with the time it had", left > 1500 && left <= 2000);
 
   /* ---- THE PATCH BAY: the routing puzzle ----
      The loop whose whole promise is a guarantee: every board is solvable, par

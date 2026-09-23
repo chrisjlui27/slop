@@ -141,8 +141,11 @@ knowing before changing it:
   corridor and the next one down, so the top two rows cover two corridors each
   and the bottom row covers one. The efficient slots are the ones furthest
   from the breach — that asymmetry *is* the placement decision.
-- **It never stops.** Waves arrive on the rAF loop during menus, the honey pot
-  and microgames. Ignoring the perimeter is a decision with a consequence.
+- **It runs while you are at your post, and only then.** It used to never
+  stop — waves arrived during menus, the pot and microgames, and ignoring the
+  perimeter was billed as a decision with a consequence. In practice it was a
+  tax on every other screen, so it now pauses with everything else when you
+  leave. The stake is unchanged; it is simply a stake you are present for.
 - **Global reinforcement is separate from per-tower level.** `Game.turret`
   multiplies every tower; REINFORCE stays worth buying at nine towers.
 - **It has its own crash guard.** `Game.safeSubsystem` mirrors `safeLane`, but

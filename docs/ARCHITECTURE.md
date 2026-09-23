@@ -162,7 +162,15 @@ tab doesn't teleport state. Round timers are deadline-based (`performance.now()
 + timeLimit`) rather than accumulated, and menus that pause the round stash the
 remaining time and restore it — see `pauseForMenu()` / `resumeAfterMenu()`.
 
-The buddy, the perimeter and the pot brew tick on *every* frame regardless of state,
-including while the honey pot minigame has the plot paused. Only the round
-stops. That asymmetry is a joke the narrators comment on, and it is
-intentional.
+Only the loop on screen ticks. `Game.tickLoops(dt)` is the frame's share for
+the parallel loops: the buddy and the GLAZED clock run only while a round is
+live, the perimeter only while its screen is up, and the pot no longer brews
+on a clock at all — it fills from goo skimmed anywhere and from what you catch.
+The company is the single exception and ticks everywhere, because it is the
+idle layer. This replaced an earlier rule where everything but the round ran
+all the time, which made every screen a tax on every other one.
+
+Coming back from any loop goes through `Game.returnToActs()`, which owns the
+three cases: a live round resumes with the clock it had, a round that had just
+resolved is moved on (its own timer fired while you were away and found the
+state changed), and anything else is left as it was.

@@ -984,24 +984,22 @@ export const Game = {
     this.pausedState=this.state;
     this.pausedRemain=(this.state==='playing'||this.state==='bonus') ? Math.max(0,this.deadline-performance.now()) : null;
     this.state='potgame';
-    this.safeSubsystem(()=> Pot.open(this), 'pot open');
+    const s=this.pot.session;
+    if(!s || s.over){
+      if(s) this.safeSubsystem(()=> Pot.close(this), 'pot close');
+      this.safeSubsystem(()=> Pot.open(this), 'pot open');
+    }
     Sound.potOpen(); this.shiftFavor('goblin', 4);
     this.bark(Barks.potOpen);
     this.updatePotUI(); this.renderPotShop();
     potOverlay.classList.remove('hidden');
   },
+  // Leaving pauses the jar where it is — drops in the air stay in the air.
+  // A new jar is only poured when the last one broke or there never was one.
   closePotGame(){
     Sound.potClose();
-    this.safeSubsystem(()=> Pot.close(this), 'pot close');
     potOverlay.classList.add('hidden');
-    const back=this.pausedState; this.pausedState=null;
-    if(back==='playing'||back==='bonus'){
-      this.state=back;
-      if(this.pausedRemain!=null) this.deadline=performance.now()+this.pausedRemain;
-      this.say('artificer','Thank you. The Act resumes exactly where it stopped. It always does. That is the problem.');
-    }else{
-      this.nextRound();
-    }
+    this.returnToActs();
   },
 
   harvestPot(){
@@ -1113,15 +1111,7 @@ export const Game = {
     defenseOverlay.classList.add('hidden');
     this.defense.selectedPad=-1;
     Sound.potClose();
-    const back=this.pausedState; this.pausedState=null;
-    if(back==='playing'||back==='bonus'){
-      this.state=back;
-      if(this.pausedRemain!=null) this.deadline=performance.now()+this.pausedRemain;
-    }else if(back==='menu'||back==='resolve'){
-      this.state=back;
-    }else{
-      this.state = back || 'menu';
-    }
+    this.returnToActs();
   },
 
   /* Redrawn whenever the selection or the goo balance changes. Built from
@@ -1211,6 +1201,54 @@ export const Game = {
     tdReinforceBtn.disabled=this.goo<this.turretCost();
   },
 
+  /* ---------------- the console: which screen is up ----------------
+     Exactly one loop runs at a time: the one on screen. Leaving a loop pauses
+     it — a wave, a jar, a bout and a half-routed panel all wait exactly where
+     they were — and the company is the only thing that keeps going, because it
+     is the idle layer, and working while you are elsewhere is what it is for.
+
+     This reverses the original design, where the perimeter, the buddy and the
+     pot all ran on the one rAF loop no matter what was on screen. That made
+     every screen a tax on every other one: ten seconds reading a card in the
+     archive was ten seconds of waves at the perimeter. */
+  activeLoop(){
+    switch(this.state){
+      case 'tdgame':   return 'perimeter';
+      case 'potgame':  return 'pot';
+      case 'company':  return 'company';
+      case 'archive':  return 'archive';
+      case 'patchbay': return 'bay';
+      default:         return 'acts';
+    }
+  },
+  // The Acts are only "running" while a round is live. A menu over them, a
+  // story beat or a level-up is the Acts paused, and so is anything that
+  // hangs off them — the buddy's hunger and the GLAZED clock included.
+  actsLive(){ return this.state==='playing' || this.state==='bonus' || this.state==='resolve'; },
+
+  /* Back to the Acts from a loop. The one place that knows what the Acts were
+     doing when you left, instead of five copies that each knew most of it:
+
+       - a live round resumes with exactly the clock it had
+       - a round that had just resolved moves on. Its own timer fired while you
+         were away, found the state changed, and did nothing — so without this
+         the game sat in 'resolve' forever. That was a real stall, reachable by
+         opening the perimeter in the third of a second between rounds.
+       - anything else is left as it was */
+  returnToActs(){
+    const back=this.pausedState, remain=this.pausedRemain;
+    this.pausedState=null; this.pausedRemain=null;
+    if(back==='playing'||back==='bonus'){
+      this.state=back;
+      if(remain!=null) this.deadline=performance.now()+remain;
+    }else if(back==='resolve'){
+      this.state='resolve';
+      setTimeout(()=>{ if(this.state==='resolve') this.nextRound(); }, 200);
+    }else{
+      this.state = back || 'menu';
+    }
+  },
+
   /* ---------------- the archive: the card duel ----------------
      The rules are in src/archive.js. What lives here is the door, the screen
      and the payout — the three things that have to touch the rest of the game.
@@ -1230,19 +1268,13 @@ export const Game = {
     archiveOverlay.classList.remove('hidden');
   },
 
+  // Leaving pauses the bout, turn and hand and all. Abandoning one is its own
+  // button inside the screen (LEAVE BOUT); walking out of the room is not the
+  // same decision and must not cost the same thing.
   closeArchive(){
-    // Leaving mid-bout abandons it. That costs nothing — see the header of
-    // src/archive.js — so there is no confirmation and no penalty.
-    this.safeSubsystem(()=> Archive.flee(this), 'archive leave');
     archiveOverlay.classList.add('hidden');
     Sound.potClose();
-    const back=this.pausedState; this.pausedState=null;
-    if(back==='playing'||back==='bonus'){
-      this.state=back;
-      if(this.pausedRemain!=null) this.deadline=performance.now()+this.pausedRemain;
-    }else{
-      this.state = back || 'menu';
-    }
+    this.returnToActs();
   },
 
   /* One render for both halves of the screen: the shelf when there is no bout,
@@ -1491,20 +1523,12 @@ export const Game = {
     bayOverlay.classList.remove('hidden');
   },
 
+  // Leaving pauses the panel with every turn still on it. (Across an app
+  // restart it regenerates from its seed instead — boards are not saved.)
   closeBay(){
-    // A half-routed panel is dropped rather than saved. It regenerates from
-    // its seed, so "come back to it" means the same scramble, not lost work
-    // anyone would miss — a panel is a minute or two of turning.
-    this.bay.board=null;
     bayOverlay.classList.add('hidden');
     Sound.potClose();
-    const back=this.pausedState; this.pausedState=null;
-    if(back==='playing'||back==='bonus'){
-      this.state=back;
-      if(this.pausedRemain!=null) this.deadline=performance.now()+this.pausedRemain;
-    }else{
-      this.state = back || 'menu';
-    }
+    this.returnToActs();
   },
 
   renderBay(){
@@ -1746,13 +1770,7 @@ export const Game = {
     this.understudy.pendingReport = null;
     companyBtn.classList.remove('alert');
     Sound.potClose();
-    const back=this.pausedState; this.pausedState=null;
-    if(back==='playing'||back==='bonus'){
-      this.state=back;
-      if(this.pausedRemain!=null) this.deadline=performance.now()+this.pausedRemain;
-    }else{
-      this.state = back || 'menu';
-    }
+    this.returnToActs();
   },
 
   renderCompany(){
@@ -1874,17 +1892,7 @@ export const Game = {
       this.safeSubsystem(()=> Defense.renderBoard(this, tdCtx), 'board');
     }
 
-    this.updateBuddyTick(dt);
-    this.updateDefense(dt);
-    this.renderDefense();
-    // The company earns on the same always-on footing as the buddy and the
-    // perimeter. Its tick also stamps `lastAt`, which is what makes the gap on
-    // the next launch mean "time nobody was watching" rather than "time since
-    // the last save".
-    this.updateCompany(dt);
-
-    if(this.potBuffT>0) this.potBuffT=Math.max(0,this.potBuffT-dt);
-    if(!this.potReady()) this.pot.brew=Math.min(this.pot.brewMax, this.pot.brew+dt*0.0004);
+    this.tickLoops(dt);
     this.updatePotUI();
 
     // idle chatter: the creators fill silence, weighted by standing
@@ -1897,6 +1905,25 @@ export const Game = {
     if(this.ambientT<=0){ this.ambientT=(2200-this.chaosLevel*700)+Math.random()*1200; FX.ambientSparkle(); }
 
     this.rafId=requestAnimationFrame(tt=>this.loop(tt));
+  },
+
+  /* The parallel loops' share of a frame, separated from the frame itself so
+     the rule can be tested without spinning up a second animation loop.
+
+     One loop runs: the one on screen. The buddy and the GLAZED clock belong to
+     the Acts and pause with them; the perimeter only fights while you are at
+     your post. The pot no longer brews on its own — it fills from goo skimmed
+     anywhere (the goblin's wiring, not a clock) and from what you catch in it. */
+  tickLoops(dt){
+    if(this.actsLive()){
+      this.updateBuddyTick(dt);
+      if(this.potBuffT>0) this.potBuffT=Math.max(0,this.potBuffT-dt);
+    }
+    if(this.state==='tdgame') this.updateDefense(dt);
+    // The company is the exception, and the only one: the idle layer runs
+    // everywhere, all the time. Its tick also stamps `lastAt`, which is what
+    // makes the gap on the next launch mean "time nobody was watching".
+    this.updateCompany(dt);
   },
 
   updateHUD(){

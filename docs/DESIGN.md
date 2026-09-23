@@ -38,12 +38,17 @@ earned its place by taking away the last thing the archive still had: chance.
 No draw, no spawn, no clock; a board generated from a seed and guaranteed
 solvable, where the only variable is whether you have seen the route yet.
 
-**2. Leaving pauses what you left — and only what you left.** The round stops.
-The Acts wait. The buddy, the turret lane and the honey pot brew keep ticking on
-the one rAF loop, because they were never the thing you were doing; they are the
-weather. This asymmetry is deliberate and predates the sheets (see the gotcha in
-`CLAUDE.md`), and the sheets make it legible: if a whole screen replaced the
-board, obviously the board is waiting for you.
+**2. Only the loop on screen runs.** Leaving a loop pauses it, completely: the
+round stops with its clock intact, a wave at the perimeter hangs in the air, a
+card bout keeps its hand, a jar keeps its drops, a half-routed panel keeps its
+turns. The buddy and the GLAZED clock belong to the Acts and pause with them.
+
+This reverses the first version of this rule, which said the buddy, the
+perimeter and the pot "were the weather" and ran on regardless. In practice
+that made every screen a tax on every other one — ten seconds reading a card
+was ten seconds of waves somewhere you could not see — and it made leaving a
+loop a punishment rather than a choice. A console where switching games costs
+you is not a console.
 
 **3. The idle layer is always on, and it is the only thing that gets paid for
 time you were not here.** THE UNDERSTUDY's company accrues while the app is

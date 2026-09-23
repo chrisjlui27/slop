@@ -1,7 +1,7 @@
 /* ==================== THE PERIMETER ====================
 
-   THE CRAB's loop: a tower defense that runs continuously, in the background,
-   whether or not anyone is looking at it.
+   THE CRAB's loop: a tower defense that runs while you are at your post, and
+   waits exactly where it was when you leave.
 
    Two views of one board. `renderStrip` draws the 640x80 lane wedged into the
    HUD; `renderBoard` draws the same state large enough to play on. Positions
@@ -10,9 +10,10 @@
 
    Three things make this different from the lane it replaces:
 
-   1. It keeps running. Waves arrive on the rAF loop during menus, during the
-      honey pot, during a microgame. Ignoring the perimeter is a decision with
-      a consequence, not an absence of one.
+   1. It pauses when you leave. It used to keep running — waves during menus,
+      the honey pot, a microgame — on the theory that ignoring the perimeter
+      should cost something. It cost every other screen instead, so it now
+      follows the rule every loop follows: only the one on screen runs.
    2. Placement matters. Nine pads, and the two rows that cover two corridors
       at once are the ones furthest from the breach.
    3. It can be lost. Leaks eat perimeter integrity and at zero the run pays
@@ -241,7 +242,7 @@ export const Defense = {
   },
 
   /* ---------------- the loop ----------------
-     Runs every frame from Game.loop regardless of state. */
+     Driven by Game.tickLoops, and only while the perimeter screen is up. */
 
   tick(g, dt){
     const d = g.defense;

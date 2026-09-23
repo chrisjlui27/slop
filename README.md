@@ -75,9 +75,10 @@ Running in parallel, all the time, whether you're paying attention or not:
 
 - **The buddy** (👾) gets hungry in real time. Feed it for goo and levels. Its
   *mood throttles your turret's fire rate*, so neglect has teeth.
-- **The perimeter** (🦀) is a whole tower defense, and it never stops. Three
-  corridors, nine build pads, three tower types, and waves that keep arriving
-  during menus and microgames alike. Leaks eat integrity; at zero you breach,
+- **The perimeter** (🦀) is a whole tower defense. Three corridors, up to
+  twelve build pads, four tower types, doctrine every fourth wave, and waves
+  that hold while you are away — only the screen you are on runs. Leaks eat
+  integrity; at zero you breach,
   and a breach costs you goo. **It is the only thing in SLOP that can be lost**
   — THE CRAB was allowed a real stake because neither of the other two would
   enforce one.
