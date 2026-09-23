@@ -1177,3 +1177,46 @@
   #potOverlay{ justify-content:flex-start; }
   #potOverlay #potShop{ flex:1 1 auto; min-height:0; overflow-y:auto; }
   #potOverlay > div[style*="display:flex"]{ margin-top:10px; }
+
+  /* --- productions: the company's sink ------------------------
+     The decision sits above the roster, because the roster is the
+     investment that unlocks it and this is what the investment is
+     for. A running show gets a card with a clock; an idle company
+     gets the shelf of things it could be doing instead. */
+  #coStage{ width:100%; max-width:min(100%, 420px); display:flex; flex-direction:column; gap:5px; margin-bottom:9px; }
+  #coStage:empty{ display:none; }
+  .coShowHead{
+    font-family:'Press Start 2P',monospace; font-size:8px; color:var(--violet);
+    letter-spacing:0.5px; text-align:center; padding:2px 0 4px;
+  }
+  .coShow{
+    border-radius:0 8px 8px 0; border-left:3px solid var(--violet);
+    background:#160f24; padding:8px 10px; text-align:left;
+  }
+  .coShow.ready{ border-left-color:var(--acid); background:#16200f; }
+  .coShowTop{ display:flex; justify-content:space-between; gap:8px; align-items:baseline; margin-bottom:5px; }
+  .coShowName{ font-family:'Press Start 2P',monospace; font-size:8px; color:var(--violet); }
+  .coShow.ready .coShowName{ color:var(--acid); }
+  .coShowTime{ font-family:'Press Start 2P',monospace; font-size:8px; color:var(--yellow); }
+  .coShowTrack{ height:7px; border-radius:4px; background:#15111f; overflow:hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.7); }
+  .coShowFill{ height:100%; background:linear-gradient(90deg,var(--violet),var(--acid)); transition:width 0.9s linear; }
+  .coShowPay{ font-size:10px; opacity:0.6; margin-top:5px; line-height:1.3; }
+  .coCollect{
+    width:100%; margin-top:7px; font-size:10px; padding:11px 14px;
+    background:var(--acid); box-shadow:0 6px 0 #7fa81c; color:#12170a;
+  }
+  .coCollect:active{ box-shadow:0 2px 0 #7fa81c; }
+  .coCollect:disabled{ opacity:0.4; box-shadow:none; cursor:default; }
+  .coShowBtn{
+    display:flex; align-items:center; gap:8px; width:100%; min-height:46px;
+    padding:7px 10px; border-radius:8px; cursor:pointer; text-align:left;
+    background:#15111f; border:1px solid #2a2238; color:var(--ink);
+    font-family:'Space Grotesk',system-ui,sans-serif; font-size:11px;
+    transition: transform 0.06s ease, filter 0.12s ease;
+  }
+  .coShowBtn:active{ transform:translateY(2px); filter:brightness(1.3); }
+  .coShowBtn:disabled{ opacity:0.38; cursor:default; }
+  /* Already staged once: it still pays, but the permanent bonus is spent, so
+     it stops being the thing the eye goes to. */
+  .coShowBtn.done{ opacity:0.75; border-color:#241d33; }
+  .coShowBtn .coCost small{ display:block; font-size:7px; opacity:0.65; color:var(--ink); }

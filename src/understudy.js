@@ -24,13 +24,14 @@
 import { Sound } from "./audio.js";
 import { FX } from "./fx.js";
 import {
-  Company, OFFLINE_CAP_MS, OFFLINE_RATE, memberRate, memberUpgradeCost
+  Company, OFFLINE_CAP_MS, OFFLINE_RATE, memberRate, memberUpgradeCost,
+  Productions, PRODUCTION_BONUS, STAGING_RATE, productionById
 } from "./content/understudy.js";
 
 const byId = id => Company.find(m => m.id === id);
 
 export const Understudy = {
-  Company, OFFLINE_CAP_MS, OFFLINE_RATE,
+  Company, OFFLINE_CAP_MS, OFFLINE_RATE, Productions, productionById,
 
   reset(){
     return {
@@ -43,7 +44,10 @@ export const Understudy = {
       // nothing at all.
       accGoo: 0, accXp: 0,
       lifetimeGoo: 0, lifetimeXp: 0,
-      pendingReport: null
+      pendingReport: null,
+      // The show currently running, and every distinct one ever closed.
+      production: null,          // { id, startedAt, durationMs }
+      staged: []
     };
   },
 
@@ -61,8 +65,73 @@ export const Understudy = {
       goo += memberRate(m.goo, lvl);
       xp  += memberRate(m.xp, lvl);
     });
-    const bonus = g.favorIdleBonus();
+    // Standing, the permanent bonus every closed show leaves behind, and the
+    // halving while a show is running — all folded in here so every readout in
+    // the UI already reflects them and none of them can disagree.
+    const bonus = g.favorIdleBonus()
+      * (1 + PRODUCTION_BONUS * u.staged.length)
+      * (u.production ? STAGING_RATE : 1);
     return { goo: goo * bonus, xp: xp * bonus };
+  },
+
+  /* ---------------- productions ---------------- */
+
+  // Unlocked in order, and each one needs a cast big enough to put it on. The
+  // two gates are different on purpose: the order is the ladder, the cast size
+  // is what makes recruiting mean something beyond a bigger number.
+  productionUnlocked(g, id){
+    const i = Productions.findIndex(p => p.id === id);
+    if(i < 0) return false;
+    if(i > 0 && g.understudy.staged.indexOf(Productions[i-1].id) < 0) return false;
+    return Object.keys(g.understudy.members).length >= Productions[i].members;
+  },
+  productionDone(g, id){ return g.understudy.staged.indexOf(id) >= 0; },
+
+  stage(g, id){
+    const u = g.understudy;
+    const p = productionById(id);
+    if(!p || u.production || !this.productionUnlocked(g, id)) return false;
+    if(g.goo < p.cost){ Sound.deny(); return false; }
+    g.goo -= p.cost;
+    u.production = { id, startedAt: Date.now(), durationMs: p.minutes * 60000 };
+    g.shiftFavor('understudy', 3);
+    Sound.understudyJoin();
+    FX.stamp(p.name, '#7a3cff', '#c9ff2f');
+    g.updateHUD();
+    return true;
+  },
+
+  /* Remaining milliseconds, or 0 when the show has closed. Derived from the
+     start stamp rather than stored as an end stamp: an end stamp is a single
+     number a hand-edited save can move, and this way the only thing worth
+     editing is the start, which src/save.js already refuses to believe if it
+     is in the future. */
+  productionLeft(g){
+    const p = g.understudy.production;
+    if(!p) return 0;
+    return Math.max(0, (p.startedAt + p.durationMs) - Date.now());
+  },
+  productionReady(g){ return !!g.understudy.production && this.productionLeft(g) <= 0; },
+
+  /* Closing night. Pays through the chassis' own paths so multipliers and the
+     level ladder behave exactly as they do everywhere else, and marks the
+     production as staged so the permanent bonus counts it once. */
+  collect(g){
+    const u = g.understudy;
+    if(!this.productionReady(g)) return null;
+    const p = productionById(u.production.id);
+    u.production = null;
+    if(!p) return null;
+    if(u.staged.indexOf(p.id) < 0) u.staged.push(p.id);
+    u.lifetimeGoo += p.pay.goo;
+    u.lifetimeXp += p.pay.xp;
+    g.addGoo(p.pay.goo);
+    g.gainXp(p.pay.xp);
+    g.shiftFavor('understudy', p.pay.standing);
+    Sound.rehearsalReport();
+    FX.stamp(p.name + ' CLOSES', '#7a3cff', '#fff02f');
+    g.updateHUD();
+    return p;
   },
 
   offlineCapMs(g){

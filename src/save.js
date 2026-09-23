@@ -76,7 +76,16 @@ export const Save = {
         members: Object.assign({}, g.understudy.members),
         lastAt: g.understudy.lastAt,
         lifetimeGoo: g.understudy.lifetimeGoo,
-        lifetimeXp: g.understudy.lifetimeXp
+        lifetimeXp: g.understudy.lifetimeXp,
+        /* A running show and the shelf of shows already closed. The show is
+           stored as its start stamp and its length rather than an end stamp:
+           an end stamp is one number a hand-edited save can drag into the
+           past, and this way the only thing worth editing is a start, which
+           apply() refuses to believe if it is in the future. */
+        production: g.understudy.production
+          ? Object.assign({}, g.understudy.production)
+          : null,
+        staged: g.understudy.staged.slice()
       },
       /* The archive, minus the bout. The deck and the shelf are what the
          player built and beat; a half-played duel is in-flight state in the
@@ -197,6 +206,25 @@ export const Save = {
       g.understudy.lastAt = (isFinite(t) && t > 0 && t <= Date.now()) ? t : Date.now();
       g.understudy.lifetimeGoo = Math.max(0, c.lifetimeGoo || 0);
       g.understudy.lifetimeXp = Math.max(0, c.lifetimeXp || 0);
+      g.understudy.staged = Array.isArray(c.staged)
+        ? c.staged.filter(id => g.understudyApi.productionById(id))
+        : [];
+      g.understudy.production = null;
+      if(c.production){
+        const p = g.understudyApi.productionById(c.production.id);
+        const started = Number(c.production.startedAt);
+        // Same rule as lastAt: a start in the future is a wound-back clock or
+        // an edited save, and the answer is "it started now" rather than
+        // "it finished already".
+        if(p && isFinite(started) && started > 0){
+          g.understudy.production = {
+            id: p.id,
+            startedAt: Math.min(started, Date.now()),
+            // Length comes from the catalogue, never from the save.
+            durationMs: p.minutes * 60000
+          };
+        }
+      }
     }
 
     if(Array.isArray(d.towers)){

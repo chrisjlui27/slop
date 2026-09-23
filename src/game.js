@@ -23,6 +23,7 @@ const arcFoeName=$('arcFoeName'), arcIntent=$('arcIntent'), arcFoeFill=$('arcFoe
 const arcLog=$('arcLog'), arcYouHp=$('arcYouHp'), arcBlock=$('arcBlock'), arcEnergy=$('arcEnergy'), arcPiles=$('arcPiles');
 const arcHand=$('arcHand'), arcDraft=$('arcDraft'), arcEndBtn=$('arcEndBtn'), arcFleeBtn=$('arcFleeBtn');
 const arcFoeArt=$('arcFoeArt');
+const coStage=$('coStage');
 const potShop=$('potShop'), potHoney=$('potHoney'), potCombo=$('potCombo');
 const potCracks=$('potCracks'), potFlash=$('potFlash');
 const defenseOverlay=$('defenseOverlay'), tdCanvas=$('tdCanvas'), tdCtx=tdCanvas.getContext('2d');
@@ -94,6 +95,7 @@ export const Game = {
   defenseApi: Defense,
   archiveApi: Archive,
   potApi: Pot,
+  understudyApi: Understudy,
   saveApi: Save,
   modules: Modules,
   acts: Acts,
@@ -1325,6 +1327,72 @@ export const Game = {
     companyOverlay.classList.remove('hidden');
   },
 
+  /* The production panel: one running show, or the shelf of shows that can be
+     put on. Kept separate from renderCompany so the countdown can redraw on a
+     timer without rebuilding the roster under the player's thumb. */
+  renderProductions(){
+    const u=this.understudy;
+    coStage.innerHTML='';
+
+    if(u.production){
+      const p=Understudy.productionById(u.production.id);
+      const left=Understudy.productionLeft(this);
+      const ready=left<=0;
+      const pct=Math.max(0, Math.min(100, 100*(1-left/u.production.durationMs)));
+      const card=document.createElement('div');
+      card.className='coShow'+(ready?' ready':'');
+      card.innerHTML=
+        '<div class="coShowTop"><span class="coShowName">'+p.glyph+' '+p.name+'</span>'+
+        '<span class="coShowTime">'+(ready?'CURTAIN':Understudy.formatDuration(left)+' LEFT')+'</span></div>'+
+        '<div class="coShowTrack"><div class="coShowFill" style="width:'+pct+'%"></div></div>'+
+        '<div class="coShowPay">🟢'+p.pay.goo+' · '+p.pay.xp+' XP · the company is at half rate while it runs</div>';
+      coStage.appendChild(card);
+
+      const b=document.createElement('button');
+      b.className='btn coCollect';
+      b.disabled=!ready;
+      b.textContent=ready?'TAKE THE CURTAIN CALL':'THEY ARE ON STAGE';
+      b.addEventListener('click', ()=>{
+        Sound.ensure();
+        const done=this.safeSubsystem(()=> Understudy.collect(this), 'production');
+        if(done){
+          this.say('understudy','we closed it. every seat empty, every line landed. thank you for letting us');
+          this.noteCodex('STAGED: '+done.name);
+        }
+        this.renderCompany();
+      });
+      coStage.appendChild(b);
+      return;
+    }
+
+    const head=document.createElement('div');
+    head.className='coShowHead';
+    const bonus=Math.round(u.staged.length*5);
+    head.textContent='PUT SOMETHING ON'+(bonus?' · '+u.staged.length+' STAGED · +'+bonus+'% RATE':'');
+    coStage.appendChild(head);
+
+    Understudy.Productions.forEach(p=>{
+      const unlocked=Understudy.productionUnlocked(this,p.id);
+      const done=Understudy.productionDone(this,p.id);
+      const b=document.createElement('button');
+      b.className='coShowBtn'+(done?' done':'');
+      b.disabled=!unlocked || this.goo<p.cost;
+      b.innerHTML=
+        '<span class="coGlyph">'+(unlocked?p.glyph:'🔒')+'</span>'+
+        '<span><span class="coName">'+p.name+'</span><br>'+
+        '<span class="coDesc">'+(unlocked?p.desc:'needs '+p.members+' in the company, and the one above it staged')+'</span></span>'+
+        '<span class="coCost">🟢'+p.cost+'<small>'+Understudy.formatDuration(p.minutes*60000)+' · 🟢'+p.pay.goo+'</small></span>';
+      b.addEventListener('click', ()=>{
+        Sound.ensure();
+        if(this.safeSubsystem(()=> Understudy.stage(this, p.id), 'stage')){
+          this.say('understudy','we are on. come back when it closes — it runs whether you watch or not');
+          this.renderCompany();
+        }else Sound.deny();
+      });
+      coStage.appendChild(b);
+    });
+  },
+
   closeCompany(){
     companyOverlay.classList.add('hidden');
     // Reading the report is what dismisses it; the alert on the HUD button
@@ -1342,6 +1410,7 @@ export const Game = {
   },
 
   renderCompany(){
+    this.renderProductions();
     const u=this.understudy, r=Understudy.rates(this);
     const perMin = n => (n*60).toFixed(1);
     coRates.innerHTML =
@@ -1506,6 +1575,18 @@ export const Game = {
     perimeterPctEl.textContent=Math.round(frac*100)+'%';
     turretUpgradeBtn.classList.toggle('breached', frac<=0.3);
     if(this.state==='tdgame') this.updateDefenseUI();
+
+    /* A running show has a clock on it, so the company screen has to move on
+       its own — but once a second, not once a frame: rebuilding the panel at
+       60Hz would swallow a tap that landed between two rebuilds. */
+    this._showT = (this._showT||0) + 1;
+    if(this._showT >= 40){
+      this._showT = 0;
+      if(this.state==='company') this.safeSubsystem(()=> this.renderProductions(), 'show panel');
+      // The curtain call is worth knowing about from outside the screen.
+      companyBtn.classList.toggle('alert',
+        !!this.understudy.pendingReport || Understudy.productionReady(this));
+    }
   },
 
   getPos(lane,e){

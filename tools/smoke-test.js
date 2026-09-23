@@ -406,6 +406,85 @@ function runChecks() {
   check("a breach does not touch the act ladder", G.actIdx === actBefore);
   check("a breach does not touch hero level", G.hero.level === levelBefore);
 
+  /* ---- THE COMPANY: productions ----
+     The sink that makes the idle layer a game rather than an accumulator:
+     rate now, or a lump later. Time is the whole mechanic, so the clock
+     guards are tested the same way the offline-pay ones are. */
+  const Co = G.understudyApi;
+  G.understudy = Co.reset();
+  G.goo = 5000;
+  check("the first production is open from the start", Co.productionUnlocked(G, "readthrough"));
+  check("later productions are closed", !Co.productionUnlocked(G, "closing"));
+
+  const gooBeforeStage = G.goo;
+  check("a production can be staged", Co.stage(G, "readthrough") === true);
+  check("staging costs goo", G.goo < gooBeforeStage);
+  check("staging cannot happen twice at once", Co.stage(G, "readthrough") === false);
+  check("a staged show is not ready immediately", !Co.productionReady(G));
+  check("collecting early pays nothing", Co.collect(G) === null);
+
+  // The company works at half rate while it is on stage.
+  G.understudy.members = { understudy: 1, standin: 1 };
+  const stagingRate = Co.rates(G).goo;
+  const running = G.understudy.production;
+  G.understudy.production = null;
+  const freeRate = Co.rates(G).goo;
+  check("a running show halves the rate", Math.abs(stagingRate - freeRate * 0.5) < 1e-9);
+  G.understudy.production = running;
+
+  // Wind the start back so the show has closed, and take the curtain call.
+  G.understudy.production.startedAt = Date.now() - G.understudy.production.durationMs - 10;
+  check("a finished show is ready", Co.productionReady(G));
+  const gooPreCall = G.goo, standingPre = G.standing.understudy;
+  const closed = Co.collect(G);
+  check("the curtain call pays", closed && G.goo > gooPreCall);
+  check("the curtain call pays standing", G.standing.understudy > standingPre);
+  check("a closed show is recorded", Co.productionDone(G, "readthrough"));
+  check("collecting twice pays nothing", Co.collect(G) === null);
+  check("closing a show unlocks the next", Co.productionUnlocked(G, "preview"));
+
+  // Every distinct show closed makes the company permanently better.
+  G.understudy.staged = [];
+  const plainRate = Co.rates(G).goo;
+  G.understudy.staged = ["readthrough", "preview"];
+  check("staged shows raise the rate for good", Co.rates(G).goo > plainRate);
+
+  // Clock guards. A start stamp in the future is a wound-back device clock or
+  // an edited save, and must not hand back a finished show.
+  Co.stage(G, "preview");
+  const prodSnap = JSON.parse(JSON.stringify(G.saveApi.snapshot(G)));
+  G.understudy = Co.reset();
+  G.saveApi.apply(G, prodSnap);
+  check("a running show survives a save", !!G.understudy.production);
+  check("the shelf of closed shows survives a save", G.understudy.staged.length === 2);
+
+  const futureSnap = JSON.parse(JSON.stringify(prodSnap));
+  futureSnap.company.production.startedAt = Date.now() + 99999999;
+  G.saveApi.apply(G, futureSnap);
+  check("a show that claims to start in the future starts now",
+    !Co.productionReady(G) && G.understudy.production.startedAt <= Date.now());
+
+  // Length comes from the catalogue, so editing it in the save does nothing.
+  const shortSnap = JSON.parse(JSON.stringify(prodSnap));
+  shortSnap.company.production.durationMs = 1;
+  G.saveApi.apply(G, shortSnap);
+  check("a show cannot be shortened by editing the save",
+    G.understudy.production.durationMs === Co.productionById("preview").minutes * 60000);
+
+  const junkSnap = JSON.parse(JSON.stringify(prodSnap));
+  junkSnap.company.production = { id: "nonsense", startedAt: Date.now(), durationMs: 5 };
+  junkSnap.company.staged = ["nonsense", "readthrough"];
+  G.saveApi.apply(G, junkSnap);
+  check("an unknown show is dropped from a restored save", G.understudy.production === null);
+  check("unknown shows are dropped from the shelf", G.understudy.staged.join() === "readthrough");
+
+  // The company screen still opens with all of this on it.
+  G.understudy = Co.reset();
+  G.state = "menu";
+  G.openCompany();
+  check("the production panel renders", window.document.querySelectorAll("#coStage button").length > 0);
+  G.closeCompany();
+
   /* ---- THE HONEY POT: the goblin's arcade ----
      Driven through the subsystem the way the board drives it. What is checked
      is that the two currencies stay separate, that the stake ends a session

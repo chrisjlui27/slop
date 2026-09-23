@@ -78,3 +78,78 @@ export const Company = [
    speeds. */
 export function memberRate(base, level) { return base * (1 + (level - 1) * 0.55); }
 export function memberUpgradeCost(base, level) { return Math.round((base || 30) * 0.7 * Math.pow(1.9, level - 1)); }
+
+/* ==================== PRODUCTIONS ====================
+
+   The sink. Until now the only thing the company could buy was more company:
+   goo went into recruiting, recruiting raised the rate, the rate produced goo.
+   A loop that only feeds itself is an accumulator, not a game.
+
+   A production commits the company to a show for a stretch of real time. It
+   costs goo to stage, it needs a big enough cast, and while it runs the
+   passive rate is HALVED — they are rehearsing the show instead of the trials.
+   When it closes it pays a lump far larger than the trickle it displaced.
+
+   That is the decision the layer was missing: rate now, or a lump later.
+
+   Productions run on the wall clock, so they close while the app is shut. That
+   is not a second system being paid for time away — it is the same one. The
+   Understudy is the only character allowed to work while you are out, and a
+   show that stopped running the moment you took a phone call would be a
+   strange thing for them to be proud of.
+
+   Payouts are sized against what the off-hours trickle would have made in the
+   same window, not against the live rate: roughly two to three times it, minus
+   the stake, for a player who commits the company and comes back. A night's
+   idle at a full roster is about 280 goo; CLOSING NIGHT nets about four times
+   that for nine hundred up front and eight hours of half rate. */
+export const Productions = [
+  {
+    id:'readthrough', name:'THE READ-THROUGH', glyph:'📃',
+    cost:25, members:1, minutes:4,
+    pay:{ goo:60, xp:20, standing:4 },
+    desc:'everyone sitting down, saying it out loud, once'
+  },
+  {
+    id:'preview', name:'THE PREVIEW', glyph:'🎟️',
+    cost:60, members:2, minutes:12,
+    pay:{ goo:140, xp:45, standing:5 },
+    desc:'an audience of nobody. we still do the whole thing'
+  },
+  {
+    id:'opening', name:'OPENING NIGHT', glyph:'🌟',
+    cost:120, members:3, minutes:30,
+    pay:{ goo:300, xp:95, standing:6 },
+    desc:'the one with the lights. we have been ready for months'
+  },
+  {
+    id:'transfer', name:'THE TRANSFER', glyph:'🚚',
+    cost:250, members:4, minutes:90,
+    pay:{ goo:700, xp:220, standing:7 },
+    desc:'same show, bigger hall. nobody asked whose hall'
+  },
+  {
+    id:'revival', name:'THE REVIVAL', glyph:'🕯️',
+    cost:500, members:5, minutes:240,
+    pay:{ goo:1500, xp:450, standing:8 },
+    desc:'the cut version, staged in full, exactly as written'
+  },
+  {
+    id:'closing', name:'CLOSING NIGHT', glyph:'🎭',
+    cost:900, members:5, minutes:480,
+    pay:{ goo:2000, xp:700, standing:10 },
+    desc:'the last one. we will open again tomorrow'
+  }
+];
+
+/* Every distinct production ever closed makes the company permanently better
+   at its own job. Six of them is +30% — the long axis of the layer, and the
+   reason to stage the small ones even once the big ones are open. */
+export const PRODUCTION_BONUS = 0.05;
+
+/* Halved, not stopped. A company that earned nothing while staging would make
+   the choice obvious in the wrong direction: nobody would ever start a show
+   they could not sit and watch. */
+export const STAGING_RATE = 0.5;
+
+export const productionById = id => Productions.find(p => p.id === id);
