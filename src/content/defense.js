@@ -108,3 +108,86 @@ export function waveHpMult(n) { return 1 + n * 0.09; }
    a solid wall of enemies stops being a game about placement. */
 export function spawnGap(n) { return Math.max(340, 1000 - n * 42); }
 export function waveRest(n) { return Math.max(2600, 6000 - n * 130); }
+
+/* ==================== DOCTRINE ====================
+
+   THE CRAB's own progression, and the answer to two things the perimeter
+   owed: a decision between waves, and a board that grows.
+
+   Every fourth wave the line earns a doctrine, and the perimeter holds — no
+   next wave until one of two offered is picked. Holding is the point: it is
+   the only moment in this loop that is not happening at you, and it is the
+   only one where the board itself can change shape.
+
+   These are one-offs, not levels. A tower is a running cost paid in goo; a
+   doctrine is a decision about what kind of line this is going to be, taken
+   once, kept for the run. */
+export const Doctrines = [
+  {
+    id:'flank', name:'OPEN THE FLANK', glyph:'🧱',
+    desc:'three more pads, forward of the line',
+    // The only one that changes the board. Handled in Defense.applyDoctrine.
+    pads:[ [60,110], [60,210], [60,310] ],
+    line:'we dug out the forward wall. three more pads. i have wanted this since wave one'
+  },
+  {
+    id:'plating', name:'PLATING', glyph:'🛡️',
+    desc:'+40 integrity, and patched to full now',
+    integrity:40,
+    line:'plating. it will still get through. it will take longer about it'
+  },
+  {
+    id:'optics', name:'OPTICS', glyph:'🔭',
+    desc:'every tower reaches 14% further',
+    rangeMult:1.14,
+    line:'we can see further. seeing further is most of it'
+  },
+  {
+    id:'drill', name:'DRILL', glyph:'🥁',
+    desc:'every tower fires 12% faster',
+    rateMult:0.88,
+    line:'faster. not better. faster is usually enough'
+  },
+  {
+    id:'salvage', name:'SALVAGE CREW', glyph:'♻️',
+    desc:'kills pay 30% more, selling refunds in full',
+    gooMult:1.3, sellFull:true,
+    line:'we strip what comes through. it was going to be litter anyway'
+  },
+  {
+    id:'relief', name:'RELIEF SHIFT', glyph:'🧰',
+    desc:'a clean wave repairs twice as much',
+    cleanMult:2,
+    line:'somebody else watches for an hour. i sleep. the line holds either way'
+  },
+  {
+    id:'spotters', name:'SPOTTERS', glyph:'📡',
+    desc:'the next wave is named before it arrives',
+    spotters:true,
+    line:'we know what is coming now. knowing is not the same as ready'
+  }
+];
+
+/* Waves 4, 8, 12 … and every fourth after. Two options each time, drawn from
+   what has not been taken. */
+export const DOCTRINE_EVERY = 4;
+
+export const doctrineById = id => Doctrines.find(d => d.id === id);
+
+/* Every fifth wave is a SURGE: the composition gains an elite. They are the
+   only enemies worth building a second row for, and the reason the perimeter
+   stops being solved once a good line is up. */
+export const EliteTypes = {
+  wedge: { id:'wedge', name:'THE WEDGE', hp:46, speed:0.020, r:21, color:'#ff7a2f', breach:12, goo:9, elite:true },
+  hush:  { id:'hush',  name:'THE HUSH',  hp:22, speed:0.050, r:14, color:'#2fe1ff', breach:8,  goo:7, elite:true }
+};
+
+export function eliteForWave(n){
+  if(n % 5 !== 0) return null;
+  return (n % 10 === 0) ? 'wedge' : 'hush';
+}
+
+/* Calling a wave in early. The rest between waves is there so a player can
+   build; skipping it is worth goo, because the only thing a tower defense can
+   pay you for confidence is time. */
+export const CALL_BONUS_PER_SEC = 3;

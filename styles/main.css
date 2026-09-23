@@ -1220,3 +1220,31 @@
      it stops being the thing the eye goes to. */
   .coShowBtn.done{ opacity:0.75; border-color:#241d33; }
   .coShowBtn .coCost small{ display:block; font-size:7px; opacity:0.65; color:var(--ink); }
+
+  /* --- doctrine: the between-wave decision -------------------
+     Two cards, and the perimeter is not moving until one of them
+     is tapped. Given the acid edge the rest of the Crab's screen
+     does not use, so "the line is waiting for you" cannot be
+     mistaken for another build menu. */
+  #tdDoctrine{ width:100%; max-width:min(100%, 420px); display:flex; flex-direction:column; gap:5px; margin-top:8px; }
+  #tdDoctrine:empty{ display:none; }
+  .tdDocHead{
+    font-family:'Press Start 2P',monospace; font-size:8px; color:var(--acid);
+    text-align:center; padding:3px 0 2px; letter-spacing:0.5px;
+  }
+  #tdDoctrine button{
+    display:flex; align-items:center; gap:8px; width:100%; min-height:48px;
+    padding:8px 10px; border-radius:8px; cursor:pointer; text-align:left;
+    background:#16200f; border:1px solid #3a5a12; color:var(--ink);
+    font-family:'Space Grotesk',system-ui,sans-serif; font-size:11px;
+    transition: transform 0.06s ease, filter 0.12s ease;
+  }
+  #tdDoctrine button:active{ transform:translateY(2px); filter:brightness(1.3); }
+  #tdDoctrine .tdName{ color:var(--acid); }
+  #tdCallBtn{
+    background:var(--yellow); box-shadow:0 6px 0 #a39a12; color:#14120a;
+  }
+  #tdCallBtn:active{ box-shadow:0 2px 0 #a39a12; }
+  /* The status line carries a whole sentence once SPOTTERS is taken, so it
+     stops being a single 8px line and is allowed to wrap. */
+  #tdStatus{ line-height:1.5; max-width:min(100%, 420px); }

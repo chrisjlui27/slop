@@ -406,6 +406,105 @@ function runChecks() {
   check("a breach does not touch the act ladder", G.actIdx === actBefore);
   check("a breach does not touch hero level", G.hero.level === levelBefore);
 
+  /* ---- THE PERIMETER: doctrine, surges and calling waves in ----
+     The three things the loop owed: a decision between waves, a board that
+     grows, and a progression that is the Crab's rather than the shop's. */
+  const Df = G.defenseApi;
+  G.defense = Df.reset();
+  G.goo = 4000;
+  const padsAtStart = G.defense.pads.length;
+  check("a fresh line has taken no doctrine", G.defense.doctrine.length === 0);
+
+  // Every fourth wave the line earns one, and holds until it is taken.
+  G.defense.wave = 4;
+  Df.completeWave(G, G.defense);
+  check("a milestone wave offers a doctrine", !!G.defense.doctrineOffer);
+  check("two are offered", G.defense.doctrineOffer.length === 2);
+  const waveHeld = G.defense.wave;
+  G.defense.restT = 0;
+  for (let i = 0; i < 40; i++) Df.tick(G, 50);
+  check("the line holds while a doctrine is on the table", G.defense.wave === waveHeld);
+
+  // OPEN THE FLANK is the one that changes the board.
+  G.defense.doctrineOffer = ["flank", "plating"];
+  check("a doctrine can be taken", Df.takeDoctrine(G, "flank") === true);
+  check("the offer clears once taken", G.defense.doctrineOffer === null);
+  check("the flank adds board", G.defense.pads.length === padsAtStart + 3);
+  check("a new pad knows where it is", G.defense.pads[padsAtStart].x != null);
+  check("a doctrine cannot be taken twice", Df.takeDoctrine(G, "flank") === false);
+  check("waves resume once a doctrine is taken", (Df.tick(G, 3000), G.defense.wave > waveHeld));
+
+  // The multipliers are read from one place and actually reach the towers.
+  G.defense.doctrine = [];
+  const plainRange = Df.towerStats(G, { typeId: "clacker", level: 1 }).range;
+  const plainInterval = Df.towerStats(G, { typeId: "clacker", level: 1 }).interval;
+  G.defense.doctrine = ["optics", "drill"];
+  check("optics reaches further", Df.towerStats(G, { typeId: "clacker", level: 1 }).range > plainRange);
+  check("drill fires faster", Df.towerStats(G, { typeId: "clacker", level: 1 }).interval < plainInterval);
+  G.defense.doctrine = ["salvage"];
+  G.defense.pads[4].tower = { typeId: "clacker", level: 1, fireT: 0 };
+  const fullRefund = Df.sellValue(G, 4);
+  G.defense.doctrine = [];
+  check("the salvage crew refunds in full", fullRefund > Df.sellValue(G, 4));
+
+  // PLATING raises the ceiling and patches to it, which is the only doctrine
+  // that touches integrity.
+  G.defense.perimeter = 20;
+  const maxBefore = G.defense.perimeterMax;
+  G.defense.doctrineOffer = ["plating", "optics"];
+  Df.takeDoctrine(G, "plating");
+  check("plating raises the ceiling", G.defense.perimeterMax > maxBefore);
+  check("plating patches to full", G.defense.perimeter === G.defense.perimeterMax);
+
+  // Surges: every fifth wave brings something the first row cannot hold.
+  G.defense = Df.reset();
+  G.defense.wave = 4;
+  Df.startWave(G, G.defense);
+  check("a surge wave carries an elite", G.defense.queue.some(id => !!Df.EliteTypes[id]));
+  check("a surge is announced", G.defense.surge === true);
+  G.defense.wave = 5;
+  Df.startWave(G, G.defense);
+  check("an ordinary wave carries no elite", !G.defense.queue.some(id => !!Df.EliteTypes[id]));
+
+  // An elite is an enemy everywhere that matters: it spawns, it can be killed,
+  // and it bites harder on the way through.
+  G.defense = Df.reset();
+  Df.spawn(G, G.defense, "wedge");
+  check("an elite spawns", G.defense.enemies.length === 1);
+  const gooBeforeElite = G.goo;
+  Df.kill(G, G.defense, G.defense.enemies[0]);
+  check("an elite pays when it dies", G.goo > gooBeforeElite);
+
+  // Calling the next wave in early: pays for the time handed back, and only
+  // while the line is actually resting.
+  G.defense = Df.reset();
+  G.defense.wave = 2; G.defense.queue = []; G.defense.enemies = []; G.defense.restT = 4000;
+  const gooBeforeCall = G.goo;
+  const called = Df.callWaveEarly(G);
+  check("calling a wave early pays", called > 0 && G.goo > gooBeforeCall);
+  check("calling a wave early starts it", G.defense.wave === 3);
+  check("a wave already running cannot be called", Df.callWaveEarly(G) === false);
+
+  // SPOTTERS is the readout doctrine, so what it changes is the readout.
+  G.defense.doctrine = [];
+  const plainLabel = Df.nextWaveLabel(G);
+  G.defense.doctrine = ["spotters"];
+  check("spotters name the next wave", Df.nextWaveLabel(G).length > plainLabel.length);
+
+  // Doctrine survives a save, and the board it produced is replayed from it
+  // rather than stored twice.
+  G.defense = Df.reset();
+  G.defense.doctrineOffer = ["flank", "plating"];
+  Df.takeDoctrine(G, "flank");
+  const padsWithFlank = G.defense.pads.length;
+  const defSnap = JSON.parse(JSON.stringify(G.saveApi.snapshot(G)));
+  G.defense = Df.reset();
+  G.saveApi.apply(G, defSnap);
+  check("doctrine survives a save", G.defense.doctrine.indexOf("flank") >= 0);
+  check("the board it built comes back with it", G.defense.pads.length === padsWithFlank);
+  G.saveApi.apply(G, Object.assign({}, defSnap, { doctrine: ["nonsense"] }));
+  check("an unknown doctrine is ignored", G.defense.doctrine.indexOf("nonsense") < 0);
+
   /* ---- THE COMPANY: productions ----
      The sink that makes the idle layer a game rather than an accumulator:
      rate now, or a lump later. Time is the whole mechanic, so the clock

@@ -25,18 +25,28 @@ import { Sound } from "./audio.js";
 import { FX } from "./fx.js";
 import {
   BOARD, CORRIDOR_Y, PAD_Y, PAD_X, PAD_R, BREACH_X,
-  TowerTypes, EnemyTypes, waveComposition, waveHpMult, spawnGap, waveRest
+  TowerTypes, EnemyTypes, waveComposition, waveHpMult, spawnGap, waveRest,
+  Doctrines, DOCTRINE_EVERY, doctrineById, EliteTypes, eliteForWave,
+  CALL_BONUS_PER_SEC
 } from "./content/defense.js";
 
 const typeById = id => TowerTypes.find(t => t.id === id);
+// Elites are enemies like any other everywhere except the spawn table, so the
+// two catalogues are read through one lookup.
+const enemyById = id => EnemyTypes[id] || EliteTypes[id];
 
 export const Defense = {
-  BOARD, TowerTypes, EnemyTypes,
+  BOARD, TowerTypes, EnemyTypes, EliteTypes, Doctrines, doctrineById,
 
   /* ---------------- geometry ---------------- */
 
   padCount(){ return PAD_Y.length * PAD_X.length; },
-  padPos(i){
+  /* Position lives on the pad rather than being derived from its index: OPEN
+     THE FLANK adds three pads that are not on the PAD_X/PAD_Y grid, and an
+     index cannot say where those are. The argument stays optional so the old
+     call shape (an index alone) still answers for the nine base pads. */
+  padPos(i, d){
+    if(d && d.pads && d.pads[i] && d.pads[i].x != null) return { x: d.pads[i].x, y: d.pads[i].y };
     return { x: PAD_X[i % PAD_X.length], y: PAD_Y[Math.floor(i / PAD_X.length)] };
   },
 
@@ -44,12 +54,17 @@ export const Defense = {
 
   reset(){
     const pads = [];
-    for(let i = 0; i < this.padCount(); i++) pads.push({ tower: null });
+    for(let i = 0; i < this.padCount(); i++){
+      pads.push({ tower: null, x: PAD_X[i % PAD_X.length], y: PAD_Y[Math.floor(i / PAD_X.length)] });
+    }
     const d = {
       perimeter: 100, perimeterMax: 100,
       wave: 0, queue: [], spawnT: 0, restT: 4000, waveLeaks: 0, breaches: 0,
       enemies: [], projectiles: [], blasts: [],
       selectedPad: -1,
+      // THE CRAB's own progression. `doctrine` is what has been taken,
+      // `doctrineOffer` is the pair on the table while the line holds.
+      doctrine: [], doctrineOffer: null,
       pads
     };
     // One free CLACKER, mid-board. The lane this replaced had a turret from
@@ -66,6 +81,74 @@ export const Defense = {
     const d = g.defense;
     if(g.shopLevels.secondturret && !d.pads[3].tower){
       d.pads[3].tower = { typeId: 'clacker', level: 1, fireT: 0 };
+    }
+  },
+
+  /* ---------------- doctrine ---------------- */
+
+  hasDoctrine(g, id){ return g.defense.doctrine.indexOf(id) >= 0; },
+
+  // Every doctrine's effect on a number, resolved in one place. A doctrine
+  // that changed a value at its own call site would be a doctrine nobody could
+  // find again.
+  doctrineMods(g){
+    const d = g.defense;
+    const m = { range:1, rate:1, goo:1, clean:1, sellFull:false, spotters:false };
+    d.doctrine.forEach(id => {
+      const doc = doctrineById(id); if(!doc) return;
+      if(doc.rangeMult) m.range *= doc.rangeMult;
+      if(doc.rateMult) m.rate *= doc.rateMult;
+      if(doc.gooMult) m.goo *= doc.gooMult;
+      if(doc.cleanMult) m.clean *= doc.cleanMult;
+      if(doc.sellFull) m.sellFull = true;
+      if(doc.spotters) m.spotters = true;
+    });
+    return m;
+  },
+
+  /* Two of what is left, offered when the line earns one. Held on the state
+     rather than rolled at display time, so the pair does not reshuffle itself
+     every time the screen redraws. */
+  offerDoctrine(g){
+    const d = g.defense;
+    const pool = Doctrines.filter(x => d.doctrine.indexOf(x.id) < 0);
+    if(!pool.length) return null;
+    for(let i = pool.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    d.doctrineOffer = pool.slice(0, 2).map(x => x.id);
+    return d.doctrineOffer;
+  },
+
+  takeDoctrine(g, id){
+    const d = g.defense;
+    if(!d.doctrineOffer || d.doctrineOffer.indexOf(id) < 0) return false;
+    const doc = doctrineById(id);
+    if(!doc) return false;
+    d.doctrine.push(id);
+    d.doctrineOffer = null;
+    this.applyDoctrine(g, doc);
+    g.shiftFavor('crab', 4);
+    Sound.crabBuild();
+    FX.stamp(doc.name, '#ff7a2f', '#2fe1ff');
+    g.say('crab', doc.line, true);
+    return true;
+  },
+
+  /* The part of a doctrine that changes the board rather than a multiplier.
+     Idempotent and re-run on load, because the save stores which doctrines
+     were taken rather than the board they produced — one source of truth. */
+  applyDoctrine(g, doc){
+    const d = g.defense;
+    if(doc.integrity){
+      d.perimeterMax += doc.integrity;
+      d.perimeter = d.perimeterMax;
+    }
+    if(doc.pads){
+      doc.pads.forEach(([x,y])=>{
+        if(!d.pads.some(p => p.x === x && p.y === y)) d.pads.push({ tower:null, x, y });
+      });
     }
   },
 
@@ -90,7 +173,8 @@ export const Defense = {
     const pad = g.defense.pads[padIdx];
     if(!pad || !pad.tower) return 0;
     const t = typeById(pad.tower.typeId);
-    return Math.round(t.cost * 0.45 * pad.tower.level);
+    const rate = this.doctrineMods(g).sellFull ? 1 : 0.45;
+    return Math.round(t.cost * rate * pad.tower.level);
   },
 
   /* ---------------- tower stats ----------------
@@ -102,14 +186,15 @@ export const Defense = {
     const t = typeById(tower.typeId);
     const lvl = tower.level;
     const moodFactor = { happy:0.85, neutral:1, grumpy:1.2, feral:1.5 }[g.buddy.mood] || 1;
+    const mods = this.doctrineMods(g);
     const rushBoost = (g.mutator && g.mutator.id === 'rush') ? 0.75 : 1;
     return {
       type: t,
       dmg: g.turret.dmg * t.dmgMult * (1 + (lvl - 1) * 0.6) * g.favorDefenseBonus(),
       // The buddy's mood still throttles fire rate. That coupling is the
       // Goblin's and predates the Crab; he has opinions about it.
-      interval: g.turret.fireInterval * t.intervalMult * moodFactor * rushBoost,
-      range: t.range * (1 + (lvl - 1) * 0.10),
+      interval: g.turret.fireInterval * t.intervalMult * moodFactor * rushBoost * mods.rate,
+      range: t.range * (1 + (lvl - 1) * 0.10) * mods.range,
       splash: t.splash,
       slow: t.slow
     };
@@ -185,18 +270,69 @@ export const Defense = {
     // outrun by the next wave's timer.
     if(d.enemies.length) return;
 
+    /* The line holds while a doctrine is on the table. This is the only place
+       in the loop that waits for the player, and waiting is the point: a
+       between-wave decision that the next wave can interrupt is not a
+       decision. Holding costs nothing — no wave means no leak — so it is safe
+       to leave a run parked here for an hour. */
+    if(d.doctrineOffer) return;
+
     d.restT -= dt;
     if(d.restT > 0) return;
+    this.startWave(g, d);
+  },
+
+  startWave(g, d){
     if(d.wave > 0) this.completeWave(g, d);
     d.wave++;
     d.queue = waveComposition(d.wave);
+    const elite = eliteForWave(d.wave);
+    if(elite){
+      // One elite, at the back of the queue, so the wave arrives and then the
+      // thing that needed the second row arrives.
+      d.queue.push(elite);
+      Sound.bossAppear();
+      FX.stamp('SURGE', '#ff7a2f', '#ff2f9e');
+      g.say('crab', 'something big in this one. it is called ' + EliteTypes[elite].name.toLowerCase().replace('the ','the ') + '. hold the middle', true);
+    }
     d.waveLeaks = 0;
     d.spawnT = 0;
     d.restT = waveRest(d.wave);
+    d.surge = !!elite;
+  },
+
+  /* What is coming, for the readout. SPOTTERS turns this from "wave 12" into
+     a sentence about wave 12, which is the entire value of that doctrine. */
+  nextWaveLabel(g){
+    const d = g.defense;
+    const n = d.wave + 1;
+    if(!this.doctrineMods(g).spotters) return 'WAVE ' + n;
+    const elite = eliteForWave(n);
+    const comp = waveComposition(n);
+    const counts = {};
+    comp.forEach(id => { counts[id] = (counts[id]||0) + 1; });
+    const parts = Object.keys(counts).map(id => counts[id] + '×' + (EnemyTypes[id] ? EnemyTypes[id].name : id));
+    return 'WAVE ' + n + ': ' + parts.join(' · ') + (elite ? ' · ' + EliteTypes[elite].name : '');
+  },
+
+  /* Calling the next wave in early. The rest exists so a player can build; a
+     player who does not need it should be paid for the time they hand back,
+     and the payment scales with how much they handed back. */
+  callWaveEarly(g){
+    const d = g.defense;
+    if(d.doctrineOffer || d.queue.length || d.enemies.length || d.restT <= 0) return false;
+    const secs = d.restT / 1000;
+    const bonus = Math.max(1, Math.round(secs * CALL_BONUS_PER_SEC));
+    d.restT = 0;
+    g.addGoo(bonus);
+    g.shiftFavor('crab', 1);
+    Sound.crabBuild();
+    this.startWave(g, d);
+    return bonus;
   },
 
   spawn(g, d, typeId, atX, atLane){
-    const t = EnemyTypes[typeId];
+    const t = enemyById(typeId);
     if(!t) return;
     const lane = atLane != null ? atLane : Math.floor(Math.random() * CORRIDOR_Y.length);
     // Hard cap. A backlog of enemies during a long unattended stretch should
@@ -215,7 +351,7 @@ export const Defense = {
   moveEnemies(g, d, dt){
     const jitter = (g.mutator && g.mutator.id === 'quake') ? 1.6 : 1;
     for(const en of d.enemies){
-      const t = EnemyTypes[en.typeId];
+      const t = enemyById(en.typeId);
       if(en.slowT > 0){ en.slowT -= dt; } else { en.slowAmt = 0; }
       en.x -= t.speed * dt * jitter * (1 - en.slowAmt);
     }
@@ -223,7 +359,7 @@ export const Defense = {
     if(through.length){
       d.enemies = d.enemies.filter(en => en.x > BREACH_X);
       let bite = 0;
-      through.forEach(en => { bite += EnemyTypes[en.typeId].breach; });
+      through.forEach(en => { bite += enemyById(en.typeId).breach; });
       d.waveLeaks += through.length;
       d.perimeter -= bite;
       Sound.leak();
@@ -240,7 +376,7 @@ export const Defense = {
       if(tw.fireT > 0) return;
 
       const s = this.towerStats(g, tw);
-      const p = this.padPos(i);
+      const p = this.padPos(i, d);
 
       // Target the enemy nearest the breach — anything else lets a leader walk
       // through while the tower fusses over something that just arrived.
@@ -283,8 +419,8 @@ export const Defense = {
   },
 
   kill(g, d, en){
-    const t = EnemyTypes[en.typeId];
-    g.addGoo(t.goo * g.gooMult() * g.comboGooMult());
+    const t = enemyById(en.typeId);
+    g.addGoo(t.goo * g.gooMult() * g.comboGooMult() * this.doctrineMods(g).goo);
     g.buddy.hunger = Math.min(1, g.buddy.hunger + 0.03);
     if(t.splits){
       for(let i = 0; i < (t.splitCount || 2); i++){
@@ -299,11 +435,15 @@ export const Defense = {
     // Clean waves restore real integrity; leaky ones barely patch it. That gap
     // is what makes paying attention worth anything.
     const clean = d.waveLeaks === 0;
-    d.perimeter = Math.min(d.perimeterMax, d.perimeter + (clean ? 14 : 5));
+    const repair = (clean ? 14 : 5) * (clean ? this.doctrineMods(g).clean : 1);
+    d.perimeter = Math.min(d.perimeterMax, d.perimeter + repair);
     g.addGoo((4 + d.wave) * g.gooMult());
     g.shiftFavor('crab', clean ? 2.5 : 1);
     Sound.waveClear();
     if(clean && d.wave % 3 === 0) FX.stamp('LINE HELD', '#ff7a2f', '#2fe1ff');
+    // Every fourth wave the line earns a doctrine, and the perimeter holds
+    // until one is taken.
+    if(d.wave % DOCTRINE_EVERY === 0) this.offerDoctrine(g);
     g.updateHUD();
   },
 
@@ -347,7 +487,7 @@ export const Defense = {
   boardTap(g, x, y){
     const d = g.defense;
     for(let i = 0; i < d.pads.length; i++){
-      const p = this.padPos(i);
+      const p = this.padPos(i, d);
       if(Math.hypot(x - p.x, y - p.y) <= PAD_R + 8){
         d.selectedPad = (d.selectedPad === i) ? -1 : i;
         Sound.select();
@@ -365,7 +505,7 @@ export const Defense = {
     const bx = x * (BOARD.w / 640);
     const by = y * (BOARD.h / 80);
     for(const en of d.enemies){
-      const t = EnemyTypes[en.typeId];
+      const t = enemyById(en.typeId);
       const ey = CORRIDOR_Y[en.lane];
       if(Math.hypot(bx - en.x, by - ey) <= t.r + 26){
         en.hp -= Math.max(2, g.turret.dmg * 2);
@@ -415,7 +555,7 @@ export const Defense = {
 
     d.pads.forEach((pad, i) => {
       if(!pad.tower) return;
-      const p = this.padPos(i), t = typeById(pad.tower.typeId);
+      const p = this.padPos(i, d), t = typeById(pad.tower.typeId);
       c.fillStyle = t.color;
       c.beginPath(); c.arc(sx(p.x), sy(p.y), 4, 0, Math.PI * 2); c.fill();
     });
@@ -426,7 +566,7 @@ export const Defense = {
     });
 
     d.enemies.forEach(en => {
-      const t = EnemyTypes[en.typeId];
+      const t = enemyById(en.typeId);
       c.fillStyle = t.color;
       c.beginPath(); c.arc(sx(en.x), sy(CORRIDOR_Y[en.lane]), Math.max(2, t.r * 0.42), 0, Math.PI * 2); c.fill();
     });
@@ -466,7 +606,7 @@ export const Defense = {
 
     // Pads.
     d.pads.forEach((pad, i) => {
-      const p = this.padPos(i);
+      const p = this.padPos(i, d);
       const selected = d.selectedPad === i;
 
       if(pad.tower){
@@ -516,7 +656,7 @@ export const Defense = {
     });
 
     d.enemies.forEach(en => {
-      const t = EnemyTypes[en.typeId];
+      const t = enemyById(en.typeId);
       const y = CORRIDOR_Y[en.lane] + Math.sin((en.x + en.wobble) * 0.06) * 5;
       c.fillStyle = t.color;
       c.beginPath(); c.arc(en.x, y, t.r, 0, Math.PI * 2); c.fill();

@@ -62,6 +62,10 @@ export const Save = {
       // the board are not, and restoring a half-finished wave would mean
       // resuming into an ambush nobody chose to walk into.
       perimeter: g.defense.perimeter,
+      // What the line has decided, not the board those decisions produced —
+      // the extra pads and the raised integrity are replayed from these on
+      // load, so there is one source of truth for the shape of the board.
+      doctrine: g.defense.doctrine.slice(),
       wave: g.defense.wave,
       breaches: g.defense.breaches,
       towers: g.defense.pads.map(p => p.tower
@@ -190,6 +194,14 @@ export const Save = {
     // The board comes back empty and the wave restarts from its beginning —
     // see the snapshot comment. Integrity and breach count carry, because
     // those are the consequences the player earned.
+    if(Array.isArray(d.doctrine)){
+      d.doctrine.forEach(id=>{
+        const doc = g.defenseApi.doctrineById(id);
+        if(!doc || g.defense.doctrine.indexOf(id) >= 0) return;
+        g.defense.doctrine.push(id);
+        g.defenseApi.applyDoctrine(g, doc);
+      });
+    }
     if(typeof d.perimeter === 'number'){
       g.defense.perimeter = Math.max(1, Math.min(g.defense.perimeterMax, d.perimeter));
     }

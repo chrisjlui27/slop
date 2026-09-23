@@ -59,7 +59,7 @@ would someone play it?** Where each loop sits against that:
 |---|---|---|---|
 | The Acts | ARTIFICER | 24 microgames, 8 acts, 8 bosses, 5 stats, XP, Workshop, double rounds, mutators | A reason to replay an act; more input syntaxes (see below) |
 | The Archive | GOBLIN, on the ARTIFICER's shelf | A turn-based card duel: 16 cards, 6 builds, a drafted deck, a measured difficulty ladder | Relics or a second axis of progression; a reason to keep playing it after the sixth build |
-| The Perimeter | THE CRAB | Waves, 4 tower types, placement that matters, integrity, the only loss state in the game | More board than 3 corridors; between-wave decisions; his own progression |
+| The Perimeter | THE CRAB | Waves, 4 tower types, placement, integrity, the only loss state, seven doctrines taken every fourth wave, a board that grows, surges with elites, and waves you can call in early | A fourth corridor; a reason to sell a tower other than a mistake |
 | The Honey Pot | SLOP-GOBLIN | Two currencies, five drop types, a combo, a hazard that ends the session, six upgrades bought with its own money, escalation | A reason to reach a deep session other than honey; a second board |
 | The Company | THE UNDERSTUDY | A roster, recruitment, rehearsal levels, offline pay with a cap, and six productions to stage — rate now or a lump later, with a permanent bonus per show closed | A reason to keep a small company small; something beyond the sixth show |
 

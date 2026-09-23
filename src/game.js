@@ -23,6 +23,7 @@ const arcFoeName=$('arcFoeName'), arcIntent=$('arcIntent'), arcFoeFill=$('arcFoe
 const arcLog=$('arcLog'), arcYouHp=$('arcYouHp'), arcBlock=$('arcBlock'), arcEnergy=$('arcEnergy'), arcPiles=$('arcPiles');
 const arcHand=$('arcHand'), arcDraft=$('arcDraft'), arcEndBtn=$('arcEndBtn'), arcFleeBtn=$('arcFleeBtn');
 const arcFoeArt=$('arcFoeArt');
+const tdDoctrine=$('tdDoctrine'), tdCallBtn=$('tdCallBtn');
 const coStage=$('coStage');
 const potShop=$('potShop'), potHoney=$('potHoney'), potCombo=$('potCombo');
 const potCracks=$('potCracks'), potFlash=$('potFlash');
@@ -1087,6 +1088,30 @@ export const Game = {
 
   /* Redrawn whenever the selection or the goo balance changes. Built from
      TowerTypes rather than hardcoded, so a new tower type is a content edit. */
+  /* The doctrine panel. Two cards, and the perimeter does not move until one
+     of them is tapped — so this is the one screen in the game that waits. */
+  renderDoctrine(){
+    const offer=this.defense.doctrineOffer;
+    if(!offer){ if(tdDoctrine.innerHTML) tdDoctrine.innerHTML=''; return; }
+    if(tdDoctrine.dataset.offer===offer.join(',')) return;
+    tdDoctrine.dataset.offer=offer.join(',');
+    tdDoctrine.innerHTML='<div class="tdDocHead">THE LINE EARNED SOMETHING</div>';
+    offer.forEach(id=>{
+      const doc=Defense.doctrineById(id);
+      const b=document.createElement('button');
+      b.innerHTML='<span class="tdGlyph">'+doc.glyph+'</span>'+
+        '<span><span class="tdName">'+doc.name+'</span><br>'+
+        '<span class="tdDesc">'+doc.desc+'</span></span>';
+      b.addEventListener('click', ()=>{
+        Sound.ensure();
+        this.safeSubsystem(()=> Defense.takeDoctrine(this, id), 'doctrine');
+        tdDoctrine.dataset.offer='';
+        this.renderDoctrine(); this.renderBuildMenu(); this.updateDefenseUI();
+      });
+      tdDoctrine.appendChild(b);
+    });
+  },
+
   renderBuildMenu(){
     const d=this.defense, idx=d.selectedPad;
     tdBuildMenu.innerHTML='';
@@ -1133,7 +1158,15 @@ export const Game = {
     const d=this.defense, frac=this.perimeterFrac();
     const pct=Math.round(frac*100);
     const color = frac>0.5 ? '#ff7a2f' : (frac>0.25 ? '#fff02f' : '#ff2f9e');
-    tdStatus.textContent='WAVE '+Math.max(1,d.wave)+' · INTEGRITY '+pct+'%'+(d.breaches?' · BREACHES '+d.breaches:'');
+    const holding=!!d.doctrineOffer;
+    const resting=!holding && !d.queue.length && !d.enemies.length && d.restT>0;
+    tdStatus.textContent = holding
+      ? 'THE LINE HOLDS · PICK ONE'
+      : (resting
+          ? this.safeSubsystem(()=> Defense.nextWaveLabel(this), 'next wave') + ' IN ' + Math.ceil(d.restT/1000) + 's'
+          : 'WAVE '+Math.max(1,d.wave)+' · INTEGRITY '+pct+'%'+(d.breaches?' · BREACHES '+d.breaches:''));
+    tdCallBtn.classList.toggle('hidden', !resting);
+    this.renderDoctrine();
     tdIntegrityFill.style.width=pct+'%';
     tdIntegrityFill.style.background=color;
     turretCostEl.textContent=this.turretCost();
@@ -1573,7 +1606,7 @@ export const Game = {
     // a breach is genuinely close — an alarm that is always on is not an alarm.
     const frac=this.perimeterFrac();
     perimeterPctEl.textContent=Math.round(frac*100)+'%';
-    turretUpgradeBtn.classList.toggle('breached', frac<=0.3);
+    turretUpgradeBtn.classList.toggle('breached', frac<=0.3 || !!this.defense.doctrineOffer);
     if(this.state==='tdgame') this.updateDefenseUI();
 
     /* A running show has a clock on it, so the company screen has to move on
@@ -1711,6 +1744,15 @@ tdReinforceBtn.addEventListener('click', ()=>{
   }else Sound.deny();
 });
 
+tdCallBtn.addEventListener('click', ()=>{
+  Sound.ensure();
+  const bonus=Game.safeSubsystem(()=> Defense.callWaveEarly(Game), 'call wave');
+  if(bonus){
+    Game.say('crab','early. good. that is time back', true);
+    FX.stamp('+'+bonus+' EARLY', '#ff7a2f', '#c9ff2f');
+  }
+  Game.updateDefenseUI();
+});
 tdDoneBtn.addEventListener('click', ()=>{ Sound.ensure(); Game.closeDefense(); });
 
 /* The standing row is four coloured bars behind three-letter codes, which is a
