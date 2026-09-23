@@ -1264,3 +1264,14 @@
   #arcList button.endless .arcName{ color:var(--violet); }
   #arcList button.arcThin{ border-style:dashed; opacity:0.9; }
   #arcDraft button.arcRelicPick{ border-color:#3a5a12; background:#16200f; }
+
+  /* The company grew a second list — six productions above the roster — and on
+     a 320x568 screen the two together pushed LET THEM WORK off the bottom. The
+     roster alone can no longer absorb that, so on a short viewport the
+     production panel shrinks and scrolls as well. Two scroll regions bends the
+     one-region rule; an exit below the fold breaks the rule that matters. */
+  @media (max-height: 700px){
+    #companyOverlay #coStage{ flex:0 1 auto; min-height:0; overflow-y:auto; }
+    #companyOverlay #coList{ flex:1 1 40%; }
+    #potOverlay #potShop{ flex:1 1 auto; }
+  }
