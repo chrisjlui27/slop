@@ -10,14 +10,14 @@ the same route.
 
 ## What is different here
 
-Eldritch Garden ships as one self-contained `index.html`. SLOP ships as 45
+Eldritch Garden ships as one self-contained `index.html`. SLOP ships as 54
 files — ES modules, a stylesheet and three icons — served straight from the
 repo root. Pages serves over HTTPS, so the browser loads the module graph
 natively and **no build step is involved in deploying**. `tools/build.js` still
 exists for producing a single portable `dist/slop.html`, but that is a
 distribution convenience, not part of shipping to the phone.
 
-The consequence is that `sw.js` has a list of 45 files that must match what is
+The consequence is that `sw.js` has a list of 54 files that must match what is
 on disk. Run this before every deploy:
 
 ```bash
@@ -25,7 +25,8 @@ npm run check:shell
 ```
 
 It fails loudly if a module was added, renamed or removed without updating
-`SHELL`. That check matters because the failure is otherwise silent — the
+`SHELL`. The same check runs inside `npm test` as `tools/check-shell.js`, so it
+no longer waits for a deploy — or a phone losing signal — to be noticed. That check matters because the failure is otherwise silent — the
 install handler swallows per-entry errors on purpose, so a missing file yields
 a worker that installs happily and then cannot open the game offline.
 
@@ -75,10 +76,18 @@ document against old modules, which is a broken build rather than a stale one.
 
 ## The service worker
 
-**Confirmed working on the live origin.** Verified at
-`https://chrisjlui27.github.io/slop/`: one registration, state `activated`,
-scope `/slop/`, and all 45 `SHELL` entries present in the `slop-v6` cache with
-`src/game.js` served out of it. Offline play is real, not assumed.
+**Confirmed working on the live origin, as of the `slop-v6` generation.**
+Verified at `https://chrisjlui27.github.io/slop/`: one registration, state
+`activated`, scope `/slop/`, and every `SHELL` entry of that generation present
+in the cache with `src/game.js` served out of it. Offline play is real, not
+assumed.
+
+That was a check of the worker, not of a particular build, and it does not
+carry forward on its own: each deploy bumps `CACHE`, and what proves the new
+generation installed is opening the live URL once online and then loading it
+again with the network off. A container whose egress policy blocks
+`*.github.io` cannot do that for you — Actions can confirm the deployment
+succeeded, which is a different claim.
 
 It never once registered during development — `An unknown error occurred when
 fetching the script`, with the script itself returning 200 and the correct
