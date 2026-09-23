@@ -974,8 +974,10 @@
   .chip:nth-child(1){ transform:rotate(-2deg);  border-color:#ff2f9e55; color:var(--pink); }
   .chip:nth-child(2){ transform:rotate(1.4deg); border-color:#2fe1ff55; color:var(--cyan); }
   .chip:nth-child(3){ transform:rotate(-1deg);  border-color:#ff7a2f55; color:var(--orange); }
-  .chip:nth-child(4){ transform:rotate(2deg);   border-color:#fff02f55; color:var(--yellow); }
-  .chip:nth-child(5){ transform:rotate(-1.6deg);border-color:#7a3cff55; color:var(--violet); }
+  .chip:nth-child(4){ transform:rotate(2deg);   border-color:#ff2f9e55; color:var(--pink); }
+  .chip:nth-child(5){ transform:rotate(-1.6deg);border-color:#2fe1ff55; color:var(--cyan); }
+  .chip:nth-child(6){ transform:rotate(1.2deg); border-color:#fff02f55; color:var(--yellow); }
+  .chip:nth-child(7){ transform:rotate(-0.8deg);border-color:#7a3cff55; color:var(--violet); }
 
   /* The two "pick one" screens have no pinned exit — choosing is the exit — so
      their list is the whole sheet and reads better centred than top-aligned
@@ -1275,3 +1277,61 @@
     #companyOverlay #coList{ flex:1 1 40%; }
     #potOverlay #potShop{ flex:1 1 auto; }
   }
+
+  /* ============================================================
+     THE PATCH BAY — the Artificer's routing puzzle
+     ------------------------------------------------------------
+     Cyan throughout: this is his, and it is the one loop where the
+     colour of the pipes is also the state of the game — lit means
+     powered, grey means not yet.
+     ============================================================ */
+  #bayProgress{ font-size:8px; color:var(--cyan); letter-spacing:0.5px; margin-bottom:10px; }
+
+  #bayShelf{ display:flex; flex-direction:column; gap:6px; }
+  #bayShelf button{
+    display:flex; align-items:center; gap:9px; width:100%; min-height:52px;
+    padding:8px 10px; border-radius:8px; cursor:pointer; text-align:left;
+    background:#15111f; border:1px solid #2a2238; color:var(--ink);
+    font-family:'Space Grotesk',system-ui,sans-serif; font-size:11px;
+    transition: transform 0.06s ease, filter 0.12s ease;
+  }
+  #bayShelf button:active{ transform:translateY(2px); filter:brightness(1.3); }
+  #bayShelf button:disabled{ opacity:0.35; cursor:default; }
+  #bayShelf button.done{ border-color:#2fe1ff55; }
+  #bayShelf button.crawl{ border-color:#7a3cff88; background:#170f24; }
+  #bayShelf .bayGlyph{ font-size:20px; line-height:1; }
+  #bayShelf .bayName{ font-family:'Press Start 2P',monospace; font-size:8px; color:var(--cyan); }
+  #bayShelf button.crawl .bayName{ color:var(--violet); }
+  #bayShelf .bayDesc{ opacity:0.6; font-size:10px; line-height:1.3; }
+  #bayShelf .bayStat{ margin-left:auto; font-family:'Press Start 2P',monospace; font-size:8px; color:var(--yellow); white-space:nowrap; text-align:right; }
+  #bayShelf .bayStat small{ display:block; font-size:7px; opacity:0.65; color:var(--ink); }
+
+  #bayBoardWrap{ width:100%; max-width:min(100%, 420px); display:flex; flex-direction:column; align-items:center; }
+  #bayHead{ width:100%; display:flex; justify-content:space-between; gap:8px; font-size:8px; margin-bottom:6px; }
+  #bayRack{ color:var(--cyan); }
+  #bayTurns{ color:var(--yellow); }
+  #bayCanvas{
+    width:100%; aspect-ratio:1/1; display:block; touch-action:none;
+    border-radius:10px; border:1px solid #1e3a44;
+  }
+  #bayResult{
+    font-size:11px; min-height:18px; margin:8px 0 4px; text-align:center; opacity:0.7;
+  }
+  /* A routed board says so in the one colour nothing else on this screen uses. */
+  #bayResult.solved{ color:var(--acid); opacity:1; font-family:'Press Start 2P',monospace; font-size:9px; line-height:1.6; }
+  #bayNav{ display:flex; gap:8px; justify-content:center; width:100%; margin-top:4px; }
+  #bayNav .btn{ font-size:10px; padding:10px 14px; background:#1a2a33; box-shadow:0 6px 0 #0d161b; color:var(--cyan); }
+  #bayNav .btn:active{ box-shadow:0 2px 0 #0d161b; }
+  #bayNav .btn:disabled{ opacity:0.3; box-shadow:none; cursor:default; }
+  #bayActions{ margin-top:auto; padding-top:12px; }
+  #bayDoneBtn{ background:var(--cyan); box-shadow:0 6px 0 #0e7a91; font-size:10px; padding:11px 16px; }
+  #bayDoneBtn:active{ box-shadow:0 2px 0 #0e7a91; }
+  #bayOverlay{ justify-content:flex-start; }
+  #bayOverlay #bayShelf{ flex:0 1 auto; }
+
+  /* The codex's door moved into the hero sheet; it is a secondary action
+     there, so it does not wear the primary button's pink. */
+  #codexBtn{ font-size:10px; padding:10px 16px; margin-top:12px; background:#1a1628; box-shadow:0 6px 0 #0c0a12; color:var(--ink); }
+  #codexBtn:active{ box-shadow:0 2px 0 #0c0a12; }
+  #bayNav .btn.go{ background:var(--acid); box-shadow:0 6px 0 #7fa81c; color:#12170a; }
+  #bayNav .btn.go:active{ box-shadow:0 2px 0 #7fa81c; }

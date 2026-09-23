@@ -445,6 +445,132 @@ function runChecks() {
   check("a breach does not touch the act ladder", G.actIdx === actBefore);
   check("a breach does not touch hero level", G.hero.level === levelBefore);
 
+  /* ---- THE PATCH BAY: the routing puzzle ----
+     The loop whose whole promise is a guarantee: every board is solvable, par
+     is honest, and a seed is the same board everywhere. Those are checked
+     across every rack rather than on one lucky board. */
+  const Bay = G.bayApi;
+  G.bay = Bay.reset();
+  const solveByPar = (b) => {
+    let taps = 0;
+    b.cells.forEach(c => {
+      for (let k = 0; k < 4; k++) {
+        let m = c.base; for (let q = 0; q < ((c.rot + k) & 3); q++) m = Bay.turn(m);
+        if (m === c.base) { taps += k; c.rot = (c.rot + k) & 3; return; }
+      }
+    });
+    return taps;
+  };
+  let unsolvable = [], dealtSolved = [], parWrong = [], drift = [];
+  [...Bay.Racks, Bay.CRAWLSPACE].forEach(r => {
+    for (let l = 0; l < (r.levels || 12); l++) {
+      const b = Bay.generate(r.id, l);
+      if (Bay.isSolved(b)) dealtSolved.push(r.id + ":" + l);
+      if (JSON.stringify(Bay.generate(r.id, l)) !== JSON.stringify(b)) drift.push(r.id + ":" + l);
+      const par = b.par;
+      if (solveByPar(b) !== par) parWrong.push(r.id + ":" + l);
+      if (!Bay.isSolved(b)) unsolvable.push(r.id + ":" + l);
+    }
+  });
+  check("every panel is solvable: " + (unsolvable[0] || "all"), unsolvable.length === 0);
+  check("no panel is dealt already solved: " + (dealtSolved[0] || "none"), dealtSolved.length === 0);
+  check("par is exactly the turns that solve it: " + (parWrong[0] || "all"), parWrong.length === 0);
+  check("a seed is the same panel every time: " + (drift[0] || "all"), drift.length === 0);
+
+  // Playing one: taps turn, locks do not, and the core is not a tile.
+  G.bay = Bay.reset();
+  check("the first rack is open", Bay.rackOpen(G, "front"));
+  check("later racks need stars", !Bay.rackOpen(G, "back"));
+  const pb = Bay.open(G, "front", 0);
+  check("a panel opens", !!pb && G.bay.board === pb);
+  const tapIdx = pb.cells.findIndex((c, i) => !c.locked && i !== pb.core);
+  const rotBefore = pb.cells[tapIdx].rot;
+  Bay.tap(G, tapIdx);
+  check("a tap turns a tile a quarter", pb.cells[tapIdx].rot === ((rotBefore + 1) & 3));
+  check("a tap counts as a turn", pb.turns === 1);
+  check("the core does not turn", Bay.tap(G, pb.core) === false);
+  const locked = Bay.generate("core", 0);
+  const lockIdx = locked.cells.findIndex(c => c.locked);
+  G.bay.board = locked;
+  check("the core rack has bolted tiles", lockIdx >= 0);
+  check("a bolted tile does not turn", Bay.tap(G, lockIdx) === false);
+
+  // Solve the first panel in exactly par turns, through tap(), and it pays.
+  G.bay = Bay.reset();
+  const fb = Bay.open(G, "front", 0);
+  const plan = [];
+  fb.cells.forEach((c, i) => {
+    for (let k = 0; k < 4; k++) {
+      let m = c.base; for (let q = 0; q < ((c.rot + k) & 3); q++) m = Bay.turn(m);
+      if (m === c.base) { for (let n = 0; n < k; n++) plan.push(i); return; }
+    }
+  });
+  plan.forEach(i => Bay.tap(G, i));
+  check("a panel solved on par is solved", fb.solved === true);
+  check("par earns three stars", Bay.starsFor(fb) === 3);
+  const bayGoo = G.goo, bayXp = G.hero.level * 1000000 + G.hero.xp;
+  G.claimBay();
+  check("a first clear pays goo", G.goo > bayGoo);
+  check("a first clear pays xp", G.hero.level * 1000000 + G.hero.xp > bayXp);
+  check("the stars are recorded", Bay.starsOf(G, "front", 0) === 3);
+  const againGoo = G.goo;
+  G.claimBay();
+  check("a panel cannot be claimed twice", G.goo === againGoo);
+  check("a solved panel refuses more turns", Bay.tap(G, plan[0]) === false);
+
+  // Stars below par, and replaying for a better grade pays once.
+  G.bay = Bay.reset();
+  const sb = Bay.open(G, "front", 1);
+  sb.solved = true; sb.turns = Math.ceil(sb.par * 1.5);
+  check("a sloppy route earns two stars", Bay.starsFor(sb) === 2);
+  sb.turns = sb.par * 3;
+  check("a very sloppy route still earns one", Bay.starsFor(sb) === 1);
+  const oneStar = Bay.claim(G);
+  check("a first clear on one star pays", oneStar.goo > 0 && Bay.starsOf(G, "front", 1) === 1);
+  const rb = Bay.open(G, "front", 1);
+  rb.solved = true; rb.turns = rb.par;
+  const upgrade = Bay.claim(G);
+  check("improving to three stars pays the bonus once", upgrade.goo > 0 && Bay.starsOf(G, "front", 1) === 3);
+  const rb2 = Bay.open(G, "front", 1);
+  rb2.solved = true; rb2.turns = rb2.par;
+  check("replaying a three-star panel pays nothing", Bay.claim(G).goo === 0);
+
+  // Stars open racks; the crawlspace opens once the core is routed.
+  G.bay = Bay.reset();
+  Bay.Racks.forEach(r => { for (let l = 0; l < r.levels; l++) G.bay.stars[Bay.key(r.id, l)] = 2; });
+  check("stars open the racks", Bay.Racks.every(r => Bay.rackOpen(G, r.id)));
+  check("routing the core opens the crawlspace", Bay.crawlOpen(G));
+
+  // Stars survive a save and cannot be forged.
+  const baySnap = JSON.parse(JSON.stringify(G.saveApi.snapshot(G)));
+  G.bay = Bay.reset();
+  G.saveApi.apply(G, baySnap);
+  check("bay stars survive a save", Bay.totalStars(G) === 60);
+  check("a save carries no board", G.bay.board === null);
+  G.saveApi.apply(G, Object.assign({}, baySnap, {
+    bay: { stars: { "front:0": 3, "front:99": 3, "nonsense:0": 3, "back:1": 9, "back:2": "x" }, crawl: -4 }
+  }));
+  check("forged bay stars are dropped", Bay.totalStars(G) === 3);
+  check("a nonsense crawlspace count becomes zero", G.bay.crawl === 0);
+
+  // The screen: opens from the HUD door, and the codex it displaced still
+  // opens from the hero sheet without resuming a round underneath it.
+  G.bay = Bay.reset();
+  G.state = "menu";
+  window.document.getElementById("bayBtn").click();
+  check("the patch bay opens from its door", G.state === "patchbay");
+  check("the racks render", window.document.querySelectorAll("#bayShelf button").length >= 6);
+  G.closeBay();
+  check("the patch bay closes back to play", G.state !== "patchbay");
+  G.state = "menu";
+  window.document.getElementById("sheetBtn").click();
+  window.document.getElementById("codexBtn").click();
+  check("the codex opens from the hero sheet",
+    !window.document.getElementById("codexOverlay").classList.contains("hidden"));
+  check("opening the codex takes the sheet down",
+    window.document.getElementById("sheetOverlay").classList.contains("hidden"));
+  window.document.getElementById("codexCloseBtn").click();
+
   /* ---- THE ACTS: mastery ----
      The only loop with nothing to come back for. Mastery is per trial, lives
      in the ledger so it outlives a run, and pays a learned trial more than an

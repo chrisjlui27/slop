@@ -65,7 +65,7 @@
     <button id="companyBtn">🎭</button>
     <button id="archiveBtn">🗃️</button>
     <button id="shopBtn">🛒</button>
-    <button id="codexBtn">📖</button>
+    <button id="bayBtn">🔌</button>
     <button id="settingsBtn">⚙</button>
     <button id="muteBtn">🔊</button>
   </div>
@@ -120,13 +120,15 @@
     <button class="btn" id="startBtn">BEGIN</button>
     <div id="ledgerLine" class="note hidden"></div>
     <!-- What is actually in here. The title screen sold one game; there are
-         four, and the three the goblin and the crab built are the reason
+         six, and the three the goblin and the crab built are the reason
          anyone stays. Stickers rather than a list, because this is a slop
          machine and it should look like one. -->
     <div class="chipRow">
-      <span class="chip">🎯 24 TRIALS</span>
+      <span class="chip">🎯 26 TRIALS</span>
       <span class="chip">📖 8 ACTS</span>
       <span class="chip">🦀 PERIMETER</span>
+      <span class="chip">🗃️ ARCHIVE</span>
+      <span class="chip">🔌 PATCH BAY</span>
       <span class="chip">🍯 HONEY POT</span>
       <span class="chip">🎭 COMPANY</span>
     </div>
@@ -156,6 +158,10 @@
   <div id="sheetOverlay" class="overlay hidden">
     <div class="title" style="font-size:20px;">HERO SHEET</div>
     <div id="sheetBody" class="sheetBody" style="font-size:12px; text-align:left;"></div>
+    <!-- Moved here off the HUD glyph row to make room for the patch bay's
+         door. The codex is a log you read, and the hero sheet is where the run
+         already explains itself. -->
+    <button class="btn" id="codexBtn">OPEN THE CODEX</button>
     <button class="btn" id="sheetCloseBtn" style="margin-top:14px; font-size:11px; padding:10px 18px;">CLOSE</button>
   </div>
 
@@ -278,6 +284,34 @@
     <div id="arcActions">
       <button class="btn" id="arcEndBtn">END TURN</button>
       <button class="btn" id="arcFleeBtn">LEAVE</button>
+    </div>
+  </div>
+
+  <!-- THE PATCH BAY. A canvas board, because pipes are drawn rather than
+       laid out, with tiles large enough to be their own touch targets: the
+       smallest is a seventh of a 343px board, 49px. -->
+  <div id="bayOverlay" class="overlay hidden">
+    <div class="title" style="font-size:15px;">🔌 THE PATCH BAY</div>
+    <div id="bayProgress" class="arcade">0 ★</div>
+
+    <div id="bayShelf" class="sheetBody"></div>
+
+    <div id="bayBoardWrap" class="hidden">
+      <div id="bayHead">
+        <span id="bayRack" class="arcade">THE FRONT PANEL · 1</span>
+        <span id="bayTurns" class="arcade">0 / PAR 19</span>
+      </div>
+      <canvas id="bayCanvas" width="480" height="480"></canvas>
+      <div id="bayResult"></div>
+      <div id="bayNav">
+        <button class="btn" id="bayPrevBtn">◀</button>
+        <button class="btn" id="bayRestartBtn">RESET</button>
+        <button class="btn" id="bayNextBtn">▶</button>
+      </div>
+    </div>
+
+    <div id="bayActions">
+      <button class="btn" id="bayDoneBtn">CLOSE</button>
     </div>
   </div>
 

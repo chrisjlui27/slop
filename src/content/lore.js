@@ -157,6 +157,34 @@ export const Barks = {
       "Filed properly this time. Take something from it — it is owed to you."
     ]
   },
+  /* THE PATCH BAY. His, entirely: the panel behind the game where every
+     system draws power from his core. The goblin's lines are about the
+     re-patching, because that is the part of it that is his — and he is not
+     sorry, because he is never sorry. */
+  bayOpen:{
+    artificer:[
+      "He wired every system into every other one. This is where I route them back. You may help.",
+      "Every tile you turn is one coupling I no longer have to explain.",
+      "There is no clock in here. I removed it. Think as long as you like.",
+      "Par is the fewest turns. It is a yardstick, not the answer. Any route that powers everything is correct."
+    ],
+    goblin:[
+      "he's untangling my wiring. i'll just redo it later. that's the loop",
+      "every panel in here is one i re-patched. every single one. you're welcome",
+      "there's a crawlspace under the last rack. i live there now",
+      "the buddy was wired into the turret for a REASON. the reason was funny"
+    ]
+  },
+  bayClear:{
+    artificer:[
+      "Routed. Every system has power and nothing is plugged into anything it should not be. Briefly.",
+      "That panel is correct. I would like it noted that it was correct before he touched it."
+    ],
+    goblin:[
+      "oh you fixed it. cute. see you next panel",
+      "all lit up. i'm going to go unplug the pot now"
+    ]
+  },
   idle:{
     artificer:[
       "The final boss is THE UNSHIPPED. Everything here is aimed at that.",

@@ -15,7 +15,7 @@ preprocessor. Keep it that way unless explicitly asked.
 added to the home screen, opening fullscreen and running offline. Same route
 as the sibling project `eldritch-garden`. See `DEPLOY.md`.
 
-`docs/DESIGN.md` is the fuller statement of that: SLOP is a console — five
+`docs/DESIGN.md` is the fuller statement of that: SLOP is a console — six
 genuinely different games behind one set of menus, one save, and one idle layer
 that runs under all of them. Read it before reshaping a screen or adding a loop.
 
@@ -93,6 +93,8 @@ have to be.
 | Change what survives between runs | `src/ledger.js` |
 | Change how it installs or caches | `manifest.webmanifest`, `sw.js` — see `DEPLOY.md` |
 | Change sounds | `src/audio.js` |
+| Add a rack to the patch bay or retune its gates | `src/content/patchbay.js` — data only |
+| Change how the routing puzzle plays | `src/patchbay.js` — see `docs/PARALLEL-LOOPS.md` |
 | Add a drop or a pot upgrade | `src/content/pot.js` — data only |
 | Change how the honey pot plays | `src/pot.js` |
 | Change screen effects | `src/fx.js` |

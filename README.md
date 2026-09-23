@@ -2,8 +2,9 @@
 
 A browser CRPG hiding inside a WarioWare-style microgame chassis.
 
-Five loops behind one set of menus: twenty-six microgames, a tower defense, a
-turn-based card duel, an arcade honey pot and an idle company. Eight acts,
+Six loops behind one set of menus: twenty-six microgames, a tower defense, a
+turn-based card duel, a routing puzzle, an arcade honey pot and an idle
+company. Eight acts,
 eight bosses, a hero sheet with stats and XP, a
 shop, a real tower defense, a virtual pet, a second entire game inside a honey
 pot — and four creators who built all of it and can't agree on what it's for.
@@ -116,6 +117,7 @@ src/
   understudy.js        THE COMPANY — the Understudy's idle layer
   archive.js           THE ARCHIVE — the card duel against unshipped builds
   pot.js               THE HONEY POT — the goblin arcade and its economy
+  patchbay.js          THE PATCH BAY — seeded routing puzzles, always solvable
   ledger.js            THE LEDGER — the only state that outlives a run
   audio.js             one blip() primitive, ~30 named cues
   fx.js                shake, chroma, glitch bars, stamps, confetti
@@ -129,6 +131,7 @@ src/
     understudy.js      the company roster, idle rates, offline cap
     archive.js         cards, the six builds, the measured difficulty ladder
     pot.js             drop types, pot upgrades, session escalation
+    patchbay.js        racks, star gates, pay, the crawlspace
     ledger.js          cross-run boons and what unlocks them
 docs/
   ARCHITECTURE.md      how the chassis works, how systems cross-feed

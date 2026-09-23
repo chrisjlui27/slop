@@ -12,15 +12,14 @@ living behind one set of menus, on one save, with one idle layer running under
 all of them and four narrators arguing about whose fault that is.
 
 ```
-              ┌──────────────── the idle layer ────────────────┐
-              │  runs while you are here, and while you are not │
-              └────────────────────────────────────────────────┘
- ┌─────────┐ ┌────────────┐ ┌────────────┐ ┌───────────┐ ┌────────────┐
- │THE ACTS │ │THE PERIMETER│ │THE ARCHIVE│ │THE HONEY  │ │THE COMPANY │
- │microgame│ │tower defense│ │card duel  │ │POT        │ │idle RPG    │
- │gauntlet │ │             │ │turn-based │ │arcade     │ │            │
- └─────────┘ └────────────┘ └────────────┘ └───────────┘ └────────────┘
-      └────────────┴── the menus, which are places ──┴──────────┘
+                 ┌──────────────── the idle layer ────────────────┐
+                 │  runs while you are here, and while you are not │
+                 └────────────────────────────────────────────────┘
+ ┌─────────┐ ┌──────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐
+ │THE ACTS │ │PERIMETER │ │ARCHIVE  │ │PATCH BAY│ │HONEY POT│ │COMPANY  │
+ │reflex   │ │placement │ │cards    │ │thinking │ │arcade   │ │investing│
+ └─────────┘ └──────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘
+      └──────────────┴──── the menus, which are places ────┴──────────┘
 ```
 
 Three rules hold that together, and they are the ones to defend:
@@ -30,11 +29,14 @@ to get to another. That is why the menus became full-screen sheets: a sheet is
 somewhere you are, a panel is something in front of you. See *Sheets* below.
 
 **1a. Every loop is a different verb.** The Acts are reflex, the perimeter is
-placement, the pot is arcade, the company is investment, and the archive is a
-turn with no clock on it. A sixth loop that is a fifth kind of tapping is not a
-sixth loop. The archive earned its place by being the one you can play in a
-lift, one-handed, with nothing counting down — and by making the *deck*, not
-the hero, the thing that progresses.
+placement, the pot is arcade, the company is investment, the archive is a turn
+with no clock on it, and the patch bay is thinking. A seventh loop that is a
+sixth kind of tapping is not a seventh loop. The archive earned its place by
+being the one you can play in a lift, one-handed, with nothing counting down —
+and by making the *deck*, not the hero, the thing that progresses. The patch bay
+earned its place by taking away the last thing the archive still had: chance.
+No draw, no spawn, no clock; a board generated from a seed and guaranteed
+solvable, where the only variable is whether you have seen the route yet.
 
 **2. Leaving pauses what you left — and only what you left.** The round stops.
 The Acts wait. The buddy, the turret lane and the honey pot brew keep ticking on
@@ -60,6 +62,7 @@ would someone play it?** Where each loop sits against that:
 | The Acts | ARTIFICER | 26 microgames, 8 acts, 8 bosses, 5 stats, XP, Workshop, double rounds, mutators, and per-trial mastery kept in the ledger | An act you can re-enter on purpose; a mutator earned rather than drafted |
 | The Archive | GOBLIN, on the ARTIFICER's shelf | A turn-based card duel: 16 cards, 6 builds, a drafted deck, six relics, deck-thinning, and THE UNSHIPPED BUILD — an endless rung that climbs | Bout modifiers; a reason to take a small deck over a wide one |
 | The Perimeter | THE CRAB | Waves, 4 tower types, placement, integrity, the only loss state, seven doctrines taken every fourth wave, a board that grows, surges with elites, and waves you can call in early | A fourth corridor; a reason to sell a tower other than a mistake |
+| The Patch Bay | ARTIFICER, re-patched by the GOBLIN | A tile-rotation routing puzzle: six racks from 4×4 to a 7×7 wrap-around core, seeded boards guaranteed solvable, par and stars, gates set by stars, an endless crawlspace | A second puzzle mechanic — bridges or coloured circuits — so a rack can change the rules and not only the size |
 | The Honey Pot | SLOP-GOBLIN | Two currencies, five drop types, a combo, a hazard that ends the session, six upgrades bought with its own money, escalation | A reason to reach a deep session other than honey; a second board |
 | The Company | THE UNDERSTUDY | A roster, recruitment, rehearsal levels, offline pay with a cap, and six productions to stage — rate now or a lump later, with a permanent bonus per show closed | A reason to keep a small company small; something beyond the sixth show |
 

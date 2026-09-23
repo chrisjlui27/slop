@@ -12,6 +12,7 @@ import { Ledger } from "./ledger.js";
 import { MASTERY_XP, MASTERY_GOO } from "./content/ledger.js";
 import { Archive } from "./archive.js";
 import { Pot } from "./pot.js";
+import { PatchBay } from "./patchbay.js";
 
 /* ============================== CHASSIS ============================== */
 export const $ = id => document.getElementById(id);
@@ -58,6 +59,10 @@ const sheetOverlay=$('sheetOverlay'), sheetBody=$('sheetBody');
 const codexOverlay=$('codexOverlay'), codexBody=$('codexBody');
 const victoryOverlay=$('victoryOverlay'), victorySpeech=$('victorySpeech'), victorySub=$('victorySub');
 const sheetBtn=$('sheetBtn'), codexBtn=$('codexBtn');
+const bayBtn=$('bayBtn'), bayOverlay=$('bayOverlay'), bayProgress=$('bayProgress');
+const bayShelf=$('bayShelf'), bayBoardWrap=$('bayBoardWrap'), bayRack=$('bayRack'), bayTurns=$('bayTurns');
+const bayCanvas=$('bayCanvas'), bayCtx=bayCanvas.getContext('2d'), bayResult=$('bayResult');
+const bayPrevBtn=$('bayPrevBtn'), bayNextBtn=$('bayNextBtn'), bayRestartBtn=$('bayRestartBtn'), bayDoneBtn=$('bayDoneBtn');
 
 const pick = arr => arr[Math.floor(Math.random()*arr.length)];
 
@@ -77,6 +82,7 @@ export const Game = {
   defense:Defense.reset(),
   understudy:Understudy.reset(),
   archive:Archive.reset(),
+  bay:PatchBay.reset(),
   shopLevels:{}, rerollsThisRound:0, chaosLevel:1, ambientT:1500,
   pot:Pot.reset(), potBuffT:0,
   pausedState:null, pausedRemain:null,
@@ -101,6 +107,7 @@ export const Game = {
   defenseApi: Defense,
   archiveApi: Archive,
   potApi: Pot,
+  bayApi: PatchBay,
   understudyApi: Understudy,
   saveApi: Save,
   modules: Modules,
@@ -573,6 +580,7 @@ export const Game = {
     this.defense=Defense.reset();
     this.understudy=Understudy.reset();
     this.archive=Archive.reset();
+    this.bay=PatchBay.reset();
     this.shopLevels={}; this.rerollsThisRound=0; this.ambientT=1500;
     this.pot=Pot.reset(); this.potBuffT=0;
     this.pausedState=null; this.pausedRemain=null;
@@ -1465,6 +1473,188 @@ export const Game = {
     this.renderArchive();
   },
 
+  /* ---------------- the patch bay: THE ARTIFICER's routing puzzle ----------------
+     Rules and generator in src/patchbay.js. What lives here is the door, the
+     two views — the bay's racks, and a board — and the payout.
+
+     Like the archive, nothing here ticks: a board changes only when a tile is
+     tapped, so it is drawn on change rather than every frame. */
+
+  openBay(){
+    if(this.state==='patchbay') return;
+    this.pausedState=this.state;
+    this.pausedRemain=(this.state==='playing'||this.state==='bonus') ? Math.max(0,this.deadline-performance.now()) : null;
+    this.state='patchbay';
+    Sound.menuOpen();
+    this.bark(Barks.bayOpen);
+    this.renderBay();
+    bayOverlay.classList.remove('hidden');
+  },
+
+  closeBay(){
+    // A half-routed panel is dropped rather than saved. It regenerates from
+    // its seed, so "come back to it" means the same scramble, not lost work
+    // anyone would miss — a panel is a minute or two of turning.
+    this.bay.board=null;
+    bayOverlay.classList.add('hidden');
+    Sound.potClose();
+    const back=this.pausedState; this.pausedState=null;
+    if(back==='playing'||back==='bonus'){
+      this.state=back;
+      if(this.pausedRemain!=null) this.deadline=performance.now()+this.pausedRemain;
+    }else{
+      this.state = back || 'menu';
+    }
+  },
+
+  renderBay(){
+    const b=this.bay.board;
+    bayProgress.textContent = PatchBay.totalStars(this)+' ★'
+      + (this.bay.crawl ? ' · CRAWLSPACE '+this.bay.crawl : '');
+    bayShelf.classList.toggle('hidden', !!b);
+    bayBoardWrap.classList.toggle('hidden', !b);
+    bayDoneBtn.textContent = b ? 'BACK TO THE BAY' : 'CLOSE';
+    if(!b){ this.renderBayShelf(); return; }
+    this.renderBayBoard(b);
+  },
+
+  renderBayShelf(){
+    bayShelf.innerHTML='';
+    const stars=PatchBay.totalStars(this);
+    PatchBay.Racks.forEach(r=>{
+      const open=PatchBay.rackOpen(this,r.id);
+      let got=0;
+      for(let l=0;l<r.levels;l++) got+=PatchBay.starsOf(this,r.id,l);
+      const btn=document.createElement('button');
+      if(PatchBay.rackDone(this,r.id)) btn.className='done';
+      btn.disabled=!open;
+      btn.innerHTML=
+        '<span class="bayGlyph">'+(open?'🔌':'🔒')+'</span>'+
+        '<span><span class="bayName">'+r.name+'</span><br>'+
+        '<span class="bayDesc">'+(open ? r.desc : 'needs '+r.need+' ★ · you have '+stars)+'</span></span>'+
+        '<span class="bayStat">'+got+'/'+(r.levels*3)+' ★<small>'+r.w+'×'+r.h+(r.wrap?' wrap':'')+'</small></span>';
+      btn.addEventListener('click', ()=>{
+        Sound.ensure(); Sound.select();
+        this.safeSubsystem(()=> PatchBay.open(this, r.id, PatchBay.nextLevel(this, r.id)), 'bay open');
+        this.renderBay();
+      });
+      bayShelf.appendChild(btn);
+    });
+
+    if(PatchBay.crawlOpen(this)){
+      const c=PatchBay.CRAWLSPACE;
+      const btn=document.createElement('button');
+      btn.className='crawl';
+      btn.innerHTML='<span class="bayGlyph">🕳️</span>'+
+        '<span><span class="bayName">'+c.name+'</span><br><span class="bayDesc">'+c.desc+'</span></span>'+
+        '<span class="bayStat">#'+(this.bay.crawl+1)+'<small>🟢'+c.pay.goo+'</small></span>';
+      btn.addEventListener('click', ()=>{
+        Sound.ensure(); Sound.select();
+        this.safeSubsystem(()=> PatchBay.open(this, c.id, this.bay.crawl), 'crawl open');
+        this.renderBay();
+      });
+      bayShelf.appendChild(btn);
+    }
+  },
+
+  renderBayBoard(b){
+    const rack=PatchBay.rackById(b.rackId);
+    const crawl=b.rackId===PatchBay.CRAWLSPACE.id;
+    bayRack.textContent = rack.name + ' · ' + (b.level+1) + (crawl ? '' : '/' + rack.levels);
+    bayTurns.textContent = b.turns + ' / PAR ' + b.par;
+    const best = crawl ? 0 : PatchBay.starsOf(this, b.rackId, b.level);
+    bayPrevBtn.disabled = crawl || b.level<=0;
+    bayNextBtn.disabled = crawl ? !b.solved : b.level>=rack.levels-1;
+    // Once a panel is routed the next one is the only thing left to do here,
+    // so the arrow stops looking like the disabled one beside it.
+    bayNextBtn.classList.toggle('go', !!b.solved && !bayNextBtn.disabled);
+    bayResult.textContent = b.solved
+      ? ('ROUTED · ' + '★'.repeat(PatchBay.starsFor(b)) + '☆'.repeat(3-PatchBay.starsFor(b)) + (b.paidText ? ' · ' + b.paidText : ''))
+      : (best ? 'BEST ' + '★'.repeat(best) : 'turn every tile until every system has power');
+    bayResult.classList.toggle('solved', !!b.solved);
+    this.safeSubsystem(()=> this.drawBay(b), 'bay draw');
+  },
+
+  /* The board. Tiles are drawn from the same state the rules read, so what is
+     lit on screen is exactly what PatchBay.lit says is lit. */
+  drawBay(b){
+    const c=bayCtx, W=480;
+    const cell=Math.floor(W/Math.max(b.w,b.h));
+    const ox=Math.floor((W-cell*b.w)/2), oy=Math.floor((W-cell*b.h)/2);
+    const on=PatchBay.lit(b);
+    c.clearRect(0,0,W,W);
+    c.fillStyle='#0c0a15'; c.fillRect(0,0,W,W);
+
+    if(b.wrap){
+      // A wrap board says so at its edge: cables are allowed to leave here.
+      c.strokeStyle='#2fe1ff44'; c.lineWidth=2; c.setLineDash([6,6]);
+      c.strokeRect(ox+1,oy+1,cell*b.w-2,cell*b.h-2); c.setLineDash([]);
+    }
+
+    b.cells.forEach((t,i)=>{
+      const x=ox+(i%b.w)*cell, y=oy+Math.floor(i/b.w)*cell;
+      const cx=x+cell/2, cy=y+cell/2;
+      c.fillStyle = t.locked ? '#1a1628' : '#120f1c';
+      c.fillRect(x+2,y+2,cell-4,cell-4);
+      if(t.locked){
+        // Bolted: a corner mark, so a tile that will not turn does not look
+        // like a tap that did nothing.
+        c.fillStyle='#4a4060'; c.fillRect(x+5,y+5,6,6);
+      }
+      const m=PatchBay.maskOf(t);
+      const lit=!!on[i];
+      c.strokeStyle = b.solved ? '#c9ff2f' : (lit ? '#2fe1ff' : '#3a3150');
+      c.lineWidth = Math.max(6, cell*0.17);
+      c.lineCap='round';
+      [[1,0,-1],[2,1,0],[4,0,1],[8,-1,0]].forEach(([bit,dx,dy])=>{
+        if(!(m&bit)) return;
+        c.beginPath(); c.moveTo(cx,cy); c.lineTo(cx+dx*cell/2, cy+dy*cell/2); c.stroke();
+      });
+      if(i===b.core){
+        c.beginPath(); c.arc(cx,cy,cell*0.26,0,Math.PI*2);
+        c.fillStyle = b.solved ? '#c9ff2f' : '#2fe1ff'; c.fill();
+        c.fillStyle='#0c0a15'; c.font=Math.round(cell*0.3)+'px sans-serif';
+        c.textAlign='center'; c.textBaseline='middle'; c.fillText('⚙', cx, cy+1);
+      }else if(t.glyph){
+        c.beginPath(); c.arc(cx,cy,cell*0.24,0,Math.PI*2);
+        c.fillStyle = lit ? '#16303a' : '#1a1522'; c.fill();
+        c.globalAlpha = lit ? 1 : 0.45;
+        c.font=Math.round(cell*0.3)+'px sans-serif';
+        c.textAlign='center'; c.textBaseline='middle'; c.fillText(t.glyph, cx, cy+1);
+        c.globalAlpha=1;
+      }
+    });
+  },
+
+  bayPointer(e){
+    const b=this.bay.board; if(!b || b.solved) return;
+    const rect=bayCanvas.getBoundingClientRect();
+    const x=(e.clientX-rect.left)*(480/rect.width), y=(e.clientY-rect.top)*(480/rect.height);
+    const cell=Math.floor(480/Math.max(b.w,b.h));
+    const ox=Math.floor((480-cell*b.w)/2), oy=Math.floor((480-cell*b.h)/2);
+    const col=Math.floor((x-ox)/cell), row=Math.floor((y-oy)/cell);
+    if(col<0||row<0||col>=b.w||row>=b.h) return;
+    const turned=this.safeSubsystem(()=> PatchBay.tap(this, row*b.w+col), 'bay tap');
+    if(turned && b.solved) this.claimBay();
+    this.renderBay();
+  },
+
+  /* The payout. Goo, XP and the Artificer's regard, all through the paths
+     that already exist for them — the bay is his, so it is his standing that
+     moves. */
+  claimBay(){
+    const paid=this.safeSubsystem(()=> PatchBay.claim(this), 'bay claim');
+    const b=this.bay.board;
+    if(!paid || !b) return;
+    if(paid.goo) this.addGoo(paid.goo);
+    if(paid.xp) this.gainXp(paid.xp);
+    if(paid.first || paid.better) this.shiftFavor('artificer', paid.stars===3 ? 3 : 2);
+    b.paidText = (paid.goo ? '🟢'+paid.goo : '') + (paid.xp ? ' · '+paid.xp+' XP' : '') || 'already routed';
+    FX.stamp(paid.stars===3 ? 'CLEAN ROUTE' : 'ROUTED', '#2fe1ff', '#c9ff2f');
+    if(paid.first) this.bark(Barks.bayClear);
+    this.updateHUD();
+  },
+
   /* ---------------- the company: THE UNDERSTUDY ----------------
      The loop is in src/understudy.js. What lives here is the overlay and the
      one moment that matters — the report, when they show you what they did
@@ -1846,7 +2036,7 @@ defenseCanvas.addEventListener('pointerdown', e=>{
 });
 turretUpgradeBtn.addEventListener('click', ()=>{
   Sound.ensure();
-  if(Game.state==='boot'||Game.state==='tdgame'||Game.state==='company'||Game.state==='archive') return;
+  if(Game.state==='boot'||Game.state==='tdgame'||Game.state==='company'||Game.state==='archive'||Game.state==='patchbay') return;
   if(Game.state==='draft'||Game.state==='story'||Game.state==='levelup'||Game.state==='potgame') return;
   Game.openDefense();
 });
@@ -1912,13 +2102,47 @@ tdCanvas.addEventListener('pointerdown', e=>{
 rerollBtn.addEventListener('click', ()=>{ Sound.ensure(); Game.reroll(); });
 potBtn.addEventListener('pointerdown', e=>{
   e.stopPropagation(); Sound.ensure();
-  if(Game.state==='boot'||Game.state==='tdgame'||Game.state==='company'||Game.state==='archive'||Game.state==='draft'||Game.state==='potgame'||Game.state==='story'||Game.state==='levelup') return;
+  if(Game.state==='boot'||Game.state==='tdgame'||Game.state==='company'||Game.state==='archive'||Game.state==='patchbay'||Game.state==='draft'||Game.state==='potgame'||Game.state==='story'||Game.state==='levelup') return;
   Game.openPotGame();
 });
 potCanvas.addEventListener('pointerdown', e=>{ Sound.ensure(); Game.potPointer(e); });
 potCanvas.addEventListener('pointermove', e=>{ Game.potPointer(e); });
 potHarvestBtn.addEventListener('click', ()=>{ Sound.ensure(); Game.harvestPot(); });
 potDoneBtn.addEventListener('click', ()=>{ Game.closePotGame(); });
+
+bayBtn.addEventListener('click', ()=>{
+  Sound.ensure();
+  if(menuGuard()) return;
+  Game.openBay();
+});
+bayCanvas.addEventListener('pointerdown', e=>{ Sound.ensure(); Game.bayPointer(e); });
+bayPrevBtn.addEventListener('click', ()=>{
+  const b=Game.bay.board; if(!b) return;
+  Sound.ensure(); Sound.select();
+  Game.safeSubsystem(()=> PatchBay.open(Game, b.rackId, Math.max(0, b.level-1)), 'bay prev');
+  Game.renderBay();
+});
+bayNextBtn.addEventListener('click', ()=>{
+  const b=Game.bay.board; if(!b) return;
+  Sound.ensure(); Sound.select();
+  // The crawlspace's next board is the next one the goblin re-patched; a
+  // rack's is the next panel along.
+  const next = b.rackId===PatchBay.CRAWLSPACE.id ? Game.bay.crawl : b.level+1;
+  Game.safeSubsystem(()=> PatchBay.open(Game, b.rackId, next), 'bay next');
+  Game.renderBay();
+});
+bayRestartBtn.addEventListener('click', ()=>{
+  Sound.ensure();
+  Game.safeSubsystem(()=> PatchBay.restart(Game), 'bay restart');
+  Game.renderBay();
+});
+/* One button, two jobs, same as the archive's: back to the racks from a
+   board, and out of the bay from the racks. */
+bayDoneBtn.addEventListener('click', ()=>{
+  Sound.ensure();
+  if(Game.bay.board){ Game.bay.board=null; Game.renderBay(); }
+  else Game.closeBay();
+});
 
 archiveBtn.addEventListener('click', ()=>{
   Sound.ensure();
@@ -1950,7 +2174,7 @@ $('draftSkipBtn').addEventListener('click', ()=>{
   Game.continueModuleRound();
 });
 
-const menuGuard = ()=> Game.state==='boot'||Game.state==='tdgame'||Game.state==='company'||Game.state==='archive'||Game.state==='potgame'||Game.state==='draft'||Game.state==='story'||Game.state==='levelup';
+const menuGuard = ()=> Game.state==='boot'||Game.state==='tdgame'||Game.state==='company'||Game.state==='archive'||Game.state==='patchbay'||Game.state==='potgame'||Game.state==='draft'||Game.state==='story'||Game.state==='levelup';
 $('shopBtn').addEventListener('click', ()=>{
   Sound.ensure(); Sound.menuOpen();
   if(menuGuard()) return;
@@ -1968,6 +2192,7 @@ sheetBtn.addEventListener('click', ()=>{
 $('sheetCloseBtn').addEventListener('click', ()=>{ sheetOverlay.classList.add('hidden'); Game.resumeAfterMenu(); });
 
 codexBtn.addEventListener('click', ()=>{
+  sheetOverlay.classList.add('hidden');
   Sound.ensure(); Sound.menuOpen();
   if(menuGuard()) return;
   Game.pauseForMenu(); Game.renderCodex();

@@ -105,6 +105,13 @@ export const Save = {
         tier: g.archive.tier,
         bestTier: g.archive.bestTier
       },
+      /* The patch bay is stars and a crawlspace count, never a board: boards
+         regenerate from their seed, so the same panel comes back without the
+         save having to describe forty-nine tiles. */
+      bay: {
+        stars: Object.assign({}, g.bay.stars),
+        crawl: g.bay.crawl
+      },
       shopLevels: Object.assign({}, g.shopLevels),
       /* The pot, minus the session. Honey and the upgrades bought with it are
          what the player built; a half-played session is in-flight state like
@@ -184,6 +191,23 @@ export const Save = {
       g.archive.tier = Math.max(1, d.archive.tier|0 || 1);
       g.archive.bestTier = Math.max(0, d.archive.bestTier|0);
       g.archive.bout = null;
+    }
+    /* Stars are checked against the live racks: a key for a rack that no
+       longer exists, a level past its rack's end, or a star count outside 1..3
+       is dropped, so an edited save cannot open THE CORE by writing a number. */
+    if(d.bay){
+      g.bay.stars = {};
+      const racks = g.bayApi.Racks;
+      if(d.bay.stars && typeof d.bay.stars === 'object') Object.keys(d.bay.stars).forEach(k=>{
+        const [id, lvl] = k.split(':');
+        const rack = racks.find(r => r.id === id);
+        const level = Number(lvl), n = d.bay.stars[k]|0;
+        if(rack && Number.isInteger(level) && level >= 0 && level < rack.levels && n >= 1 && n <= 3){
+          g.bay.stars[k] = n;
+        }
+      });
+      g.bay.crawl = Math.max(0, d.bay.crawl|0);
+      g.bay.board = null;
     }
     g.shopLevels = Object.assign({}, d.shopLevels||{});
     if(d.pot){

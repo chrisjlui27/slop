@@ -334,3 +334,43 @@ cards rather than good ones, 1500 bouts per build:
 The measurement went through two non-monotonic ladders on the way here — one
 where the fourth build was harder than the sixth — neither of which was
 predictable from the numbers. If these are retuned, re-measure.
+
+## The sixth loop: THE PATCH BAY
+
+A tile-rotation routing puzzle. Every tile carries a piece of cable; tap it and
+it turns a quarter. Route power from the Artificer's core to every system on
+the panel — the buddy, the crab, the pot, the company, the archive — with no
+cable left hanging. Six racks, 4×4 up to a 7×7 core whose edges wrap, and an
+endless crawlspace under the last one.
+
+**Whose it is.** THE ARTIFICER's, completely, and it is the first loop he has
+built since the Acts. The joke underneath it is the oldest one in the project:
+SLOP-GOBLIN wired every system into every other one and calls it
+interoperability; the patch bay is where the Artificer routes them back. The
+goblin re-patches it whenever nobody is looking, which is why there is always
+another panel — and why the endless rack is called the crawlspace, because that
+is where he lives now.
+
+**Why this verb.** Every other loop has chance in it somewhere: the Acts deal
+trials at random, the perimeter rolls waves, the pot rolls drops, the archive
+draws cards, the company runs on a clock. The patch bay has none. Boards come
+from a seed, so a panel is the same panel on every phone and the same panel
+after Android kills the app; and a board is built solved and then scrambled,
+so it is always solvable and the fewest turns back is par. The only thing that
+varies between two players is whether they have seen the route.
+
+**What it pays, and why it is fenced by construction.** Goo and XP on a first
+clear, half as much again the first time a panel is routed on par, and the
+Artificer's standing. Nothing pays twice. It cannot be lost — there is nothing
+to lose — and it earns nothing while the app is closed. Stars open racks, set
+just under two a panel across everything before; the first pass asked for
+nearly two and a half at the top, which locked a competent player out of the
+core, and a gate that shuts out the competent is a wall, not a ladder.
+
+**What it cost.** A seventh glyph in a HUD row that fits seven. The codex moved
+into the hero sheet, where the run already explains itself, rather than any
+tap target shrinking below the floor.
+
+**The guarantees, tested across every rack rather than one board:** every panel
+is solvable, none is dealt already solved, par is exactly the turns that solve
+it, and a seed is the same panel every time.
