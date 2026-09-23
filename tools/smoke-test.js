@@ -79,7 +79,7 @@ function runChecks() {
   // the page, it just quietly stops being a game. So every module is driven
   // here, outside safeLane, where a throw is a failure rather than a feature.
   const mods = G.modules || [];
-  check("every microgame is registered", mods.length >= 26);
+  check("every microgame is registered", mods.length >= 25);
   check("microgame ids are unique", new Set(mods.map(m => m.id)).size === mods.length);
 
   const shapeBad = mods.filter(m =>

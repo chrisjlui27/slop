@@ -207,7 +207,7 @@ export const Barks = {
       "you tapped one yourself. noted. that is the first help i have had"
     ],
     understudy:[
-      "i know every trial. all twenty-six. i could run them right now if asked",
+      "i know every trial. all twenty-five. i could run them right now if asked",
       "no notes on your form. genuinely. i would just also like a turn",
       "i wait in the wings. that is the whole job so far. i am very good at it",
       "the crab talks to me. mostly about the perimeter. i listen properly"

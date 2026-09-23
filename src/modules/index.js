@@ -5,7 +5,6 @@ import match from "./match.js";
 import stop from "./stop.js";
 import count from "./count.js";
 import sort from "./sort.js";
-import copy from "./copy.js";
 import hold from "./hold.js";
 import swipe from "./swipe.js";
 import odd from "./odd.js";
@@ -34,7 +33,6 @@ export const Modules = [
   stop,
   count,
   sort,
-  copy,
   hold,
   swipe,
   odd,

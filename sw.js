@@ -10,7 +10,7 @@
 
    Bump CACHE on every deploy that touches any shell file. Forget and phones
    keep running the previous build until they evict it themselves. */
-const CACHE = 'slop-v13';
+const CACHE = 'slop-v14';
 
 const SHELL = [
   '.',
@@ -45,7 +45,6 @@ const SHELL = [
   'src/content/patchbay.js',
   'src/modules/index.js',
   'src/modules/balance.js',
-  'src/modules/copy.js',
   'src/modules/count.js',
   'src/modules/dodge.js',
   'src/modules/grab.js',

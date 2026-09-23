@@ -59,7 +59,7 @@ would someone play it?** Where each loop sits against that:
 
 | Loop | Owner | Has | Still owes |
 |---|---|---|---|
-| The Acts | ARTIFICER | 26 microgames, 8 acts, 8 bosses, 5 stats, XP, Workshop, double rounds, mutators, and per-trial mastery kept in the ledger | An act you can re-enter on purpose; a mutator earned rather than drafted |
+| The Acts | ARTIFICER | 25 microgames, 8 acts, 8 bosses, 5 stats, XP, Workshop, double rounds, mutators, and per-trial mastery kept in the ledger | An act you can re-enter on purpose; a mutator earned rather than drafted |
 | The Archive | GOBLIN, on the ARTIFICER's shelf | A turn-based card duel: 16 cards, 6 builds, a drafted deck, six relics, deck-thinning, and THE UNSHIPPED BUILD — an endless rung that climbs | Bout modifiers; a reason to take a small deck over a wide one |
 | The Perimeter | THE CRAB | Waves, 4 tower types, placement, integrity, the only loss state, seven doctrines taken every fourth wave, a board that grows, surges with elites, and waves you can call in early | A fourth corridor; a reason to sell a tower other than a mistake |
 | The Patch Bay | ARTIFICER, re-patched by the GOBLIN | A tile-rotation routing puzzle: six racks from 4×4 to a 7×7 wrap-around core, seeded boards guaranteed solvable, par and stars, gates set by stars, an endless crawlspace | A second puzzle mechanic — bridges or coloured circuits — so a rack can change the rules and not only the size |
@@ -71,7 +71,7 @@ ones — as much as lengthwise.
 
 ### The microgame gauntlet
 
-Twenty-six games is a pool, not a gauntlet. What makes it a gauntlet is
+Twenty-five games is a pool, not a gauntlet. What makes it a gauntlet is
 **variety of input syntax**, because two games run side by side in a DOUBLE
 SLOP round and the pair has to read as two games rather than one twice. The
 pool currently covers: tap, tap-spam, precise tap, drag, drag-precision,
