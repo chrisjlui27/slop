@@ -93,6 +93,8 @@ have to be.
 | Change what survives between runs | `src/ledger.js` |
 | Change how it installs or caches | `manifest.webmanifest`, `sw.js` — see `DEPLOY.md` |
 | Change sounds | `src/audio.js` |
+| Add a drop or a pot upgrade | `src/content/pot.js` — data only |
+| Change how the honey pot plays | `src/pot.js` |
 | Change screen effects | `src/fx.js` |
 | Change layout or styling | `styles/main.css`, `index.html` |
 | Change how a menu is laid out | the SHEET PASS in `styles/main.css` — see `docs/DESIGN.md` |

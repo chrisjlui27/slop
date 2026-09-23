@@ -115,6 +115,7 @@ src/
   defense.js           THE PERIMETER — the Crab's tower defense
   understudy.js        THE COMPANY — the Understudy's idle layer
   archive.js           THE ARCHIVE — the card duel against unshipped builds
+  pot.js               THE HONEY POT — the goblin arcade and its economy
   ledger.js            THE LEDGER — the only state that outlives a run
   audio.js             one blip() primitive, ~30 named cues
   fx.js                shake, chroma, glitch bars, stamps, confetti
@@ -127,6 +128,7 @@ src/
     defense.js         towers, enemies, wave composition
     understudy.js      the company roster, idle rates, offline cap
     archive.js         cards, the six builds, the measured difficulty ladder
+    pot.js             drop types, pot upgrades, session escalation
     ledger.js          cross-run boons and what unlocks them
 docs/
   ARCHITECTURE.md      how the chassis works, how systems cross-feed

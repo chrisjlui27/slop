@@ -87,7 +87,16 @@ export const Save = {
         cleared: g.archive.cleared.slice()
       },
       shopLevels: Object.assign({}, g.shopLevels),
-      pot: { brew: g.pot.brew, brewMax: g.pot.brewMax },
+      /* The pot, minus the session. Honey and the upgrades bought with it are
+         what the player built; a half-played session is in-flight state like
+         the perimeter's wave, and three cracks into a jar is not somewhere to
+         be resumed. */
+      pot: {
+        brew: g.pot.brew, brewMax: g.pot.brewMax,
+        honey: g.pot.honey, lifetimeHoney: g.pot.lifetimeHoney,
+        upgrades: Object.assign({}, g.pot.upgrades),
+        best: g.pot.best
+      },
       // Boss HP is the one mid-encounter value worth keeping: losing it would
       // hand back a full-health gate to a player who had nearly cleared it.
       boss: g.boss ? Object.assign({}, g.boss) : null,
@@ -152,7 +161,20 @@ export const Save = {
       g.archive.bout = null;
     }
     g.shopLevels = Object.assign({}, d.shopLevels||{});
-    if(d.pot){ g.pot.brew = d.pot.brew||0; g.pot.brewMax = d.pot.brewMax||100; }
+    if(d.pot){
+      g.pot.brew = d.pot.brew||0; g.pot.brewMax = d.pot.brewMax||100;
+      g.pot.honey = Math.max(0, d.pot.honey|0);
+      g.pot.lifetimeHoney = Math.max(0, d.pot.lifetimeHoney|0);
+      g.pot.best = Math.max(0, d.pot.best|0);
+      // Levels are clamped against the live catalogue, so a hand-edited save
+      // cannot buy a level nine WIDER JAR and a board with no game in it.
+      g.pot.upgrades = {};
+      if(d.pot.upgrades) g.potApi.PotUpgrades.forEach(u=>{
+        const lvl = Math.max(0, Math.min(u.max, d.pot.upgrades[u.id]|0));
+        if(lvl) g.pot.upgrades[u.id] = lvl;
+      });
+      g.pot.session = null;
+    }
     g.boss = d.boss || null;
     g.codexSeen = Array.isArray(d.codexSeen) ? d.codexSeen.slice() : [];
 

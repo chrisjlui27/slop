@@ -406,6 +406,107 @@ function runChecks() {
   check("a breach does not touch the act ladder", G.actIdx === actBefore);
   check("a breach does not touch hero level", G.hero.level === levelBefore);
 
+  /* ---- THE HONEY POT: the goblin's arcade ----
+     Driven through the subsystem the way the board drives it. What is checked
+     is that the two currencies stay separate, that the stake ends a session
+     and nothing else, and that the upgrades actually change the board. */
+  const P = G.potApi;
+  G.pot = P.reset();
+  check("the pot starts with no honey and no upgrades",
+    G.pot.honey === 0 && Object.keys(G.pot.upgrades).length === 0);
+
+  G.state = "menu";
+  G.openPotGame();
+  check("pot screen opens", G.state === "potgame");
+  const ps = G.pot.session;
+  check("a session starts clean", ps && ps.cracks === 0 && !ps.over);
+
+  // Catching. The drop is placed on the jar rather than waited for, so the
+  // test measures the rules and not the RNG.
+  const putOnJar = (id) => {
+    const s = G.pot.session;
+    s.drops.push({ id, x: s.jarX, y: P.POT.JAR_Y - 1, vy: 5, caught: false });
+    P.tick(G, 16);
+  };
+  const brewBefore = G.pot.brew;
+  putOnJar("gold");
+  check("catching pays honey", G.pot.honey > 0);
+  check("catching pays brew", G.pot.brew > brewBefore);
+  check("the combo counts up", G.pot.session.combo === 1);
+
+  // Honey is the pot's money and must never reach the campaign's.
+  const gooBeforePot = G.goo;
+  putOnJar("comb");
+  check("honey does not pay goo", G.goo === gooBeforePot);
+
+  // The sting: brew back out, combo gone, a crack in the jar.
+  const brewFull = G.pot.brew, honeyFull = G.pot.honey;
+  putOnJar("bee");
+  check("a sting costs brew", G.pot.brew < brewFull);
+  check("a sting does not take honey already banked", G.pot.honey === honeyFull);
+  check("a sting breaks the combo", G.pot.session.combo === 0);
+  check("a sting cracks the jar", G.pot.session.cracks === 1);
+
+  // Three cracks end the session and nothing else. Same fence as the archive:
+  // the perimeter is still the only loop that can take something off you.
+  const potAct = G.actIdx, potLevel = G.hero.level, potGoo = G.goo;
+  putOnJar("bee"); putOnJar("bee");
+  check("the jar gives out", G.pot.session.over === true);
+  check("a lost jar keeps the honey", G.pot.honey === honeyFull);
+  check("a lost jar does not touch the act ladder", G.actIdx === potAct);
+  check("a lost jar does not touch hero level", G.hero.level === potLevel);
+  check("a lost jar does not touch goo", G.goo === potGoo);
+
+  // Upgrades: bought with honey, and they change the board rather than the
+  // payout. A wider jar has to be measurably wider.
+  G.pot.honey = 999;
+  const widthBefore = P.mods(G).halfWidth;
+  check("an upgrade can be bought", P.buy(G, "wide") === true);
+  check("buying spends honey", G.pot.honey < 999);
+  check("a wider jar is wider", P.mods(G).halfWidth > widthBefore);
+  const crackBefore = P.mods(G).cracks;
+  P.buy(G, "panes");
+  check("spare panes raise the stake", P.mods(G).cracks === crackBefore + 1);
+  P.buy(G, "mesh");
+  check("bee mesh stops the cracking", P.mods(G).stingCracks === 0);
+  for (let i = 0; i < 9; i++) P.buy(G, "wide");
+  check("an upgrade cannot pass its cap", P.levelOf(G, "wide") <= 4);
+
+  // Escalation: the mix and the rate both move with the session clock.
+  const early = G.pot.session ? P.heat(G.pot.session) : 0;
+  P.open(G);
+  G.pot.session.elapsed = 999999;
+  check("escalation tops out at one", P.heat(G.pot.session) === 1 && early < 1);
+
+  // The tick must survive a long unattended session without throwing.
+  const faultsBefore = G._subsystemFaults || 0;
+  P.open(G);
+  for (let i = 0; i < 600; i++) G.updatePotGame(50);
+  check("a long session throws nothing", (G._subsystemFaults || 0) === faultsBefore);
+
+  // Harvest is the pot's one outward payment.
+  G.pot.brew = G.pot.brewMax;
+  const gooPreHarvest = G.goo;
+  G.harvestPot();
+  check("harvest pays goo", G.goo > gooPreHarvest);
+  check("harvest empties the meter", G.pot.brew === 0);
+  check("harvest glazes", G.potBuffT > 0);
+
+  // Honey and upgrades survive a save; a session does not.
+  G.pot.honey = 42; G.pot.upgrades = { wide: 2 };
+  const potSnap = JSON.parse(JSON.stringify(G.saveApi.snapshot(G)));
+  G.pot = P.reset();
+  G.saveApi.apply(G, potSnap);
+  check("honey survives a save", G.pot.honey === 42);
+  check("pot upgrades survive a save", G.pot.upgrades.wide === 2);
+  check("a save carries no pot session", G.pot.session === null);
+  G.saveApi.apply(G, Object.assign({}, potSnap, { pot: { brew: 0, brewMax: 100, upgrades: { wide: 99, nonsense: 3 } } }));
+  check("a restored upgrade cannot pass its cap", G.pot.upgrades.wide === 4);
+  check("unknown upgrades are dropped from a restored pot", !G.pot.upgrades.nonsense);
+
+  G.closePotGame();
+  check("pot screen closes back to play", G.state !== "potgame");
+
   /* ---- THE ARCHIVE: the card duel ----
      Driven the way a player drives it — through the chassis, one card at a
      time — because the bout is the only loop in the game with no frame loop

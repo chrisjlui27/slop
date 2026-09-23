@@ -1132,3 +1132,48 @@
      tappable by nobody. A second line costs height only on the screens that
      cannot fit one line, which is the right place to pay it. */
   #hudActions{ flex-wrap:wrap; }
+
+  /* ============================================================
+     THE HONEY POT — the goblin's arcade
+     ------------------------------------------------------------
+     The board is a canvas; everything around it is DOM, for the
+     same reason the perimeter's build menu is: the upgrade rows
+     are things a thumb presses, and hit-testing them on a canvas
+     would cost them their size.
+     ============================================================ */
+  #potStats{
+    display:flex; justify-content:space-between; gap:8px; width:100%;
+    max-width:min(100%, 420px); font-size:8px; margin-top:8px;
+    padding:6px 2px; border-top:1px solid #241d33; border-bottom:1px solid #241d33;
+  }
+  #potHoney{ color:var(--yellow); }
+  #potCombo{ color:var(--acid); }
+  #potCracks{ color:var(--orange); }
+  /* One line of feedback, replaced in place rather than stacked: the board is
+     small and a log would cover it. */
+  #potFlash{
+    font-size:11px; min-height:16px; opacity:0.8; text-align:center;
+    margin:5px 0 3px; color:var(--yellow);
+  }
+  #potShop{ display:flex; flex-direction:column; gap:5px; max-width:min(100%, 420px); }
+  #potShop button{
+    display:flex; align-items:center; gap:8px; width:100%; min-height:44px;
+    padding:6px 10px; border-radius:8px; cursor:pointer; text-align:left;
+    background:#15111f; border:1px solid #2a2238; color:var(--ink);
+    font-family:'Space Grotesk',system-ui,sans-serif; font-size:11px;
+    transition: transform 0.06s ease, filter 0.12s ease;
+  }
+  #potShop button:active{ transform:translateY(2px); filter:brightness(1.3); }
+  #potShop button:disabled{ opacity:0.38; cursor:default; }
+  #potShop button.maxed{ border-color:#3a5a12; opacity:0.55; }
+  #potShop .potGlyph{ font-size:18px; line-height:1; }
+  #potShop .potName{ font-family:'Press Start 2P',monospace; font-size:8px; color:var(--yellow); }
+  #potShop .potDesc{ opacity:0.6; font-size:10px; line-height:1.25; }
+  #potShop .potCost{ margin-left:auto; font-family:'Press Start 2P',monospace; font-size:8px; color:var(--acid); white-space:nowrap; }
+
+  /* The pot sheet has a board AND a shop now, so it stops being centred and
+     starts behaving like the perimeter: fixed board at the top, the list
+     taking what is left, actions pinned. */
+  #potOverlay{ justify-content:flex-start; }
+  #potOverlay #potShop{ flex:1 1 auto; min-height:0; overflow-y:auto; }
+  #potOverlay > div[style*="display:flex"]{ margin-top:10px; }

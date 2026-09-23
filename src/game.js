@@ -10,6 +10,7 @@ import { Defense } from "./defense.js";
 import { Understudy } from "./understudy.js";
 import { Ledger } from "./ledger.js";
 import { Archive } from "./archive.js";
+import { Pot } from "./pot.js";
 
 /* ============================== CHASSIS ============================== */
 export const $ = id => document.getElementById(id);
@@ -22,6 +23,8 @@ const arcFoeName=$('arcFoeName'), arcIntent=$('arcIntent'), arcFoeFill=$('arcFoe
 const arcLog=$('arcLog'), arcYouHp=$('arcYouHp'), arcBlock=$('arcBlock'), arcEnergy=$('arcEnergy'), arcPiles=$('arcPiles');
 const arcHand=$('arcHand'), arcDraft=$('arcDraft'), arcEndBtn=$('arcEndBtn'), arcFleeBtn=$('arcFleeBtn');
 const arcFoeArt=$('arcFoeArt');
+const potShop=$('potShop'), potHoney=$('potHoney'), potCombo=$('potCombo');
+const potCracks=$('potCracks'), potFlash=$('potFlash');
 const defenseOverlay=$('defenseOverlay'), tdCanvas=$('tdCanvas'), tdCtx=tdCanvas.getContext('2d');
 const tdStatus=$('tdStatus'), tdIntegrityFill=$('tdIntegrityFill'), tdBuildMenu=$('tdBuildMenu');
 const tdReinforceBtn=$('tdReinforceBtn'), tdDoneBtn=$('tdDoneBtn'), perimeterPctEl=$('perimeterPct');
@@ -72,7 +75,7 @@ export const Game = {
   understudy:Understudy.reset(),
   archive:Archive.reset(),
   shopLevels:{}, rerollsThisRound:0, chaosLevel:1, ambientT:1500,
-  pot:{ brew:0, brewMax:100 }, potBuffT:0, potGame:null,
+  pot:Pot.reset(), potBuffT:0,
   pausedState:null, pausedRemain:null,
   // --- narrative / RPG state ---
   actIdx:0, actRound:0, boss:null, ngPlus:0,
@@ -90,6 +93,7 @@ export const Game = {
   cast: Cast,
   defenseApi: Defense,
   archiveApi: Archive,
+  potApi: Pot,
   saveApi: Save,
   modules: Modules,
   acts: Acts,
@@ -559,7 +563,7 @@ export const Game = {
     this.understudy=Understudy.reset();
     this.archive=Archive.reset();
     this.shopLevels={}; this.rerollsThisRound=0; this.ambientT=1500;
-    this.pot={ brew:0, brewMax:100 }; this.potBuffT=0; this.potGame=null;
+    this.pot=Pot.reset(); this.potBuffT=0;
     this.pausedState=null; this.pausedRemain=null;
     this.actIdx=0; this.actRound=0; this.boss=null;
     this.hero={ level:1, xp:0, xpNext:120, reflex:1, wit:1, grit:1, nerve:1, charm:1, points:0 };
@@ -921,8 +925,10 @@ export const Game = {
     this.updateBuddyUI();
   },
 
-  /* ---------------- honey pot ---------------- */
-  potReady(){ return this.pot.brew >= this.pot.brewMax; },
+  /* ---------------- honey pot ----------------
+     The loop is in src/pot.js. What stays here is the door, the screen and
+     the harvest — the one moment the pot pays the campaign. */
+  potReady(){ return Pot.ready(this); },
   updatePotUI(){
     const pct=(this.pot.brew/this.pot.brewMax*100);
     potFill.style.width=pct+'%';
@@ -931,20 +937,21 @@ export const Game = {
     potHarvestBtn.disabled = !this.potReady();
   },
   pulseBtn(el){ el.classList.remove('pulseTap'); void el.offsetWidth; el.classList.add('pulseTap'); },
+
   openPotGame(){
     if(this.state==='potgame') return;
     this.pausedState=this.state;
     this.pausedRemain=(this.state==='playing'||this.state==='bonus') ? Math.max(0,this.deadline-performance.now()) : null;
     this.state='potgame';
-    this.potGame={ drops:[], spawnT:300, jarX:200,
-      bubbles:Array.from({length:6},()=>({ x:Math.random()*400, y:280+Math.random()*20, r:3+Math.random()*4, speed:0.01+Math.random()*0.02 })) };
+    this.safeSubsystem(()=> Pot.open(this), 'pot open');
     Sound.potOpen(); this.shiftFavor('goblin', 4);
     this.bark(Barks.potOpen);
-    this.updatePotUI();
+    this.updatePotUI(); this.renderPotShop();
     potOverlay.classList.remove('hidden');
   },
   closePotGame(){
     Sound.potClose();
+    this.safeSubsystem(()=> Pot.close(this), 'pot close');
     potOverlay.classList.add('hidden');
     const back=this.pausedState; this.pausedState=null;
     if(back==='playing'||back==='bonus'){
@@ -955,67 +962,65 @@ export const Game = {
       this.nextRound();
     }
   },
+
   harvestPot(){
-    if(!this.potReady()){ Sound.deny(); return; }
-    const lump=30+Math.round(this.round*1.5);
-    this.score+=lump*2; this.goo+=lump;
-    this.pot.brew=0; this.potBuffT=10000;
-    this.gainXp(40);
-    potHarvestFlash.textContent='+'+lump+' 🍯 GLAZED!';
+    const paid=this.safeSubsystem(()=> Pot.harvest(this), 'pot harvest');
+    if(!paid) return;
+    potHarvestFlash.textContent='+'+paid.lump+' 🍯 GLAZED!';
     potHarvestFlash.classList.remove('show'); void potHarvestFlash.offsetWidth; potHarvestFlash.classList.add('show');
     FX.stamp('HONEY POT!','#fff02f','#ff7a2f');
     setTimeout(()=>FX.stamp('GLAZED! goo x1.5','#ff7a2f','#fff02f'),220);
-    FX.confetti(240,240,30); FX.shake(true); Sound.harvest();
+    FX.confetti(240,240,30); FX.shake(true);
     this.noteCodex('HARVESTED THE HONEY POT');
     this.say('goblin','THE POT PAYS. glazed. everything you earn is worth more now. this is my best system');
     this.updateHUD(); this.updatePotUI();
   },
-  updatePotGame(dt){
-    const p=this.potGame; if(!p) return;
-    p.bubbles.forEach(b=>{ b.y-=b.speed*dt; if(b.y<-10){ b.y=290; b.x=Math.random()*400; } });
-    p.spawnT-=dt;
-    if(p.spawnT<=0){
-      p.spawnT=480+Math.random()*380;
-      const roll=Math.random();
-      const kind = roll<0.12?'gold':roll<0.24?'bee':'drip';
-      p.drops.push({ x:24+Math.random()*352, y:-10, vy:0.1+Math.random()*0.05, kind, caught:false });
-    }
-    const jarY=258, jarHalfW=34;
-    p.drops.forEach(d=>{
-      if(d.caught) return;
-      const wasAbove=d.y<jarY;
-      d.y+=d.vy*dt;
-      if(wasAbove && d.y>=jarY && Math.abs(d.x-p.jarX)<=jarHalfW){
-        d.caught=true;
-        if(d.kind==='gold'){ this.pot.brew=Math.min(this.pot.brewMax,this.pot.brew+8); this.score+=5; Sound.goldDrip(); }
-        else if(d.kind==='bee'){ this.pot.brew=Math.min(this.pot.brewMax,this.pot.brew+5); Sound.beeBuzz(); }
-        else{ this.pot.brew=Math.min(this.pot.brewMax,this.pot.brew+3); Sound.drip(); }
-        this.updateHUD(); this.updatePotUI();
-      }
-    });
-    p.drops=p.drops.filter(d=> !d.caught && d.y<320);
-  },
+
+  updatePotGame(dt){ this.safeSubsystem(()=> Pot.tick(this, dt), 'pot tick'); },
   renderPotGame(){
-    const p=this.potGame; if(!p) return;
-    const c=potCtx;
-    c.clearRect(0,0,400,300);
-    c.fillStyle='#150f22'; c.fillRect(0,0,400,300);
-    p.bubbles.forEach(b=>{ c.beginPath(); c.arc(b.x,b.y,b.r,0,Math.PI*2); c.fillStyle='rgba(255,240,47,0.12)'; c.fill(); });
-    p.drops.forEach(d=>{
-      if(d.caught) return;
-      c.beginPath(); c.arc(d.x,d.y, d.kind==='gold'?10:d.kind==='bee'?9:7, 0, Math.PI*2);
-      c.fillStyle = d.kind==='gold'?'#fff02f':d.kind==='bee'?'#0c0a15':'#ff7a2f';
-      c.fill();
-      if(d.kind==='bee'){ c.fillStyle='#fff02f'; c.fillRect(d.x-6,d.y-2,12,4); }
-    });
-    c.fillStyle='#2fe1ff'; c.fillRect(p.jarX-34,250,68,26);
-    c.fillStyle='#0c0a15'; c.font='16px sans-serif'; c.textAlign='center'; c.textBaseline='middle';
-    c.fillText('🍯', p.jarX, 266);
+    this.safeSubsystem(()=> Pot.render(this, potCtx), 'pot render');
+    this.updatePotReadout();
   },
   potPointer(e){
     const rect=potCanvas.getBoundingClientRect();
-    const x=(e.clientX-rect.left)*(400/rect.width);
-    if(this.potGame) this.potGame.jarX=Math.max(24,Math.min(376,x));
+    const x=(e.clientX-rect.left)*(Pot.POT.W/rect.width);
+    this.safeSubsystem(()=> Pot.aim(this, x), 'pot aim');
+  },
+
+  /* The readouts run every frame; the shop only redraws when something it
+     shows has changed, because rebuilding six buttons under a thumb that is
+     already on one of them is how a tap lands on the wrong upgrade. */
+  updatePotReadout(){
+    const s=this.pot.session; if(!s) return;
+    const m=Pot.mods(this);
+    potHoney.textContent='🍯 '+this.pot.honey;
+    potCombo.textContent = s.over ? 'JAR GONE' : (s.combo>2 ? 'COMBO x'+Math.min(2.5,1+s.combo*0.12).toFixed(1) : 'COMBO —');
+    potCracks.textContent='CRACKS '+s.cracks+'/'+s.cracksMax;
+    potFlash.textContent=s.flash||'';
+    if(this._potShopHoney!==this.pot.honey){ this._potShopHoney=this.pot.honey; this.renderPotShop(); }
+  },
+
+  renderPotShop(){
+    this._potShopHoney=this.pot.honey;
+    potShop.innerHTML='';
+    Pot.PotUpgrades.forEach(u=>{
+      const lvl=Pot.levelOf(this,u.id), cost=Pot.costOf(this,u.id), maxed=lvl>=u.max;
+      const b=document.createElement('button');
+      if(maxed) b.className='maxed';
+      b.disabled = maxed || this.pot.honey < cost;
+      b.innerHTML='<span class="potGlyph">'+u.glyph+'</span>'+
+        '<span><span class="potName">'+u.name+(lvl?' '+lvl+'/'+u.max:'')+'</span><br>'+
+        '<span class="potDesc">'+u.desc+'</span></span>'+
+        '<span class="potCost">'+(maxed?'MAX':'🍯'+cost)+'</span>';
+      b.addEventListener('click', ()=>{
+        Sound.ensure();
+        if(this.safeSubsystem(()=> Pot.buy(this, u.id), 'pot buy')){
+          this.say('goblin','bought. the board is easier now. that is allowed');
+          this.renderPotShop();
+        }else Sound.deny();
+      });
+      potShop.appendChild(b);
+    });
   },
 
   /* ---------------- defense: THE PERIMETER ----------------
