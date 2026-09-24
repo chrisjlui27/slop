@@ -31,19 +31,18 @@ const potShop=$('potShop'), potHoney=$('potHoney'), potCombo=$('potCombo');
 const potCracks=$('potCracks'), potFlash=$('potFlash');
 const defenseOverlay=$('defenseOverlay'), tdCanvas=$('tdCanvas'), tdCtx=tdCanvas.getContext('2d');
 const tdStatus=$('tdStatus'), tdIntegrityFill=$('tdIntegrityFill'), tdBuildMenu=$('tdBuildMenu');
-const tdReinforceBtn=$('tdReinforceBtn'), tdDoneBtn=$('tdDoneBtn'), perimeterPctEl=$('perimeterPct');
+const tdReinforceBtn=$('tdReinforceBtn'), perimeterPctEl=$('perimeterPct');
 const companyOverlay=$('companyOverlay'), companyBtn=$('companyBtn'), coRates=$('coRates');
-const coReport=$('coReport'), coList=$('coList'), coFooter=$('coFooter'), coDoneBtn=$('coDoneBtn');
+const coReport=$('coReport'), coList=$('coList'), coFooter=$('coFooter');
 const buddyBtn=$('buddyBtn'), buddyFaceEl=$('buddyFace'), buddyLvlEl=$('buddyLvl');
 const startScreen=$('startScreen'), muteBtn=$('muteBtn'), resetBtn=$('resetBtn');
-const defenseCanvas=$('defenseCanvas'), defenseCtx=defenseCanvas.getContext('2d');
 const turretUpgradeBtn=$('turretUpgradeBtn'), rerollBtn=$('rerollBtn');
 const draftOverlay=$('draftOverlay'), draftCards=$('draftCards');
 const shopOverlay=$('shopOverlay'), shopList=$('shopList');
 const settingsOverlay=$('settingsOverlay'), chaosButtonsEl=$('chaosButtons');
 const potOverlay=$('potOverlay'), potCanvas=$('potCanvas'), potCtx=potCanvas.getContext('2d');
 const potGameMeterFill=$('potGameMeterFill'), potHarvestFlash=$('potHarvestFlash');
-const potHarvestBtn=$('potHarvestBtn'), potDoneBtn=$('potDoneBtn');
+const potHarvestBtn=$('potHarvestBtn'), potNewJarBtn=$('potNewJarBtn');
 const potBtn=$('potBtn'), potFill=$('potFill');
 const dialogueEl=$('dialogue'), dialogueWho=$('dialogueWho'), dialogueText=$('dialogueText');
 const actNameEl=$('actName'), questNameEl=$('questName');
@@ -60,9 +59,11 @@ const codexOverlay=$('codexOverlay'), codexBody=$('codexBody');
 const victoryOverlay=$('victoryOverlay'), victorySpeech=$('victorySpeech'), victorySub=$('victorySub');
 const sheetBtn=$('sheetBtn'), codexBtn=$('codexBtn');
 const bayBtn=$('bayBtn'), bayOverlay=$('bayOverlay'), bayProgress=$('bayProgress');
+const dockEl=$('dock'), archiveBadge=$('archiveBadge'), bayBadge=$('bayBadge'), companyBadge=$('companyBadge');
 const bayShelf=$('bayShelf'), bayBoardWrap=$('bayBoardWrap'), bayRack=$('bayRack'), bayTurns=$('bayTurns');
 const bayCanvas=$('bayCanvas'), bayCtx=bayCanvas.getContext('2d'), bayResult=$('bayResult');
 const bayPrevBtn=$('bayPrevBtn'), bayNextBtn=$('bayNextBtn'), bayRestartBtn=$('bayRestartBtn'), bayDoneBtn=$('bayDoneBtn');
+const bayActions=$('bayActions');
 
 const pick = arr => arr[Math.floor(Math.random()*arr.length)];
 
@@ -993,6 +994,7 @@ export const Game = {
     this.bark(Barks.potOpen);
     this.updatePotUI(); this.renderPotShop();
     potOverlay.classList.remove('hidden');
+    this.updateDock();
   },
   // Leaving pauses the jar where it is — drops in the air stay in the air.
   // A new jar is only poured when the last one broke or there never was one.
@@ -1036,6 +1038,7 @@ export const Game = {
     potCombo.textContent = s.over ? 'JAR GONE' : (s.combo>2 ? 'COMBO x'+Math.min(2.5,1+s.combo*0.12).toFixed(1) : 'COMBO —');
     potCracks.textContent='CRACKS '+s.cracks+'/'+s.cracksMax;
     potFlash.textContent=s.flash||'';
+    potNewJarBtn.classList.toggle('hidden', !s.over);
     if(this._potShopHoney!==this.pot.honey){ this._potShopHoney=this.pot.honey; this.renderPotShop(); }
   },
 
@@ -1086,8 +1089,6 @@ export const Game = {
   turretCost(){ return 10 + (this.turret.level-1)*8; },
 
   updateDefense(dt){ this.safeSubsystem(()=> Defense.tick(this, dt), 'tick'); },
-  renderDefense(){ this.safeSubsystem(()=> Defense.renderStrip(this, defenseCtx), 'strip'); },
-  defenseTap(x,y){ this.safeSubsystem(()=> Defense.stripTap(this, x, y), 'strip tap'); },
 
   perimeterFrac(){
     const d=this.defense;
@@ -1105,6 +1106,7 @@ export const Game = {
     this.renderBuildMenu();
     this.updateDefenseUI();
     defenseOverlay.classList.remove('hidden');
+    this.updateDock();
   },
 
   closeDefense(){
@@ -1226,6 +1228,64 @@ export const Game = {
   // hangs off them — the buddy's hunger and the GLAZED clock included.
   actsLive(){ return this.state==='playing' || this.state==='bonus' || this.state==='resolve'; },
 
+  /* Screens the console cannot be navigated away from: the title, a story
+     beat, a level-up, a draft, the ending. They are the Acts asking you
+     something, and the question comes first. */
+  dockLocked(){ return ['boot','story','levelup','draft','victory'].indexOf(this.state) >= 0; },
+
+  /* The menus that sit over the Acts — hero sheet, workshop, codex,
+     settings — close on the way to any loop, and the round they paused goes
+     back to paused-by-the-loop instead. Without this, entering a loop from a
+     menu would stash 'menu' as the state to come back to, and coming back
+     would land on a menu that is no longer on screen. */
+  closeMenus(){
+    let closed=false;
+    [sheetOverlay, shopOverlay, codexOverlay, settingsOverlay].forEach(o=>{
+      if(!o.classList.contains('hidden')){ o.classList.add('hidden'); closed=true; }
+    });
+    if(closed || this.state==='menu') this.resumeAfterMenu();
+  },
+
+  /* The only way between screens. Leave whatever loop is up (which pauses it
+     and hands the Acts back via returnToActs), close any menu over the Acts,
+     then enter the one asked for. 'acts' is a destination too: it is simply
+     the screen with no loop on it. */
+  goTo(id){
+    if(this.dockLocked()){ this.updateDock(); Sound.deny(); return false; }
+    const cur=this.activeLoop();
+    if(cur===id){ this.closeMenus(); this.updateDock(); return true; }
+    this.closeMenus();
+    if(cur==='perimeter') this.closeDefense();
+    else if(cur==='pot') this.closePotGame();
+    else if(cur==='company') this.closeCompany();
+    else if(cur==='archive') this.closeArchive();
+    else if(cur==='bay') this.closeBay();
+    if(id==='perimeter') this.openDefense();
+    else if(id==='pot') this.openPotGame();
+    else if(id==='company') this.openCompany();
+    else if(id==='archive') this.openArchive();
+    else if(id==='bay') this.openBay();
+    this.updateDock();
+    return true;
+  },
+
+  /* What each tab says without being opened. One number per loop — the one
+     you would open it to check. */
+  updateDock(){
+    const active=this.activeLoop();
+    document.querySelectorAll('#dock .dockTab').forEach(t=>{
+      t.classList.toggle('active', t.dataset.loop===active);
+    });
+    dockEl.classList.toggle('locked', this.dockLocked());
+    const a=this.archive;
+    archiveBadge.textContent = a.bout ? 'BOUT' : (a.bestTier ? 'T'+a.bestTier : a.cleared.length+'/'+Archive.Builds.length);
+    bayBadge.textContent = PatchBay.totalStars(this)+'★';
+    const u=this.understudy;
+    companyBadge.textContent = u.production
+      ? (Understudy.productionReady(this) ? 'CURTAIN' : Understudy.formatDuration(Understudy.productionLeft(this)))
+      : '+'+(Understudy.rates(this).goo*60).toFixed(1);
+  },
+
   /* Back to the Acts from a loop. The one place that knows what the Acts were
      doing when you left, instead of five copies that each knew most of it:
 
@@ -1247,6 +1307,7 @@ export const Game = {
     }else{
       this.state = back || 'menu';
     }
+    this.updateDock();
   },
 
   /* ---------------- the archive: the card duel ----------------
@@ -1266,6 +1327,7 @@ export const Game = {
     this.bark(Barks.archiveOpen);
     this.renderArchive();
     archiveOverlay.classList.remove('hidden');
+    this.updateDock();
   },
 
   // Leaving pauses the bout, turn and hand and all. Abandoning one is its own
@@ -1288,7 +1350,10 @@ export const Game = {
     arcList.classList.toggle('hidden', !!bout);
     arcBout.classList.toggle('hidden', !bout);
     arcEndBtn.classList.toggle('hidden', !bout || !!bout.over);
-    arcFleeBtn.textContent = bout ? 'LEAVE BOUT' : 'CLOSE';
+    // With the dock as the way out, this button only ever means one thing:
+    // abandon the bout. On the shelf there is nothing to abandon.
+    arcFleeBtn.textContent = 'LEAVE BOUT';
+    arcFleeBtn.classList.toggle('hidden', !bout);
 
     if(!bout){ this.renderArchiveShelf(); return; }
     this.renderArchiveBout(bout);
@@ -1521,6 +1586,7 @@ export const Game = {
     this.bark(Barks.bayOpen);
     this.renderBay();
     bayOverlay.classList.remove('hidden');
+    this.updateDock();
   },
 
   // Leaving pauses the panel with every turn still on it. (Across an app
@@ -1537,7 +1603,9 @@ export const Game = {
       + (this.bay.crawl ? ' · CRAWLSPACE '+this.bay.crawl : '');
     bayShelf.classList.toggle('hidden', !!b);
     bayBoardWrap.classList.toggle('hidden', !b);
-    bayDoneBtn.textContent = b ? 'BACK TO THE BAY' : 'CLOSE';
+    // Back to the racks from a board; on the racks the dock is the way out.
+    bayDoneBtn.textContent = 'BACK TO THE BAY';
+    bayActions.classList.toggle('hidden', !b);
     if(!b){ this.renderBayShelf(); return; }
     this.renderBayBoard(b);
   },
@@ -1695,6 +1763,7 @@ export const Game = {
     this.bark(Barks.companyOpen);
     this.renderCompany();
     companyOverlay.classList.remove('hidden');
+    this.updateDock();
   },
 
   /* The production panel: one running show, or the shelf of shows that can be
@@ -1741,16 +1810,21 @@ export const Game = {
     head.textContent='PUT SOMETHING ON'+(bonus?' · '+u.staged.length+' STAGED · +'+bonus+'% RATE':'');
     coStage.appendChild(head);
 
+    /* Open shows, and only the next locked one. Listing every locked show
+       spelled out five requirements nobody could act on yet and pushed the
+       roster — the part that unlocks them — off the screen. */
+    let teased=false;
     Understudy.Productions.forEach(p=>{
       const unlocked=Understudy.productionUnlocked(this,p.id);
       const done=Understudy.productionDone(this,p.id);
+      if(!unlocked){ if(teased) return; teased=true; }
       const b=document.createElement('button');
       b.className='coShowBtn'+(done?' done':'');
       b.disabled=!unlocked || this.goo<p.cost;
       b.innerHTML=
         '<span class="coGlyph">'+(unlocked?p.glyph:'🔒')+'</span>'+
         '<span><span class="coName">'+p.name+'</span><br>'+
-        '<span class="coDesc">'+(unlocked?p.desc:'needs '+p.members+' in the company, and the one above it staged')+'</span></span>'+
+        '<span class="coDesc">'+(unlocked?p.desc:'next: needs '+p.members+' in the company')+'</span></span>'+
         '<span class="coCost">🟢'+p.cost+'<small>'+Understudy.formatDuration(p.minutes*60000)+' · 🟢'+p.pay.goo+'</small></span>';
       b.addEventListener('click', ()=>{
         Sound.ensure();
@@ -1959,6 +2033,7 @@ export const Game = {
       // The curtain call is worth knowing about from outside the screen.
       companyBtn.classList.toggle('alert',
         !!this.understudy.pendingReport || Understudy.productionReady(this));
+      this.safeSubsystem(()=> this.updateDock(), 'dock');
     }
   },
 
@@ -2055,18 +2130,6 @@ buddyBtn.addEventListener('pointerdown', e=>{
   if(Game.state==='boot') return;
   Game.pulseBtn(buddyBtn); Game.feedBuddy();
 });
-defenseCanvas.addEventListener('pointerdown', e=>{
-  Sound.ensure();
-  if(Game.state==='boot') return;
-  const rect=defenseCanvas.getBoundingClientRect();
-  Game.defenseTap((e.clientX-rect.left)*(640/rect.width), (e.clientY-rect.top)*(80/rect.height));
-});
-turretUpgradeBtn.addEventListener('click', ()=>{
-  Sound.ensure();
-  if(Game.state==='boot'||Game.state==='tdgame'||Game.state==='company'||Game.state==='archive'||Game.state==='patchbay') return;
-  if(Game.state==='draft'||Game.state==='story'||Game.state==='levelup'||Game.state==='potgame') return;
-  Game.openDefense();
-});
 
 /* Reinforcement is global: one purchase lifts every tower on the board. That
    is what keeps it worth buying at nine towers, and it is the clearest single
@@ -2093,30 +2156,7 @@ tdCallBtn.addEventListener('click', ()=>{
   }
   Game.updateDefenseUI();
 });
-tdDoneBtn.addEventListener('click', ()=>{ Sound.ensure(); Game.closeDefense(); });
 
-/* The standing row is four coloured bars behind three-letter codes, which is a
-   perfectly good glance-gauge once you know what it is and completely opaque
-   until then. Rather than spend HUD width explaining itself, it opens the hero
-   sheet — which already names every patron in their own colour and lists what
-   their standing actually does. The cryptic thing gets a way to be asked. */
-$('standingRow').addEventListener('click', ()=>{
-  Sound.ensure();
-  if(menuGuard()) return;
-  Sound.menuOpen();
-  Game.pauseForMenu(); Game.renderSheet();
-  sheetOverlay.classList.remove('hidden');
-});
-
-companyBtn.addEventListener('click', ()=>{
-  Sound.ensure();
-  if(menuGuard()) return;
-  // No pauseForMenu here: openCompany stashes the state itself, the way the
-  // honey pot does. Doing both would overwrite pausedState with 'menu' and
-  // close back into the wrong one.
-  Game.openCompany();
-});
-coDoneBtn.addEventListener('click', ()=>{ Sound.ensure(); Game.closeCompany(); });
 
 tdCanvas.addEventListener('pointerdown', e=>{
   Sound.ensure();
@@ -2127,21 +2167,25 @@ tdCanvas.addEventListener('pointerdown', e=>{
   Game.renderBuildMenu();
 });
 rerollBtn.addEventListener('click', ()=>{ Sound.ensure(); Game.reroll(); });
-potBtn.addEventListener('pointerdown', e=>{
-  e.stopPropagation(); Sound.ensure();
-  if(Game.state==='boot'||Game.state==='tdgame'||Game.state==='company'||Game.state==='archive'||Game.state==='patchbay'||Game.state==='draft'||Game.state==='potgame'||Game.state==='story'||Game.state==='levelup') return;
-  Game.openPotGame();
+
+/* The dock: one handler for six doors. Every switch goes through goTo, which
+   is the only code that knows how to leave one screen for another. */
+document.querySelectorAll('#dock .dockTab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    Sound.ensure();
+    Game.goTo(tab.dataset.loop);
+  });
 });
 potCanvas.addEventListener('pointerdown', e=>{ Sound.ensure(); Game.potPointer(e); });
 potCanvas.addEventListener('pointermove', e=>{ Game.potPointer(e); });
 potHarvestBtn.addEventListener('click', ()=>{ Sound.ensure(); Game.harvestPot(); });
-potDoneBtn.addEventListener('click', ()=>{ Game.closePotGame(); });
-
-bayBtn.addEventListener('click', ()=>{
-  Sound.ensure();
-  if(menuGuard()) return;
-  Game.openBay();
+// A broken jar is replaced in place. Leaving and coming back does it too, but
+// a player should not have to walk out of the pot to keep playing it.
+potNewJarBtn.addEventListener('click', ()=>{
+  Sound.ensure(); Sound.potOpen();
+  Game.safeSubsystem(()=>{ Pot.close(Game); Pot.open(Game); }, 'new jar');
 });
+
 bayCanvas.addEventListener('pointerdown', e=>{ Sound.ensure(); Game.bayPointer(e); });
 bayPrevBtn.addEventListener('click', ()=>{
   const b=Game.bay.board; if(!b) return;
@@ -2171,11 +2215,6 @@ bayDoneBtn.addEventListener('click', ()=>{
   else Game.closeBay();
 });
 
-archiveBtn.addEventListener('click', ()=>{
-  Sound.ensure();
-  if(menuGuard()) return;
-  Game.openArchive();
-});
 arcEndBtn.addEventListener('click', ()=>{
   Sound.ensure();
   Game.safeSubsystem(()=> Archive.endTurn(Game), 'archive end turn');
@@ -2260,9 +2299,27 @@ $('settingsCloseBtn').addEventListener('click', ()=>{ settingsOverlay.classList.
    depending on where the run is. Reading the stage's own top is safe from
    feedback: what is above the stage does not depend on how tall the stage is. */
 function measureChrome(){
-  const top = $('stageWrap').getBoundingClientRect().top + (window.scrollY||0);
+  /* The height of everything above the board, summed row by row — NOT the
+     board's top edge. The redesign pushes the board down to the thumb, so on
+     a tall phone its top edge sits well below the rows above it; measuring
+     that edge would count the free space as chrome, shrink the board to fit,
+     free more space, and chase itself down to the floor. The rows' own
+     heights do not depend on where the board is, so this cannot loop. Top
+     margins are skipped on purpose: the auto margin that does the pushing
+     would otherwise be counted as a row. */
+  const app = $('app'), stage = $('stageWrap');
+  const cs = getComputedStyle(app);
+  let top = parseFloat(cs.paddingTop) || 0;
+  for(const el of app.children){
+    if(el === stage) break;
+    const s = getComputedStyle(el);
+    if(s.display === 'none' || s.position === 'absolute') continue;
+    top += el.offsetHeight + (parseFloat(s.marginBottom) || 0);
+  }
   const prev = parseFloat(document.documentElement.style.getPropertyValue('--chrome'))||0;
-  const next = Math.round(top + 30);            // + the margin under the board
+  // The dock and the gap above it are subtracted in the stylesheet, where
+  // their sizes live.
+  const next = Math.round(top);
   if(Math.abs(next-prev) > 2) document.documentElement.style.setProperty('--chrome', next+'px');
 }
 Game.mastery = (Game.safeSubsystem(()=> Ledger.read(), 'mastery boot') || {}).mastery || {};
@@ -2276,4 +2333,4 @@ if(window.ResizeObserver) new ResizeObserver(measureChrome).observe($('app'));
 
 Game.updateHUD(); Game.updateMutatorChip(); Game.updateBuddyUI();
 Game.updateRerollUI(); Game.updatePotUI(); Game.updateHeroUI(); Game.updateStandingUI();
-Game.renderDefense();
+

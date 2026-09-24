@@ -28,76 +28,72 @@
 <div id="bgLayer" aria-hidden="true"></div>
 
 <div id="app">
-  <div id="actBar">
-    <div id="actName" class="arcade">ACT I</div>
-    <div id="questName" class="arcade">—</div>
-  </div>
+  <!-- Top bar: where you are, what you have, and the four things you open
+       from anywhere in the Acts. One row, where there used to be three. -->
+  <header id="topBar">
+    <div id="actInfo">
+      <div id="actName" class="arcade">ACT I</div>
+      <div id="questName">—</div>
+    </div>
+    <div id="gooCount" class="arcade">🟢0</div>
+    <nav id="hudActions">
+      <button id="sheetBtn" aria-label="Hero sheet">🧙</button>
+      <button id="shopBtn" aria-label="Workshop">🛒</button>
+      <button id="settingsBtn" aria-label="Settings">⚙</button>
+      <button id="muteBtn" aria-label="Sound">🔊</button>
+    </nav>
+  </header>
 
+  <!-- The narrative layer. Four voices pass through this one line. -->
   <div id="dialogue">
     <div id="dialogueWho" class="arcade">THE ARTIFICER</div>
     <div id="dialogueText">Press PLAY. I will explain as we go. Try to ignore the other one.</div>
   </div>
 
-  <!-- Standing with each creator. Four independent bars rather than one
-       two-ended slider: the old shape could only rank two parties against
-       each other, and could not show that you have neglected someone. -->
-  <div id="standingRow">
-    <div class="standing"><span class="standingTag arcade">ART</span><div class="standingTrack"><div class="standingFill" id="standingArtificer"></div></div></div>
-    <div class="standing"><span class="standingTag arcade">GOB</span><div class="standingTrack"><div class="standingFill" id="standingGoblin"></div></div></div>
-    <div class="standing"><span class="standingTag arcade">CRB</span><div class="standingTrack"><div class="standingFill" id="standingCrab"></div></div></div>
-    <div class="standing"><span class="standingTag arcade">UND</span><div class="standingTrack"><div class="standingFill" id="standingUnderstudy"></div></div></div>
+  <!-- The run at a glance: the buddy, your level, the score. -->
+  <div id="statusRow">
+    <button id="buddyBtn" aria-label="Feed the buddy"><span id="buddyFace">👾</span><span id="buddyLvl" class="arcade">Lv1</span></button>
+    <div id="heroRow">
+      <div id="heroLvl" class="arcade">LV1</div>
+      <div id="xpTrack"><div id="xpFill"></div></div>
+    </div>
+    <div id="scoreWrap"><div id="scoreVal">0</div><div id="roundVal" class="arcade">RD 0</div></div>
   </div>
-
-  <div id="hud">
-    <button id="buddyBtn"><span id="buddyFace" class="arcade">👾</span><span id="buddyLvl" class="arcade">Lv1</span></button>
-    <div id="scoreWrap"><div id="scoreVal">0</div><div id="roundVal" class="arcade" style="font-size:8px;">RD 0</div></div>
-    <div id="gooCount" class="arcade">🟢0</div>
-  </div>
-
-  <div id="heroRow">
-    <div id="heroLvl" class="arcade">LV1</div>
-    <div id="xpTrack"><div id="xpFill"></div></div>
-    <div id="statsMini" class="arcade">R1 W1 G1 N1 C1</div>
-  </div>
-
-  <div id="hudActions">
-    <button id="sheetBtn">🧙</button>
-    <button id="companyBtn">🎭</button>
-    <button id="archiveBtn">🗃️</button>
-    <button id="shopBtn">🛒</button>
-    <button id="bayBtn">🔌</button>
-    <button id="settingsBtn">⚙</button>
-    <button id="muteBtn">🔊</button>
-  </div>
-
-  <div id="mutChip" class="hidden"></div>
 
   <div id="bossRow" class="hidden">
     <div id="bossTop"><div id="bossName" class="arcade">BOSS</div><div id="bossHpNum" class="arcade">0/0</div></div>
     <div id="bossHpTrack"><div id="bossHpFill"></div></div>
   </div>
 
-  <div id="meterRow"><div id="meterLabel" class="arcade">SLOP</div><div id="meterTrack"><div id="meterFill"></div></div></div>
-  <div id="potRow"><button id="potBtn" class="arcade">🍯</button><div id="potTrack"><div id="potFill"></div></div></div>
-  <div id="defenseWrap">
-    <canvas id="defenseCanvas" width="640" height="80"></canvas>
-    <!-- Id kept because DOM ids are a contract, but the role changed: this
-         used to buy a turret level inline, and now opens the perimeter, where
-         reinforcing can show what it is actually buying. -->
-    <button id="turretUpgradeBtn" class="arcade">🦀 <span id="perimeterPct">100%</span></button>
-  </div>
-  <div id="timerRow">
-    <div id="timerTrack"><div id="timerFill"></div></div>
-    <button id="rerollBtn" class="arcade">🎲 <span id="rerollCostVal">6</span></button>
+  <!-- The round: the clock that is counting down against you, the meter
+       that builds toward a double round, and the reroll. -->
+  <div id="roundRow">
+    <div id="timerRow">
+      <div id="timerTrack"><div id="timerFill"></div></div>
+      <div id="meterRow"><div id="meterLabel" class="arcade">SLOP</div><div id="meterTrack"><div id="meterFill"></div></div></div>
+    </div>
+    <div id="mutChip" class="hidden"></div>
+    <button id="rerollBtn" class="arcade" aria-label="Reroll">🎲 <span id="rerollCostVal">6</span></button>
   </div>
 
   <div id="stageWrap">
     <div id="laneRow"></div>
     <div id="fxLayer"></div>
-
   </div>
-
 </div>
+
+<!-- The dock. Six loops, one tap each, and the tab you are on is the only one
+     that is running — leaving a loop pauses it. Each tab carries the one
+     number worth knowing about its loop without opening it. Ids are the old
+     doors', kept because the chassis already talks to them. -->
+<nav id="dock">
+  <button id="actsTab" class="dockTab active" data-loop="acts"><span class="dockGlyph">🎯</span><span class="dockLabel arcade">ACTS</span></button>
+  <button id="turretUpgradeBtn" class="dockTab" data-loop="perimeter"><span class="dockGlyph">🦀</span><span class="dockLabel arcade" id="perimeterPct">100%</span></button>
+  <button id="archiveBtn" class="dockTab" data-loop="archive"><span class="dockGlyph">🗃️</span><span class="dockLabel arcade" id="archiveBadge">CARDS</span></button>
+  <button id="bayBtn" class="dockTab" data-loop="bay"><span class="dockGlyph">🔌</span><span class="dockLabel arcade" id="bayBadge">0★</span></button>
+  <button id="potBtn" class="dockTab" data-loop="pot"><span class="dockGlyph">🍯</span><span class="dockMeter" id="potTrack"><span id="potFill"></span></span></button>
+  <button id="companyBtn" class="dockTab" data-loop="company"><span class="dockGlyph">🎭</span><span class="dockLabel arcade" id="companyBadge">CAST</span></button>
+</nav>
 
 <!-- Sheets, not panels. Every menu used to live inside #stageWrap, which is
      a square: on a 375x812 phone that is a 353x353 window holding a shop list
@@ -105,18 +101,18 @@
      They are siblings of #app now and each one takes the whole screen. -->
 <div id="sheetLayer">
   <div id="startScreen" class="overlay">
-    <div class="title" style="font-size:34px;">SLOP</div>
-    <div class="subtitle" style="margin-bottom:12px;">a chronicle of unfinished things</div>
-    <div class="speechBlock" style="border-color:var(--artificer);">
-      <div class="speechWho" style="color:var(--artificer);">THE ARTIFICER</div>
+    <div class="title">SLOP</div>
+    <div class="subtitle">a chronicle of unfinished things</div>
+    <div class="speechBlock artificer">
+      <div class="speechWho">THE ARTIFICER</div>
       You are the Hero. There are eight Acts and a final boss called THE UNSHIPPED. My job is to get you there intact. I built the progression, the stats, the shop. Follow it and you will win.
     </div>
-    <div class="speechBlock" style="border-color:var(--goblin);">
-      <div class="speechWho" style="color:var(--goblin);">SLOP-GOBLIN</div>
+    <div class="speechBlock goblin">
+      <div class="speechWho">SLOP-GOBLIN</div>
       hi. i built everything else. the honey pot. the little guy you feed. the turret. none of it was in the design doc. i keep wiring systems into each other because it is funny when they touch. good luck!!
     </div>
-    <button class="btn hidden" id="continueBtn" style="background:var(--acid); box-shadow:0 6px 0 #7fa81c; margin-bottom:6px;">CONTINUE</button>
-    <div id="continueMeta" class="note hidden" style="margin-top:0; margin-bottom:12px; opacity:0.6;"></div>
+    <button class="btn hidden" id="continueBtn">CONTINUE</button>
+    <div id="continueMeta" class="note hidden"></div>
     <button class="btn" id="startBtn">BEGIN</button>
     <div id="ledgerLine" class="note hidden"></div>
     <!-- What is actually in here. The title screen sold one game; there are
@@ -136,61 +132,71 @@
   </div>
 
   <div id="storyOverlay" class="overlay hidden">
-    <div class="title" id="storyTitle" style="font-size:20px;">ACT I</div>
-    <div class="subtitle" id="storySub" style="margin-bottom:14px;">—</div>
+    <div class="title" id="storyTitle">ACT I</div>
+    <div class="subtitle" id="storySub">—</div>
     <div id="storySpeech" class="sheetBody"></div>
-    <button class="btn" id="storyContinueBtn" style="font-size:11px; padding:10px 18px;">CONTINUE</button>
+    <button class="btn" id="storyContinueBtn">CONTINUE</button>
   </div>
 
   <div id="draftOverlay" class="overlay hidden">
-    <div class="title" style="font-size:17px;" id="draftTitle">SLOP-GOBLIN MEDDLES</div>
-    <div class="subtitle" style="font-size:11px; margin-bottom:12px;" id="draftSub">pick which sabotage you would prefer. yes you have to pick one. well — you can skip. i guess.</div>
+    <div class="title" id="draftTitle">SLOP-GOBLIN MEDDLES</div>
+    <div class="subtitle" id="draftSub">pick which sabotage you would prefer. yes you have to pick one. well — you can skip. i guess.</div>
     <div id="draftCards" class="sheetBody"></div>
-    <button class="btn" id="draftSkipBtn" style="margin-top:10px; font-size:10px; padding:9px 16px;">REFUSE (Artificer approves)</button>
+    <button class="btn" id="draftSkipBtn">REFUSE (Artificer approves)</button>
   </div>
 
   <div id="levelOverlay" class="overlay hidden">
-    <div class="title" style="font-size:19px;">LEVEL UP</div>
-    <div class="subtitle" style="font-size:11px; margin-bottom:12px;" id="levelSub">The Artificer offers you a point. Spend it.</div>
+    <div class="title">LEVEL UP</div>
+    <div class="subtitle" id="levelSub">The Artificer offers you a point. Spend it.</div>
     <div id="levelList" class="sheetBody"></div>
   </div>
 
   <div id="sheetOverlay" class="overlay hidden">
-    <div class="title" style="font-size:20px;">HERO SHEET</div>
-    <div id="sheetBody" class="sheetBody" style="font-size:12px; text-align:left;"></div>
+    <div class="title">HERO SHEET</div>
+    <!-- Standing and the stat line lived on the HUD as four bars behind
+         three-letter codes and a string like "R1 W1 G1 N1 C1". Both are read
+         here, next to the text that explains them. -->
+    <div id="standingRow">
+      <div class="standing"><span class="standingTag arcade">ART</span><div class="standingTrack"><div class="standingFill" id="standingArtificer"></div></div></div>
+      <div class="standing"><span class="standingTag arcade">GOB</span><div class="standingTrack"><div class="standingFill" id="standingGoblin"></div></div></div>
+      <div class="standing"><span class="standingTag arcade">CRB</span><div class="standingTrack"><div class="standingFill" id="standingCrab"></div></div></div>
+      <div class="standing"><span class="standingTag arcade">UND</span><div class="standingTrack"><div class="standingFill" id="standingUnderstudy"></div></div></div>
+    </div>
+    <div id="statsMini" class="arcade">R1 W1 G1 N1 C1</div>
+    <div id="sheetBody" class="sheetBody"></div>
     <!-- Moved here off the HUD glyph row to make room for the patch bay's
          door. The codex is a log you read, and the hero sheet is where the run
          already explains itself. -->
     <button class="btn" id="codexBtn">OPEN THE CODEX</button>
-    <button class="btn" id="sheetCloseBtn" style="margin-top:14px; font-size:11px; padding:10px 18px;">CLOSE</button>
+    <button class="btn" id="sheetCloseBtn">CLOSE</button>
   </div>
 
   <div id="codexOverlay" class="overlay hidden">
-    <div class="title" style="font-size:20px;">CODEX</div>
-    <div id="codexBody" class="sheetBody" style="font-size:11px; text-align:left;"></div>
-    <button class="btn" id="codexCloseBtn" style="margin-top:14px; font-size:11px; padding:10px 18px;">CLOSE</button>
+    <div class="title">CODEX</div>
+    <div id="codexBody" class="sheetBody"></div>
+    <button class="btn" id="codexCloseBtn">CLOSE</button>
   </div>
 
   <div id="shopOverlay" class="overlay hidden">
-    <div class="title" style="font-size:19px;">WORKSHOP</div>
-    <div class="subtitle" style="font-size:11px; margin-bottom:10px;">The Artificer's sanctioned upgrades. Mostly.</div>
+    <div class="title">WORKSHOP</div>
+    <div class="subtitle">The Artificer's sanctioned upgrades. Mostly.</div>
     <div id="shopList" class="sheetBody"></div>
-    <button class="btn" id="shopCloseBtn" style="margin-top:12px; font-size:11px; padding:10px 18px;">CLOSE</button>
+    <button class="btn" id="shopCloseBtn">CLOSE</button>
   </div>
 
   <div id="settingsOverlay" class="overlay hidden">
-    <div class="title" style="font-size:20px;">SETTINGS</div>
-    <div class="subtitle" style="margin-bottom:8px; font-size:11px;">how much is the goblin allowed to do</div>
-    <div id="chaosButtons" style="display:flex; gap:8px; margin-bottom:16px;"></div>
+    <div class="title">SETTINGS</div>
+    <div class="subtitle">how much is the goblin allowed to do</div>
+    <div id="chaosButtons"></div>
     <!-- Moved off the HUD glyph row: eight glyphs do not fit a 353px column,
          and of the eight this was the one that ends a run in a single tap. -->
-    <button class="btn" id="resetBtn" style="font-size:10px; padding:10px 16px; margin-bottom:14px; background:#2a1520; box-shadow:0 6px 0 #14090f; color:var(--pink);">START A NEW RUN</button>
-    <button class="btn" id="settingsCloseBtn" style="font-size:11px; padding:10px 18px;">CLOSE</button>
+    <button class="btn" id="resetBtn">START A NEW RUN</button>
+    <button class="btn" id="settingsCloseBtn">CLOSE</button>
   </div>
 
   <div id="potOverlay" class="overlay hidden">
-    <div class="title" style="font-size:18px;">🍯 THE HONEY POT</div>
-    <div class="subtitle" style="margin-bottom:8px; font-size:11px;">an entire second game the goblin built inside this one. the plot waits.</div>
+    <div class="title">🍯 THE HONEY POT</div>
+    <div class="subtitle">an entire second game the goblin built inside this one. the plot waits.</div>
     <div id="potGameWrap">
       <canvas id="potCanvas" width="400" height="300"></canvas>
       <div id="potHarvestFlash" class="arcade"></div>
@@ -205,9 +211,11 @@
     </div>
     <div id="potFlash"></div>
     <div id="potShop" class="sheetBody"></div>
-    <div style="display:flex; gap:10px; margin-top:12px;">
-      <button class="btn" id="potHarvestBtn" style="font-size:11px; padding:10px 16px;">HARVEST</button>
-      <button class="btn" id="potDoneBtn" style="font-size:11px; padding:10px 16px; background:var(--cyan); box-shadow:0 6px 0 #0e7a91;">BACK TO PLOT</button>
+    <div id="potActions">
+      <button class="btn" id="potHarvestBtn">HARVEST</button>
+      <!-- Shown once the jar has given out. Leaving and coming back pours a
+           new one too, but a player should not have to leave to keep playing. -->
+      <button class="btn hidden" id="potNewJarBtn">NEW JAR</button>
     </div>
   </div>
 
@@ -219,7 +227,7 @@
          LEAVE POST is reachable at any content height. A player who cannot
          see the way out of a screen is trapped in it. -->
     <div id="tdScroll" class="sheetBody">
-      <div class="title" style="font-size:15px;">THE PERIMETER</div>
+      <div class="title">THE PERIMETER</div>
       <div id="tdStatus" class="arcade">WAVE 1 · INTEGRITY 100%</div>
       <div id="tdIntegrityTrack"><div id="tdIntegrityFill"></div></div>
       <canvas id="tdCanvas" width="480" height="360"></canvas>
@@ -233,27 +241,25 @@
     <div id="tdActions">
       <button class="btn" id="tdCallBtn">SEND IT</button>
       <button class="btn" id="tdReinforceBtn">REINFORCE <span id="turretCostVal">10</span></button>
-      <button class="btn" id="tdDoneBtn">LEAVE POST</button>
     </div>
   </div>
 
   <!-- THE UNDERSTUDY's loop. No board and nothing to react to: the only
        decisions are who to recruit and how deeply, made at any pace. -->
   <div id="companyOverlay" class="overlay hidden">
-    <div class="title" style="font-size:16px;">THE COMPANY</div>
+    <div class="title">THE COMPANY</div>
     <div id="coRates" class="arcade">—</div>
     <div id="coReport" class="hidden"></div>
     <div id="coStage"></div>
     <div id="coList" class="sheetBody"></div>
     <div id="coFooter"></div>
-    <button class="btn" id="coDoneBtn">LET THEM WORK</button>
   </div>
 
   <!-- THE ARCHIVE. Turn-based, so unlike the perimeter and the pot there is
        no canvas here at all: every card is a real DOM button at a real touch
        size, which is also why the hand is capped at five. -->
   <div id="archiveOverlay" class="overlay hidden">
-    <div class="title" style="font-size:15px;">🗃️ THE ARCHIVE</div>
+    <div class="title">🗃️ THE ARCHIVE</div>
     <div id="arcProgress" class="arcade">0/6 FILED</div>
 
     <!-- the shelf -->
@@ -291,7 +297,7 @@
        laid out, with tiles large enough to be their own touch targets: the
        smallest is a seventh of a 343px board, 49px. -->
   <div id="bayOverlay" class="overlay hidden">
-    <div class="title" style="font-size:15px;">🔌 THE PATCH BAY</div>
+    <div class="title">🔌 THE PATCH BAY</div>
     <div id="bayProgress" class="arcade">0 ★</div>
 
     <div id="bayShelf" class="sheetBody"></div>
@@ -316,10 +322,10 @@
   </div>
 
   <div id="victoryOverlay" class="overlay hidden">
-    <div class="title" style="font-size:26px;">SHIPPED</div>
+    <div class="title">SHIPPED</div>
     <div class="subtitle" id="victorySub">You defeated THE UNSHIPPED.</div>
     <div id="victorySpeech" class="sheetBody"></div>
-    <button class="btn" id="victoryBtn" style="font-size:11px; padding:10px 18px;">NEW GAME+</button>
+    <button class="btn" id="victoryBtn">NEW GAME+</button>
   </div>
 </div>
 

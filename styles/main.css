@@ -1,1337 +1,797 @@
-  /* The two faces, vendored rather than fetched — see assets/fonts/README.md.
-     swap, not block: the pixel font is 4.7KB and local, so the swap should
-     never be visible, but a font is not worth a blank HUD if it ever is. */
-  @font-face{
-    font-family:'Press Start 2P'; font-style:normal; font-weight:400; font-display:swap;
-    src:url('../assets/fonts/press-start-2p-latin.woff2') format('woff2');
-  }
-  @font-face{
-    font-family:'Space Grotesk'; font-style:normal; font-weight:400 700; font-display:swap;
-    src:url('../assets/fonts/space-grotesk-latin.woff2') format('woff2');
-  }
-
-  :root{
-    --bg:#08060c; --ink:#f5f2ff;
-    --pink:#ff2f9e; --acid:#c9ff2f; --cyan:#2fe1ff;
-    --yellow:#fff02f; --violet:#7a3cff; --orange:#ff7a2f;
-    --goblin:#c9ff2f; --artificer:#2fe1ff;
-  }
-  *{box-sizing:border-box;}
-  html,body{
-    margin:0; padding:0; height:100%;
-    background:var(--bg); color:var(--ink);
-    font-family:'Space Grotesk',system-ui,sans-serif;
-    overflow-y:auto; -webkit-tap-highlight-color: transparent; user-select:none;
-  }
-  /* The drift lives on #bgLayer now — see the SHEET PASS. A filter here
-     makes <body> the containing block for every position:fixed descendant,
-     which is the whole sheet layer. */
-  @keyframes bgBreathe{ 0%,100%{ filter: hue-rotate(0deg); } 50%{ filter: hue-rotate(10deg); } }
-  .arcade{ font-family:'Press Start 2P', monospace; }
-
-  #app{ position:relative; width:min(94vw, 480px); margin:10px auto 16px; }
-  #app.shaking{ animation: shakeAnim 0.32s cubic-bezier(.36,.07,.19,.97) both; }
-  @keyframes shakeAnim{
-    10%,90%{ transform: translate3d(-1px,0,0) rotate(-0.3deg); }
-    20%,80%{ transform: translate3d(3px,0,0) rotate(0.4deg); }
-    30%,50%,70%{ transform: translate3d(-7px,0,0) rotate(-0.8deg); }
-    40%,60%{ transform: translate3d(7px,0,0) rotate(0.8deg); }
-  }
-  #app.shakeBig{ animation: shakeBigAnim 0.5s cubic-bezier(.36,.07,.19,.97) both; }
-  @keyframes shakeBigAnim{
-    10%,90%{ transform: translate3d(-3px,0,0) rotate(-1deg); }
-    20%,80%{ transform: translate3d(6px,0,0) rotate(1.4deg); }
-    30%,50%,70%{ transform: translate3d(-14px,0,0) rotate(-2deg); }
-    40%,60%{ transform: translate3d(14px,0,0) rotate(2deg); }
-  }
-  @keyframes wiggle{ 0%,100%{ transform: rotate(-2deg); } 50%{ transform: rotate(2deg); } }
-  @keyframes scorePop{ 0%{ transform: scale(1); } 35%{ transform: scale(1.4) rotate(-4deg); } 100%{ transform: scale(1); } }
-  @keyframes panic{ 0%,100%{ transform: scale(1) rotate(0deg); } 50%{ transform: scale(1.18) rotate(-9deg); } }
-  @keyframes pulseTap{ 0%{transform:scale(1);} 40%{transform:scale(1.3);} 100%{transform:scale(1);} }
-  .pulseTap{ animation: pulseTap 0.25s ease; }
-
-  /* ---------- narrative banner: the two creators ---------- */
-  #actBar{
-    display:flex; justify-content:space-between; align-items:center;
-    font-family:'Press Start 2P',monospace; font-size:8px; padding:2px 4px 5px; opacity:0.85;
-  }
-  #actName{ color:var(--violet); }
-  #questName{ color:var(--ink); opacity:0.6; }
-
-  #dialogue{
-    position:relative; border-radius:10px; padding:8px 10px; margin-bottom:6px;
-    background:#100d19; border-left:4px solid var(--goblin); min-height:46px;
-    font-size:12px; line-height:1.35; transition:border-color 0.3s;
-  }
-  #dialogueWho{ font-family:'Press Start 2P',monospace; font-size:8px; margin-bottom:4px; letter-spacing:0.5px; }
-  #dialogueText{ opacity:0.92; }
-  #dialogue.speak{ animation: dialogueIn 0.35s ease; }
-  @keyframes dialogueIn{ from{ transform:translateX(-6px); opacity:0.3; } to{ transform:translateX(0); opacity:1; } }
-
-  /* Standing with the four creators. Each bar is independent and starts empty,
-     so a neglected patron reads as neglected rather than as "losing" — being
-     uncommitted is a legitimate way to play. */
-  #standingRow{ display:flex; align-items:center; gap:6px; margin-bottom:6px; }
-  .standing{ flex:1; display:flex; align-items:center; gap:3px; min-width:0; }
-  .standingTag{ font-size:6px; opacity:0.7; white-space:nowrap; }
-  .standingTrack{ flex:1; height:5px; border-radius:3px; background:#1a1522; overflow:hidden; min-width:0; }
-  .standingFill{ height:100%; width:0%; transition:width 0.4s ease; }
-  .standing:nth-child(1) .standingTag{ color:var(--artificer); }
-  .standing:nth-child(1) .standingFill{ background:var(--artificer); }
-  .standing:nth-child(2) .standingTag{ color:var(--goblin); }
-  .standing:nth-child(2) .standingFill{ background:var(--goblin); }
-  .standing:nth-child(3) .standingTag{ color:var(--orange); }
-  .standing:nth-child(3) .standingFill{ background:var(--orange); }
-  .standing:nth-child(4) .standingTag{ color:var(--violet); }
-  .standing:nth-child(4) .standingFill{ background:var(--violet); }
-
-  /* ---------- hero sheet ---------- */
-  #hud{ display:flex; align-items:center; justify-content:space-between; padding:2px 4px 4px; font-size:12px; gap:6px; }
-  #buddyBtn{
-    background:none; border:1px solid #333; color:var(--ink);
-    border-radius:10px; padding:3px 8px; cursor:pointer;
-    display:flex; flex-direction:column; align-items:center; gap:1px;
-    animation: wiggle 2.3s ease-in-out infinite;
-  }
-  #buddyBtn.low{ animation: panic 0.35s infinite; filter: saturate(2) hue-rotate(-25deg); }
-  #buddyFace{ font-size:18px; line-height:1; }
-  #buddyLvl{ font-family:'Press Start 2P', monospace; font-size:7px; opacity:0.75; }
-  #scoreWrap{ text-align:center; }
-  #scoreVal{ font-weight:700; font-size:16px; display:inline-block; }
-  #scoreVal.pop{ animation: scorePop 0.3s ease; }
-  #roundVal{ opacity:0.6; }
-  #gooCount{ font-family:'Press Start 2P', monospace; font-size:9px; color:var(--acid); white-space:nowrap; display:inline-block; }
-  #gooCount.pop{ animation: scorePop 0.3s ease; }
-
-  #heroRow{
-    display:flex; align-items:center; gap:6px; margin-bottom:6px;
-    font-family:'Press Start 2P',monospace; font-size:7px;
-  }
-  #heroLvl{ color:var(--yellow); white-space:nowrap; }
-  #xpTrack{ flex:1; height:5px; border-radius:4px; background:#1a1522; overflow:hidden; }
-  #xpFill{ height:100%; width:0%; background:linear-gradient(90deg,var(--violet),var(--cyan)); transition:width 0.3s ease; }
-  #statsMini{ color:var(--ink); opacity:0.65; white-space:nowrap; }
-
-  #hudActions{ display:flex; justify-content:flex-end; gap:5px; padding:0 4px 6px; }
-  #hudActions button{
-    background:none; border:1px solid #333; color:var(--ink);
-    border-radius:6px; padding:4px 7px; font-size:12px; cursor:pointer;
-  }
-  #hudActions button.alert{ border-color:var(--yellow); animation: panic 0.6s infinite; }
-
-  #mutChip{ font-family:'Press Start 2P', monospace; font-size:9px; text-align:center; padding:0 0 6px; letter-spacing:0.5px; }
-  #mutChip:not(.hidden){ animation: wiggle 1.2s ease-in-out infinite; }
-
-  #meterRow{ display:flex; align-items:center; gap:6px; margin-bottom:6px; }
-  #meterLabel{ font-family:'Press Start 2P', monospace; font-size:7px; opacity:0.55; white-space:nowrap; }
-  #meterTrack{ flex:1; height:5px; border-radius:4px; background:#1a1522; overflow:hidden; }
-  #meterFill{ height:100%; width:0%; background:linear-gradient(90deg, var(--pink), var(--yellow)); transition:width 0.25s ease; }
-
-  #potRow{ display:flex; align-items:center; gap:6px; margin-bottom:8px; }
-  #potBtn{
-    background:none; border:1px solid #333; color:var(--ink);
-    border-radius:8px; padding:2px 7px; font-size:16px; cursor:pointer; line-height:1.3;
-    animation: wiggle 3.4s ease-in-out infinite;
-  }
-  #potBtn.ready{ animation: panic 0.5s infinite; filter: drop-shadow(0 0 6px var(--yellow)); }
-  #potTrack{ flex:1; height:5px; border-radius:4px; background:#1a1522; overflow:hidden; }
-  #potFill{ height:100%; width:0%; background:linear-gradient(90deg, var(--orange), var(--yellow)); transition:width 0.3s ease; }
-
-  #defenseWrap{
-    position:relative; height:58px; margin-bottom:8px; border-radius:10px; overflow:hidden;
-    background:#100d19; display:flex; align-items:center; border:1px solid #241d33;
-  }
-  #defenseCanvas{ flex:1; height:100%; display:block; touch-action:none; }
-  #turretUpgradeBtn{
-    font-family:'Press Start 2P', monospace; font-size:8px;
-    background:#1a1522; color:var(--cyan); border:1px solid #2fe1ff55;
-    border-radius:6px; padding:6px 7px; margin:0 6px; cursor:pointer; white-space:nowrap;
-  }
-
-  /* ---------- boss ---------- */
-  #bossRow{ margin-bottom:8px; }
-  #bossTop{ display:flex; justify-content:space-between; font-family:'Press Start 2P',monospace; font-size:8px; margin-bottom:3px; }
-  #bossName{ color:var(--pink); }
-  #bossHpNum{ opacity:0.7; }
-  #bossHpTrack{ height:10px; border-radius:5px; background:#1a1522; overflow:hidden; border:1px solid #3a1a2a; }
-  #bossHpFill{ height:100%; width:100%; background:linear-gradient(90deg,var(--pink),var(--violet)); transition:width 0.35s ease; }
-
-  #timerRow{ display:flex; align-items:center; gap:6px; margin-bottom:8px; }
-  #timerTrack{ flex:1; height:6px; border-radius:4px; background:#1a1522; overflow:hidden; }
-  #timerFill{ height:100%; width:100%; background:linear-gradient(90deg, var(--acid), var(--cyan)); transition: width 0.06s linear; }
-  #rerollBtn{
-    font-family:'Press Start 2P', monospace; font-size:8px;
-    background:#1a1522; color:var(--pink); border:1px solid #ff2f9e55;
-    border-radius:6px; padding:5px 6px; cursor:pointer; white-space:nowrap;
-  }
-
-  #stageWrap{
-    position:relative; width:100%; aspect-ratio:1/1; border-radius:14px; overflow:hidden;
-    filter: contrast(1.02);
-    box-shadow: 0 0 0 2px #1c1626, 0 20px 60px -20px rgba(255,47,158,0.35);
-  }
-  #stageWrap.mut-invert{ filter: invert(1) hue-rotate(180deg); }
-  #stageWrap.mut-quake{ animation: quakeLoop 0.35s infinite; }
-  @keyframes quakeLoop{
-    0%,100%{ transform: translate(0,0); } 25%{ transform: translate(-2px,1px); }
-    50%{ transform: translate(2px,-1px); } 75%{ transform: translate(-1px,-2px); }
-  }
-
-  #laneRow{ position:absolute; inset:0; display:flex; gap:4px; }
-  #laneRow.mut-giant{ transform: scale(1.16); transform-origin: center; }
-  .laneWrap{ position:relative; flex:1; height:100%; display:flex; flex-direction:column; min-width:0; }
-  .laneLabel{ font-size:9px; text-align:center; padding:3px 2px; background:rgba(0,0,0,0.45); letter-spacing:0.5px; }
-  .laneCanvas{ flex:1; width:100%; min-height:0; touch-action:none; background:#0c0a15; display:block; }
-
-  #stageWrap::after{
-    content:""; position:absolute; inset:0; pointer-events:none;
-    background: repeating-linear-gradient( to bottom, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 3px);
-    mix-blend-mode: overlay; opacity:0.35;
-  }
-
-  #fxLayer{ position:absolute; inset:0; z-index:11; pointer-events:none; overflow:hidden; }
-  .chromaFlash{ position:absolute; inset:0; background:var(--ink); mix-blend-mode:difference; opacity:0.55; animation: chromaOut 0.22s ease-out forwards; }
-  @keyframes chromaOut{ from{opacity:0.55;} to{opacity:0;} }
-  .glitchBar{ position:absolute; left:0; right:0; pointer-events:none; mix-blend-mode:difference; animation: glitchFlicker 0.22s steps(3) forwards; }
-  @keyframes glitchFlicker{ 0%{ opacity:0.65; } 50%{ opacity:0.15; } 100%{ opacity:0; } }
-  .ripple{ position:absolute; border-radius:50%; pointer-events:none; animation: rippleOut 0.4s ease-out forwards; }
-  @keyframes rippleOut{ from{ transform: scale(0.6); opacity:1; } to{ transform: scale(3.4); opacity:0; } }
-  .twinkle{ position:absolute; pointer-events:none; animation: ambientTwinkle 2.6s ease-in-out forwards; }
-  @keyframes ambientTwinkle{
-    0%{ opacity:0; transform:scale(0.5) translateY(0); }
-    30%{ opacity:0.85; transform:scale(1) translateY(-6px); }
-    100%{ opacity:0; transform:scale(0.8) translateY(-20px); }
-  }
-  .stamp{
-    position:absolute; left:50%; top:50%; font-family:'Press Start 2P', monospace;
-    font-size:14px; white-space:nowrap; color:var(--ink);
-    text-shadow: 2px 2px 0 var(--stampColor,#ff2f9e), -2px -2px 0 var(--stampColor2,#2fe1ff);
-    animation: stampIn 0.65s cubic-bezier(.2,1.4,.4,1) forwards;
-  }
-  @keyframes stampIn{
-    0%{ transform: translate(-50%,-50%) rotate(var(--rot,0deg)) scale(0.2); opacity:0; }
-    35%{ transform: translate(-50%,-50%) rotate(var(--rot,0deg)) scale(1.15); opacity:1; }
-    70%{ transform: translate(-50%,-50%) rotate(var(--rot,0deg)) scale(1); opacity:1; }
-    100%{ transform: translate(-50%,-50%) rotate(var(--rot,0deg)) scale(1); opacity:0; }
-  }
-  .verbBanner{
-    position:absolute; left:50%; top:50%; font-family:'Press Start 2P', monospace;
-    font-size:30px; color:var(--bannerColor,#ff2f9e);
-    text-shadow: 3px 3px 0 #000, -1px -1px 0 rgba(255,255,255,0.3);
-    animation: verbSlam 0.55s cubic-bezier(.2,1.6,.3,1) forwards; text-align:center; width:90%;
-  }
-  @keyframes verbSlam{
-    0%{ transform: translate(-50%,-50%) scale(3) rotate(-6deg); opacity:0; }
-    45%{ transform: translate(-50%,-50%) scale(0.92) rotate(2deg); opacity:1; }
-    65%{ transform: translate(-50%,-50%) scale(1.05) rotate(-1deg); opacity:1; }
-    100%{ transform: translate(-50%,-50%) scale(1) rotate(0deg); opacity:0; }
-  }
-  .confetti{ position:absolute; width:7px; height:7px; top:0; left:0; text-align:center; line-height:7px; animation: confettiFall linear forwards; }
-  @keyframes confettiFall{
-    from{ transform: translate(var(--x0), var(--y0)) rotate(0deg); opacity:1; }
-    to{ transform: translate(var(--x1), var(--y1)) rotate(720deg); opacity:0; }
-  }
-  .combo{ position:absolute; font-family:'Press Start 2P', monospace; font-size:12px; color:var(--yellow); animation: comboUp 0.7s ease-out forwards; }
-  @keyframes comboUp{ from{ transform: translateY(0); opacity:1; } to{ transform: translateY(-38px); opacity:0; } }
-
-  .overlay{
-    position:absolute; inset:0; z-index:10; background: rgba(6,4,10,0.95);
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    text-align:center; padding:18px; border-radius:14px; overflow-y:auto;
-  }
-  .hidden{ display:none !important; }
-  .title{
-    font-family:'Press Start 2P', monospace; font-size:38px; margin:0 0 6px; color:var(--pink);
-    text-shadow: 3px 3px 0 var(--cyan), 6px 6px 0 var(--yellow);
-  }
-  .subtitle{ font-size:13px; opacity:0.75; margin-bottom:16px; max-width:290px; }
-  .btn{
-    font-family:'Press Start 2P', monospace; font-size:13px;
-    background:var(--pink); color:#0c0a15; border:none; border-radius:8px;
-    padding:12px 24px; cursor:pointer; box-shadow: 0 6px 0 #a3175f; transition: transform 0.05s;
-  }
-  .btn:active{ transform: translateY(4px); box-shadow: 0 2px 0 #a3175f; }
-  .note{ font-size:10px; opacity:0.4; margin-top:16px; max-width:270px; }
-
-  .speechBlock{
-    text-align:left; border-left:3px solid; padding:8px 10px; margin-bottom:10px;
-    background:#120e1c; border-radius:0 8px 8px 0; font-size:12px; line-height:1.4; width:100%; max-width:300px;
-  }
-  .speechWho{ font-family:'Press Start 2P',monospace; font-size:8px; margin-bottom:4px; }
-
-  #draftCards{ display:flex; flex-direction:column; gap:10px; width:100%; max-width:270px; }
-  .draftCard{
-    font-family:'Press Start 2P', monospace; font-size:10px;
-    background:#1a1522; border:2px solid; border-radius:10px; padding:11px; cursor:pointer; text-align:center;
-  }
-  .draftCardSub{ font-family:'Space Grotesk',sans-serif; font-size:10px; opacity:0.65; margin-top:5px; }
-
-  #shopList, #levelList{ display:flex; flex-direction:column; gap:8px; width:100%; }
-  .shopItem{
-    font-family:'Space Grotesk',sans-serif; text-align:left; background:#1a1522;
-    border:2px solid; border-radius:8px; padding:8px 10px; cursor:pointer; color:var(--ink);
-  }
-  .shopItem:disabled{ opacity:0.4; cursor:default; }
-  .shopItemTop{ display:flex; justify-content:space-between; font-family:'Press Start 2P',monospace; font-size:9px; margin-bottom:4px; gap:8px; }
-  .shopItemDesc{ font-size:10px; opacity:0.7; }
-
-  #potGameWrap{ position:relative; width:100%; max-width:310px; }
-  #potCanvas{
-    width:100%; aspect-ratio:4/3; display:block; touch-action:none;
-    border-radius:10px; border:1px solid #3a2f1a; background:#150f22;
-  }
-  @keyframes harvestFlash{
-    0%{ opacity:0; transform:translate(-50%,-50%) scale(0.6); }
-    25%{ opacity:1; transform:translate(-50%,-50%) scale(1.15); }
-    80%{ opacity:1; transform:translate(-50%,-50%) scale(1); }
-    100%{ opacity:0; transform:translate(-50%,-50%) scale(1); }
-  }
-  #potHarvestFlash{
-    position:absolute; top:50%; left:50%; font-size:15px; white-space:nowrap;
-    color:var(--yellow); text-shadow:2px 2px 0 var(--pink); pointer-events:none; opacity:0;
-  }
-  #potHarvestFlash.show{ animation: harvestFlash 1.1s ease forwards; }
-  #potGameMeterRow{ width:100%; max-width:310px; margin-top:8px; }
-  #potGameMeterTrack{ height:6px; border-radius:4px; background:#1a1522; overflow:hidden; }
-  #potGameMeterFill{ height:100%; width:0%; background:linear-gradient(90deg, var(--orange), var(--yellow)); transition:width 0.25s ease; }
-  #potHarvestBtn:disabled{ opacity:0.35; box-shadow:none; cursor:default; }
-
-  /* ============================================================
-     PHONE HARDENING
-     ------------------------------------------------------------
-     Everything below exists because the target is an installed
-     Android PWA, not a desktop tab. Kept as one block so it can be
-     read (or reverted) as a single decision.
-     ============================================================ */
-
-  html, body{
-    /* Pull-to-refresh is a run-ender: there is no save mid-round, and the
-       gesture is easy to trigger while tapping near the top of the stage.
-       `contain` keeps the scroll inside the page and stops the reload. */
-    overscroll-behavior-y: contain;
-    /* Chrome's double-tap-to-zoom costs ~300ms on every button. The canvases
-       already opt out with touch-action:none; this covers the DOM chrome. */
-    touch-action: manipulation;
-    -webkit-user-select: none;
-  }
-
-  #app{
-    /* viewport-fit=cover in index.html paints under the notch and the gesture
-       bar; this pays it back so no HUD row ends up beneath either. */
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-    padding-bottom: env(safe-area-inset-bottom);
-    margin-top: calc(10px + env(safe-area-inset-top));
-    /* The width is deliberately NOT bounded by viewport height. #stageWrap is
-       aspect-ratio 1/1, so width sets the stage's height, and an earlier
-       attempt to keep the square above the fold with
-       `min(94vw, 480px, calc(100dvh - reserve))` collapsed #app to 40px on a
-       short viewport — a far worse failure than the scrolling it prevented.
-       Measured on a 375x812 phone the HUD stack is 370px and the whole board
-       fits without help, so the clamp bought nothing on the target device. If
-       short screens need addressing later, shrink the chrome; do not couple
-       width to height. */
-    width: min(94vw, 480px);
-  }
-
-  /* Android's touch target floor is 48dp. These were sized for a mouse: the
-     six HUD glyphs came out around 26x20, which is a miss-tap generator on a
-     phone. Grow the hit box without growing the glyph, so the layout holds. */
-  #hudActions button{
-    min-width: 42px; min-height: 42px;
-    padding: 8px 10px; font-size: 15px;
-    display: inline-flex; align-items: center; justify-content: center;
-  }
-  #turretUpgradeBtn, #rerollBtn, #potBtn{
-    min-height: 38px; padding-top: 8px; padding-bottom: 8px;
-  }
-  .btn{ min-height: 48px; }
-
-  /* A tap that lands on a button should look like it landed, immediately —
-     :active is the only affordance a touch screen gets, since there is no
-     hover state to telegraph it. */
-  #hudActions button:active,
-  #turretUpgradeBtn:active,
-  #rerollBtn:active,
-  #potBtn:active{ transform: translateY(1px); filter: brightness(1.4); }
-
-  @media (prefers-reduced-motion: reduce){
-    /* The background hue-cycle and the mutator quake run forever, unprompted.
-       On a phone held close to the face that is a genuine problem for some
-       players; the round-driven effects still play. */
-    body{ animation: none; }
-    #stageWrap.mut-quake{ animation: none; }
-    #mutChip:not(.hidden){ animation: none; }
-  }
-
-  /* An overlay taller than the stage was losing its own top. `justify-content:
-     center` on a scroll container pushes overflow past the start edge, where
-     no scrollbar can reach it — so the title screen's SLOP wordmark was
-     unreachable rather than merely below the fold. `safe` degrades the
-     centring to flex-start exactly when overflow happens, which is the only
-     case that was broken. Unsupported browsers ignore the keyword and keep
-     the old behaviour. */
-  .overlay{ justify-content: safe center; }
-
-  /* The title screen is the tallest overlay — two speech blocks and, once a
-     run exists, two buttons. Tightened so it fits a 353px stage without
-     relying on the scroll it can now actually perform. */
-  #startScreen .speechBlock{ font-size:11px; line-height:1.3; padding:6px 9px; margin-bottom:7px; }
-  #startScreen .title{ font-size:26px !important; }
-  #startScreen .subtitle{ font-size:11px; margin-bottom:8px; }
-  #startScreen .note{ margin-top:8px; font-size:9px; }
-  /* Trimmed to bring BEGIN above the fold once CONTINUE is also present. The
-     narrators' intro text is authored content and is not shortened to make
-     layout easier; the padding around it is. Tap targets stay at the 48px
-     floor — they are the reason for the squeeze, not a place to pay for it. */
-  #startScreen{ padding:12px; }
-  #startScreen .speechBlock{ font-size:10px; line-height:1.28; margin-bottom:5px; }
-  #startScreen .title{ font-size:22px !important; }
-  #startScreen .subtitle{ margin-bottom:6px; }
-
-  /* ============================================================
-     POLISH PASS
-     ------------------------------------------------------------
-     The HUD had grown to eleven stacked rows above the stage, most
-     of them thin bars of equal weight and similar brightness: xp,
-     standing, boss, slop meter, pot brew and the round timer all
-     read as the same object. The pass below does not move anything;
-     it establishes a hierarchy so the eye can tell them apart.
-
-     The rule it follows: exactly one bar should be loud at a time,
-     and it should be the one that is counting down against you.
-     ============================================================ */
-
-  /* --- recessed tracks ---------------------------------------
-     Every meter shares one track treatment, so a "channel" reads as
-     a channel everywhere and the fills are what differ. */
-  #xpTrack, #meterTrack, #potTrack, #timerTrack, #bossHpTrack,
-  .standingTrack, #potGameMeterTrack{
-    background:#15111f;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.03);
-  }
-
-  /* --- ambient meters step back ------------------------------
-     Standing, xp, pot brew and the slop meter all move slowly and
-     none of them is urgent. Held below full strength so they stop
-     competing with the timer and the boss bar. */
-  #xpFill, #potFill, #meterFill{ opacity:0.72; }
-  .standingFill{ opacity:0.8; }
-
-  /* --- the timer is the loud one -----------------------------
-     It is the only bar with a deadline attached, so it gets the
-     glow and the full-strength colour the others gave up. */
-  #timerRow{ position:relative; }
-  #timerTrack{ height:8px; }
-  #timerFill{ box-shadow: 0 0 10px -1px rgba(255,47,158,0.65); }
-
-  /* The boss bar is the other thing that can be losing. Given weight
-     with a border rather than brightness, so it reads as armoured
-     instead of merely bright. */
-  #bossHpTrack{ height:11px; border-color:#4a2036; }
-  #bossHpFill{ box-shadow: 0 0 8px -2px rgba(255,47,158,0.5); }
-
-  /* --- surfaces ----------------------------------------------
-     The action buttons and the pot/turret controls were bare
-     outlines on the page background, which made them read as
-     disabled. Given the same raised surface as the dialogue panel. */
-  #hudActions button, #potBtn, #buddyBtn{
-    background:#140f1e;
-    border-color:#2a2238;
-    transition: background 0.15s ease, border-color 0.15s ease, transform 0.06s ease;
-  }
-  #hudActions button:active, #potBtn:active, #buddyBtn:active{ background:#1e1730; }
-
-  /* A ring only for keyboard focus. Touch was leaving a stuck outline
-     on the last button tapped, which read as a selected state that
-     did not mean anything. */
-  #hudActions button:focus, #potBtn:focus, #buddyBtn:focus,
-  .btn:focus, #turretUpgradeBtn:focus, #rerollBtn:focus{ outline:none; }
-  #hudActions button:focus-visible, #potBtn:focus-visible, #buddyBtn:focus-visible,
-  .btn:focus-visible, #turretUpgradeBtn:focus-visible, #rerollBtn:focus-visible{
-    outline:2px solid var(--cyan); outline-offset:2px;
-  }
-
-  /* The unspent-point badge was a yellow border plus a permanent
-     panic shake, which at six buttons wide looked like an error.
-     A filled chip says "there is something for you here" without
-     shouting it every frame. */
-  #hudActions button.alert{
-    border-color:var(--yellow); background:#2a2410; animation: nudge 2.4s ease-in-out infinite;
-  }
-  @keyframes nudge{ 0%,88%,100%{ transform:translateY(0); } 94%{ transform:translateY(-3px); } }
-
-  /* --- the defense lane --------------------------------------
-     Empty, it was a black rectangle that read as a rendering
-     failure. A ground line and a horizon give it somewhere for the
-     blobs to be, which matters more now that it is the Crab's loop
-     and about to carry a real game. */
-  #defenseWrap{
-    background:linear-gradient(180deg,#0d0a16 0%,#130f1f 62%,#1a1327 100%);
-  }
-  /* The ground line itself is drawn by renderDefense, not here — welded to the
-     canvas geometry so the two cannot drift apart when the lane is resized. */
-
-  /* --- standing ----------------------------------------------
-     Four tags at 6px were legible only if you already knew what
-     they said. Slightly larger, and the fills carry a matching glow
-     so colour does the identifying rather than the text. */
-  #standingRow{ gap:8px; }
-  .standingTag{ font-size:7px; opacity:0.85; }
-  .standingTrack{ height:6px; }
-  .standing:nth-child(1) .standingFill{ box-shadow:0 0 6px -1px var(--artificer); }
-  .standing:nth-child(2) .standingFill{ box-shadow:0 0 6px -1px var(--goblin); }
-  .standing:nth-child(3) .standingFill{ box-shadow:0 0 6px -1px var(--orange); }
-  .standing:nth-child(4) .standingFill{ box-shadow:0 0 6px -1px var(--violet); }
-
-  /* --- dialogue ----------------------------------------------
-     The bar carries the whole narrative layer and four voices now
-     pass through it, so it earns a little more presence. */
-  #dialogue{
-    background:linear-gradient(180deg,#131020,#0e0b18);
-    box-shadow: 0 2px 10px -4px rgba(0,0,0,0.9);
-  }
-  #dialogueWho{ letter-spacing:0.8px; }
-
-  /* --- overlays ----------------------------------------------
-     A touch more contrast against the stage behind them, and a
-     softer edge so a full-bleed overlay stops looking like a
-     screenshot pasted over the game. */
-  .overlay{
-    background: radial-gradient(120% 90% at 50% 0%, rgba(20,12,32,0.97), rgba(6,4,10,0.985));
-    backdrop-filter: blur(2px);
-  }
-  .title{ letter-spacing:1px; }
-
-  /* --- level-up and shop rows --------------------------------
-     These are the only places the game asks a real question, so the
-     rows get a clear hover-free pressed state and a warmer surface. */
-  #levelList button, #shopList button, #draftCards button{
-    transition: transform 0.06s ease, filter 0.12s ease;
-  }
-  #levelList button:active, #shopList button:active, #draftCards button:active{
-    transform: translateY(2px); filter: brightness(1.25);
-  }
-
-  /* The turret belongs to the Crab now, so its control stops wearing the
-     Artificer's cyan. Colour is how ownership is signalled everywhere else in
-     this HUD; the button was the last thing still miscredited. */
-  #turretUpgradeBtn{
-    color:var(--orange); border-color:#ff7a2f55; background:#1d1520;
-  }
-
-  /* .title carries a 6px offset double shadow, so its 6px bottom margin left
-     the shadow sitting on the first line of body text. Scoped to the dense
-     overlays — the title screen is tuned to fit its stage exactly and cannot
-     spare the pixels. */
-  #sheetOverlay .title, #codexOverlay .title, #shopOverlay .title,
-  #levelOverlay .title, #victoryOverlay .title, #potOverlay .title{
-    margin-bottom:14px;
-  }
-
-  /* Long bodies scroll; how much room they get is set by the sheet layout
-     below, not by a fixed pixel height. */
-
-  /* ============================================================
-     THE PERIMETER — the Crab's overlay
-     ============================================================ */
-
-  #tdStatus{
-    font-size:8px; color:var(--orange); letter-spacing:0.5px; margin-bottom:5px;
-  }
-  #tdIntegrityTrack{
-    width:100%; max-width:330px; height:7px; border-radius:4px; overflow:hidden;
-    background:#15111f; margin-bottom:8px;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.7);
-  }
-  /* Colour carries the warning rather than a separate alarm state: the fill is
-     set from JS so it can cross from orange through yellow to pink as
-     integrity falls. */
-  #tdIntegrityFill{ height:100%; width:100%; background:var(--orange); transition:width 0.3s ease, background 0.3s ease; }
-
-  #tdCanvas{
-    width:100%; max-width:330px; aspect-ratio:4/3; display:block;
-    touch-action:none; border-radius:10px;
-    background:linear-gradient(180deg,#0c0a15,#120d1c);
-    border:1px solid #3a2417;
-  }
-
-  /* The build menu is DOM so its rows are real 44px targets rather than
-     hit-tested rectangles on the canvas. Empty until a pad is selected. */
-  #tdBuildMenu{
-    width:100%; max-width:330px; display:flex; flex-direction:column; gap:5px;
-    margin-top:8px;
-  }
-  #tdBuildMenu:empty{ display:none; }
-  #tdBuildMenu button{
-    display:flex; align-items:center; gap:8px; width:100%; min-height:44px;
-    padding:7px 10px; border-radius:8px; cursor:pointer; text-align:left;
-    background:#15111f; border:1px solid #2a2238; color:var(--ink);
-    font-family:'Space Grotesk',system-ui,sans-serif; font-size:11px;
-    transition: transform 0.06s ease, filter 0.12s ease;
-  }
-  #tdBuildMenu button:active{ transform:translateY(2px); filter:brightness(1.3); }
-  #tdBuildMenu button:disabled{ opacity:0.4; cursor:default; }
-  #tdBuildMenu .tdGlyph{ font-size:19px; line-height:1; }
-  #tdBuildMenu .tdName{ font-family:'Press Start 2P',monospace; font-size:8px; }
-  #tdBuildMenu .tdDesc{ opacity:0.6; font-size:10px; line-height:1.25; }
-  #tdBuildMenu .tdCost{ margin-left:auto; font-family:'Press Start 2P',monospace; font-size:9px; color:var(--acid); white-space:nowrap; }
-  #tdBuildMenu .tdHint{
-    font-size:10px; opacity:0.5; text-align:center; padding:6px 0; line-height:1.4;
-  }
-
-  #tdActions{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; justify-content:center; }
-  #tdActions .btn{ font-size:10px; padding:11px 14px; }
-  #tdReinforceBtn{ background:var(--orange); box-shadow:0 6px 0 #a34a12; color:#170d06; }
-  #tdReinforceBtn:active{ box-shadow:0 2px 0 #a34a12; }
-  #tdDoneBtn{ background:var(--cyan); box-shadow:0 6px 0 #0e7a91; }
-  #tdDoneBtn:active{ box-shadow:0 2px 0 #0e7a91; }
-
-  /* The HUD button that opens all this. Turns from status readout into an
-     alarm once the perimeter is genuinely in trouble. */
-  #turretUpgradeBtn.breached{
-    color:var(--pink); border-color:#ff2f9e88; animation: panic 0.5s infinite;
-  }
-
-  /* The perimeter is the tallest overlay in the game — a board, a status
-     readout, a contextual build menu and two actions. Rather than shrink all
-     of it to fit, the scrolling region is bounded and the actions sit outside
-     it, so LEAVE POST is on screen no matter how long the build menu gets. */
-  #defenseOverlay{ justify-content:flex-start; padding:12px 12px 10px; }
-  #tdScroll{
-    flex:1 1 auto; min-height:0; overflow-y:auto; width:100%;
-    display:flex; flex-direction:column; align-items:center;
-  }
-  #tdActions{ flex:0 0 auto; }
-  #defenseOverlay .title{ margin-bottom:10px; }
-  /* Slightly narrower than the other overlays' 330px: the board is 4:3, so
-     every pixel of width costs three quarters of one in height. */
-  #tdCanvas, #tdIntegrityTrack, #tdBuildMenu{ max-width:300px; }
-
-  /* The build menu is pinned between the board and the actions rather than
-     stacked under the board. Three options at the 44px touch floor is ~140px,
-     which cannot share a 271px region with a 225px board — so instead of
-     letting it fall below the fold, the board yields space while a pad is
-     selected. The menu keeps its own scroll for the rare taller case. */
-  #tdBuildMenu{
-    flex:0 0 auto; max-height:136px; overflow-y:auto; margin-top:8px;
-  }
-  #defenseOverlay.building #tdCanvas{ max-width:210px; }
-  #defenseOverlay.building .title{ display:none; }
-
-  /* ============================================================
-     THE COMPANY — the Understudy's overlay
-     ============================================================ */
-
-  #coRates{ font-size:8px; color:var(--violet); letter-spacing:0.5px; margin-bottom:8px; text-align:center; line-height:1.6; }
-
-  /* The report is the payoff for having been away, so it gets the only
-     coloured panel on the screen rather than being one line among many. */
-  #coReport{
-    width:100%; max-width:300px; margin-bottom:9px; padding:8px 10px;
-    border-radius:0 8px 8px 0; border-left:3px solid var(--violet);
-    background:#160f24; font-size:11px; line-height:1.45; text-align:left;
-  }
-  #coReport .coReportHead{
-    font-family:'Press Start 2P',monospace; font-size:8px; color:var(--violet); margin-bottom:5px;
-  }
-  #coReport b{ color:var(--acid); }
-
-  #coList{ width:100%; max-width:300px; display:flex; flex-direction:column; gap:5px; }
-  #coList button{
-    display:flex; align-items:center; gap:8px; width:100%; min-height:44px;
-    padding:7px 10px; border-radius:8px; cursor:pointer; text-align:left;
-    background:#15111f; border:1px solid #2a2238; color:var(--ink);
-    font-family:'Space Grotesk',system-ui,sans-serif; font-size:11px;
-    transition: transform 0.06s ease, filter 0.12s ease;
-  }
-  #coList button:active{ transform:translateY(2px); filter:brightness(1.3); }
-  #coList button:disabled{ opacity:0.4; cursor:default; }
-  /* Recruited members are dimmer than the ones you could still hire — the
-     open decisions should be what draws the eye. */
-  #coList button.enlisted{ background:#120e1c; border-color:#241d33; }
-  #coList .coGlyph{ font-size:19px; line-height:1; }
-  #coList .coName{ font-family:'Press Start 2P',monospace; font-size:8px; }
-  #coList .coDesc{ opacity:0.6; font-size:10px; line-height:1.25; }
-  #coList .coCost{ margin-left:auto; font-family:'Press Start 2P',monospace; font-size:9px; color:var(--acid); white-space:nowrap; text-align:right; }
-  #coList .coCost small{ display:block; font-size:7px; opacity:0.65; color:var(--ink); }
-
-  #coFooter{ font-size:10px; opacity:0.5; text-align:center; margin-top:8px; max-width:300px; line-height:1.4; }
-
-  #companyOverlay{ justify-content:flex-start; padding:12px 12px 10px; }
-  #companyOverlay .title{ margin-bottom:8px; }
-  #coDoneBtn{
-    flex:0 0 auto; margin-top:10px; font-size:10px; padding:11px 16px;
-    background:var(--violet); box-shadow:0 6px 0 #4a1f9e;
-  }
-  #coDoneBtn:active{ box-shadow:0 2px 0 #4a1f9e; }
-
-  /* The roster is the only part of the company screen that grows, so it takes
-     the scrolling and LET THEM WORK stays pinned. Same lesson as the
-     perimeter: a screen whose exit is below the fold reads as a trap. */
-  #coList{ flex:1 1 auto; min-height:0; overflow-y:auto; }
-  #coRates, #coReport, #coFooter, #companyOverlay .title{ flex:0 0 auto; }
-
-  /* The ledger line pushed the title screen 2px past its stage. Reclaimed from
-     the notes rather than the buttons or the narrators' text — the tap targets
-     and the authored copy are the two things this layout exists to protect. */
-  #startScreen .note{ margin-top:5px; line-height:1.3; }
-  #ledgerLine{ margin-bottom:2px; }
-
-  /* ============================================================
-     READABILITY PASS
-     ------------------------------------------------------------
-     Measured, not guessed. Two findings drove most of this:
-
-     1. Module instructions were drawn with fillText at 13px inside a
-        480-wide canvas displayed at 353 — about 9.5px on screen, and
-        at seven different heights across the pool, with four modules
-        having no instruction at all.
-     2. Several HUD labels sit at 6-7px in Press Start 2P, which is a
-        5x7 pixel font: below ~8px its glyphs stop resolving at all.
-     ============================================================ */
-
-  /* The instruction band. DOM rather than canvas so its size is in real
-     pixels, and absolute so it overlays the canvas instead of displacing it —
-     in flow it would shorten every lane and squash every circle in the game.
-     Bottom edge because that is where most modules already put their text, so
-     it covers the least gameplay. */
-  .laneHint{
-    position:absolute; left:0; right:0; bottom:0; z-index:2;
-    padding:6px 8px; text-align:center;
-    font-size:12px; line-height:1.25; color:#f5f2ff;
-    background:linear-gradient(180deg, rgba(8,6,12,0) 0%, rgba(8,6,12,0.86) 42%);
-    pointer-events:none;
-    text-shadow:0 1px 3px rgba(0,0,0,0.95);
-  }
-  /* Two lanes share the width in a double round, so the text has to get out of
-     its own way rather than wrap into three lines. */
-  #laneRow.double .laneHint{ font-size:10px; padding:5px 4px; }
-
-  /* The verb is the primary instruction and persists for the whole round —
-     the banner only flashes it. 9px was smaller than the hint explaining it. */
-  .laneLabel{ font-size:11px; padding:4px 2px; }
-
-  /* HUD labels that carry meaning, lifted above the pixel font's floor. */
-  .standingTag{ font-size:8px; opacity:0.95; }
-  #meterLabel{ font-size:8px; opacity:0.7; }
-  #heroRow{ font-size:8px; }
-  #buddyLvl{ font-size:8px; opacity:0.85; }
-  #actBar{ font-size:9px; opacity:0.95; }
-  #roundVal{ font-size:9px !important; opacity:0.75; }
-  #gooCount{ font-size:11px; }
-  #turretUpgradeBtn, #rerollBtn{ font-size:9px; }
-  #dialogueWho{ font-size:9px; }
-  #bossTop{ font-size:9px; }
-
-  /* Lifted off dead centre. Most modules put their action in the middle of the
-     board, which is exactly where the banner was landing — so for its whole
-     duration the player was looking at the announcement instead of the thing
-     it announced. Duration is now capped per-round in game.js as well. */
-  .verbBanner{ top:31%; font-size:26px; }
-  #laneRow.double .verbBanner{ font-size:19px; }
-
-  /* The band reads, then leaves. An instruction is worth screen space for the
-     first second of a round and is clutter over the board for the rest of it —
-     which is also why it can sit at the bottom edge without permanently
-     covering sort's bins or stop's track. Any change to the text restarts
-     this, so a hint that updates mid-round shows itself again. */
-  .laneHint{ opacity:0; }
-  .laneHint.show{ animation: hintRead 1.9s ease forwards; }
-  @keyframes hintRead{
-    0%{ opacity:0; transform:translateY(6px); }
-    9%{ opacity:1; transform:translateY(0); }
-    68%{ opacity:1; }
-    100%{ opacity:0; }
-  }
-  @media (prefers-reduced-motion: reduce){
-    /* No slide, and it stays put — a player who has asked for less motion
-       should not have the instruction animate away from them either. */
-    .laneHint.show{ animation:none; opacity:1; }
-  }
-
-  /* Tappable, because it opens the hero sheet that explains it. Given a real
-     touch height rather than the 13px the bars alone needed — a control the
-     player is meant to find has to be findable by a thumb. */
-  #standingRow{
-    min-height:30px; padding:2px 4px; margin-left:-4px; margin-right:-4px;
-    border-radius:8px; cursor:pointer;
-    transition: background 0.15s ease;
-  }
-  #standingRow:active{ background:#15111f; }
-
-  /* ============================================================
-     SHEET PASS
-     ------------------------------------------------------------
-     Measured on a 375x812 phone, before: every menu in the game was
-     a 353x353 box sitting in the bottom half of the screen, because
-     .overlay was absolutely positioned inside #stageWrap and the
-     stage is square. The Workshop showed 198px of a 478px list. The
-     hero sheet hid 184px. The honey pot hid 60px of its own board.
-     Forty-three percent of the screen was doing all the work while
-     the rest of it held a paused game nobody was looking at.
-
-     So the menus stopped being panels inside the board and became
-     sheets over the screen. The rules that follow are the whole of
-     that change:
-
-       1. a sheet is fixed to the viewport, not to the stage
-       2. exactly one region of a sheet scrolls, and only when its
-          content genuinely exceeds the screen
-       3. the way out of a sheet is always on screen, pinned below
-          the scrolling region
-     ============================================================ */
-
-  /* --- the backdrop ------------------------------------------
-     Everything the old body filter did, moved somewhere that does
-     not trap fixed positioning — and given somewhere to be sloppy.
-     The grain is an feTurbulence data URI rather than a file: it is
-     an asset the game generates, so it costs no fetch, no SHELL
-     entry and nothing to load offline. */
-  /* Two of the three lights are the Act's, set by Game.applyActTint from the
-     tint pair in lore.js. color-mix keeps the wash at the same strength
-     whatever colour arrives, so a new Act cannot accidentally ship a backdrop
-     that drowns the HUD. The third light is fixed: something pink is always
-     coming up from underneath. */
-  #bgLayer{
-    position:fixed; inset:0; z-index:-1; pointer-events:none;
-    background:
-      radial-gradient(120% 80% at 12% -8%, color-mix(in srgb, var(--act-a, #c9ff2f) 16%, transparent), transparent 58%),
-      radial-gradient(100% 70% at 92% 4%, color-mix(in srgb, var(--act-b, #2fe1ff) 14%, transparent), transparent 60%),
-      radial-gradient(130% 95% at 50% 112%, rgba(255,47,158,0.14), transparent 62%),
-      var(--bg);
-    transition: background 1.2s ease;
-    animation: bgBreathe 16s ease-in-out infinite;
-  }
-  #bgLayer::before{
-    content:""; position:absolute; inset:-20%;
-    background-image:url("data:image/svg+xml;utf8,\
+/* ==========================================================================
+   SLOP — stylesheet
+
+   One system, in layers, top to bottom:
+
+     1. fonts          vendored, so offline is offline (assets/fonts)
+     2. tokens         every colour, size, radius and layer in one place
+     3. base           the page, the backdrop
+     4. components     buttons, tracks, rows, chips — shared by every screen
+     5. the shell      the Acts' home screen: top bar, narrator, status, round,
+                       board, lanes, effects
+     6. the dock       six loops, one tap each
+     7. sheets         every screen that is not the home screen
+     8. screens        what is particular to each of them
+     9. motion         and the reduced-motion answer to it
+    10. short phones   what gives on a 640px-tall display, and what never does
+
+   This replaced a stylesheet that had grown as a stack of "passes", each one
+   overriding the last — PHONE HARDENING, POLISH, READABILITY, SHEET — until
+   the value a rule ended up with depended on where in 1,300 lines it sat.
+   The rules those passes established are kept, and stated once:
+
+     - touch targets are 44px, and never pay for a squeeze
+     - the pixel font is never below 8px; below that its glyphs stop resolving
+     - one loud thing at a time, and it is the thing counting down against you
+     - colour says whose a thing is: cyan the Artificer, acid the goblin,
+       orange the Crab, violet the Understudy
+     - no filter on <body> or #app: a filtered ancestor becomes the containing
+       block for position:fixed, and every sheet and the dock would silently
+       re-anchor to the column (see CLAUDE.md)
+   ========================================================================== */
+
+/* ---------- 1. fonts ---------- */
+@font-face{
+  font-family:'Press Start 2P'; font-style:normal; font-weight:400; font-display:swap;
+  src:url('../assets/fonts/press-start-2p-latin.woff2') format('woff2');
+}
+@font-face{
+  font-family:'Space Grotesk'; font-style:normal; font-weight:400 700; font-display:swap;
+  src:url('../assets/fonts/space-grotesk-latin.woff2') format('woff2');
+}
+
+/* ---------- 2. tokens ---------- */
+:root{
+  --bg:#08060c;
+  --surface-1:#100c18;       /* panels on the page */
+  --surface-2:#161120;       /* rows and cards inside a panel */
+  --surface-3:#1e1830;       /* pressed, selected, raised */
+  --line:#262033;
+  --line-2:#3a3150;
+  --ink:#f5f2ff;
+  --ink-2:rgba(245,242,255,0.72);
+  --ink-3:rgba(245,242,255,0.46);
+
+  --pink:#ff2f9e; --acid:#c9ff2f; --cyan:#2fe1ff;
+  --yellow:#fff02f; --violet:#7a3cff; --orange:#ff7a2f;
+  --artificer:var(--cyan); --goblin:var(--acid);
+  --crab:var(--orange); --understudy:var(--violet);
+  --accent:var(--pink);      /* each screen sets its own */
+
+  --r-s:8px; --r-m:12px; --r-l:16px;
+  --tap:44px;
+  --gutter:12px;
+
+  --font-ui:'Space Grotesk',system-ui,sans-serif;
+  --font-px:'Press Start 2P',monospace;
+
+  --dock-h:64px;
+  --dock-total:calc(var(--dock-h) + env(safe-area-inset-bottom));
+
+  --z-stage-fx:11;
+  --z-sheet:60;
+  --z-dock:70;
+  --z-modal:80;              /* the questions the Acts ask: title, story, level, draft, ending */
+}
+
+/* ---------- 3. base ---------- */
+*{ box-sizing:border-box; }
+html, body{
+  margin:0; padding:0; height:100%;
+  background:var(--bg); color:var(--ink);
+  font-family:var(--font-ui); font-size:13px; line-height:1.4;
+  overflow-y:auto;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none; -webkit-user-select:none;
+  /* Pull-to-refresh is a run-ender, and double-tap-zoom costs 300ms on every
+     button. The canvases opt out separately with touch-action:none. */
+  overscroll-behavior-y:contain;
+  touch-action:manipulation;
+}
+button{ font:inherit; color:inherit; }
+.arcade{ font-family:var(--font-px); }
+.hidden{ display:none !important; }
+
+/* The backdrop: gradients and generated grain, lit by the current Act's tint
+   pair (Game.applyActTint). Outside every other element on purpose — see the
+   filter rule in the header. */
+#bgLayer{
+  position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:
+    radial-gradient(120% 80% at 12% -8%, color-mix(in srgb, var(--act-a, #c9ff2f) 14%, transparent), transparent 58%),
+    radial-gradient(100% 70% at 92% 4%, color-mix(in srgb, var(--act-b, #2fe1ff) 12%, transparent), transparent 60%),
+    radial-gradient(130% 95% at 50% 112%, rgba(255,47,158,0.12), transparent 62%),
+    var(--bg);
+  transition:background 1.2s ease;
+  animation:bgBreathe 16s ease-in-out infinite;
+}
+#bgLayer::before{
+  content:""; position:absolute; inset:-20%;
+  background-image:url("data:image/svg+xml;utf8,\
 <svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'>\
 <filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3'/>\
 <feColorMatrix type='saturate' values='0'/></filter>\
 <rect width='220' height='220' filter='url(%23n)' opacity='0.5'/></svg>");
-    opacity:0.05; mix-blend-mode:overlay;
-    animation: grainDrift 24s linear infinite;
-  }
-  @keyframes grainDrift{
-    0%{ transform:translate3d(0,0,0); } 50%{ transform:translate3d(-14px,10px,0); }
-    100%{ transform:translate3d(0,0,0); }
-  }
-  @media (prefers-reduced-motion: reduce){
-    #bgLayer, #bgLayer::before{ animation:none; }
-  }
+  opacity:0.05; mix-blend-mode:overlay;
+  animation:grainDrift 24s linear infinite;
+}
 
-  /* --- the sheet --------------------------------------------- */
-  .overlay{
-    position:fixed; inset:0; z-index:60;
-    width:100%; max-width:560px; margin-inline:auto;
-    border-radius:0;
-    /* The sheet itself never scrolls — .sheetBody does. A sheet that
-       scrolls as a whole is how CLOSE ends up below the fold. */
-    overflow:hidden;
-    justify-content:flex-start;
-    padding:
-      calc(16px + env(safe-area-inset-top))
-      calc(16px + env(safe-area-inset-right))
-      calc(14px + env(safe-area-inset-bottom))
-      calc(16px + env(safe-area-inset-left));
-  }
-  .overlay > *{ flex:0 0 auto; }
+/* ---------- 4. components ---------- */
 
-  /* The one region allowed to scroll, and it gets everything the
-     pinned parts do not take. min-height:0 is load-bearing: without
-     it a flex item refuses to shrink below its content and the
-     overflow reappears at the bottom of the screen. */
-  .sheetBody{
-    flex:1 1 auto; min-height:0; width:100%;
-    overflow-y:auto; overscroll-behavior:contain;
-    padding-bottom:2px;
-  }
+/* Buttons. One shape everywhere; the colour says what it does. */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  min-height:var(--tap); padding:0 18px;
+  font-family:var(--font-px); font-size:10px; letter-spacing:0.5px;
+  color:#0c0a15; background:var(--accent);
+  border:0; border-radius:var(--r-m);
+  box-shadow:0 4px 0 color-mix(in srgb, var(--accent) 55%, #000);
+  cursor:pointer;
+  transition:transform 0.06s ease, box-shadow 0.06s ease, filter 0.12s ease;
+}
+.btn:active{ transform:translateY(3px); box-shadow:0 1px 0 color-mix(in srgb, var(--accent) 55%, #000); }
+.btn:disabled{ opacity:0.35; box-shadow:none; cursor:default; transform:none; }
+/* Secondary: the thing next to the primary action, not competing with it. */
+.btn.ghost, #codexBtn, #bayNav .btn, #resetBtn{
+  background:var(--surface-3); color:var(--ink);
+  box-shadow:0 4px 0 #07050b;
+}
+.btn.ghost:active, #codexBtn:active, #bayNav .btn:active, #resetBtn:active{ box-shadow:0 1px 0 #07050b; }
 
-  /* Content was sized for a 353px square. On a sheet it can breathe,
-     but not to full width on a tablet — a 560px line of 10px text is
-     not a phone UI any more. */
-  .subtitle, .speechBlock, .note,
-  #sheetBody, #codexBody, #shopList, #levelList, #coList, #draftCards,
-  #storySpeech, #victorySpeech, #coReport, #coFooter,
-  #tdCanvas, #tdIntegrityTrack, #tdBuildMenu,
-  #potGameWrap, #potGameMeterRow{
-    max-width:min(100%, 420px); width:100%;
-  }
-  .note{ margin-inline:auto; }
+/* A ring only for keyboard focus; touch left a stuck outline on the last
+   thing tapped, which read as a selection that meant nothing. */
+button:focus{ outline:none; }
+button:focus-visible{ outline:2px solid var(--cyan); outline-offset:2px; }
 
-  /* Short sheets read better centred than top-aligned with a lot of
-     nothing under them. The tall ones stay top-aligned. */
-  #startScreen, #settingsOverlay, #potOverlay, #victoryOverlay{
-    justify-content:safe center;
-  }
+/* Tracks. Every meter is the same recessed channel; what differs is the fill. */
+.track, #xpTrack, #meterTrack, #timerTrack, #bossHpTrack, .standingTrack,
+#potGameMeterTrack, #tdIntegrityTrack, #arcFoeTrack, .coShowTrack{
+  background:#130f1d; border-radius:99px; overflow:hidden;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.03);
+}
 
-  /* The way out. Pinned under the scrolling region with a rule above
-     it, so it reads as part of the sheet's frame rather than as the
-     last item in the list. */
-  #sheetCloseBtn, #codexCloseBtn, #shopCloseBtn, #settingsCloseBtn,
-  #storyContinueBtn, #draftSkipBtn, #coDoneBtn, #victoryBtn,
-  #tdActions, #potActions{
-    margin-top:12px; padding-top:12px;
-  }
-  #sheetCloseBtn, #codexCloseBtn, #shopCloseBtn, #coDoneBtn{
-    width:100%; max-width:420px;
-  }
+/* Rows: every list in the game is the same object — a glyph, a name over a
+   line of description, and a number on the right. Nine screens used to style
+   nine copies of it; this is the one copy. */
+.shopItem, #levelList button, #coList button, .coShowBtn, #tdBuildMenu button,
+#tdDoctrine button, #arcList button, #arcDraft button, #bayShelf button, #potShop button{
+  display:flex; align-items:center; gap:10px; width:100%;
+  min-height:52px; padding:9px 12px;
+  text-align:left; color:var(--ink);
+  background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-m);
+  cursor:pointer;
+  transition:transform 0.06s ease, background 0.12s ease, border-color 0.12s ease;
+}
+.shopItem:active, #levelList button:active, #coList button:active, .coShowBtn:active,
+#tdBuildMenu button:active, #tdDoctrine button:active, #arcList button:active,
+#arcDraft button:active, #bayShelf button:active, #potShop button:active{
+  transform:translateY(1px); background:var(--surface-3);
+}
+.shopItem:disabled, #coList button:disabled, .coShowBtn:disabled, #tdBuildMenu button:disabled,
+#arcList button:disabled, #bayShelf button:disabled, #potShop button:disabled{
+  opacity:0.38; cursor:default; transform:none;
+}
+.coGlyph, .tdGlyph, .arcGlyph, .bayGlyph, .potGlyph{ font-size:20px; line-height:1; flex:0 0 26px; text-align:center; }
+.coName, .tdName, .arcName, .bayName, .potName{ font-family:var(--font-px); font-size:8px; line-height:1.5; color:var(--accent); }
+.coDesc, .tdDesc, .arcDesc, .bayDesc, .potDesc{ font-size:11px; line-height:1.35; color:var(--ink-2); }
+.coCost, .tdCost, .arcStat, .bayStat, .potCost{
+  margin-left:auto; padding-left:6px; text-align:right; white-space:nowrap;
+  font-family:var(--font-px); font-size:8px; line-height:1.6; color:var(--yellow);
+}
+.coCost small, .arcStat small, .bayStat small{ display:block; font-size:8px; color:var(--ink-3); }
 
-  /* --- the title screen gets its screen back -----------------
-     Undoes two rounds of squeezing that existed only to fit the
-     narrators' intro into a 353px square. */
-  #startScreen{ padding:calc(22px + env(safe-area-inset-top)) 20px 20px; }
-  #startScreen .title{ font-size:44px !important; }
-  #startScreen .subtitle{ font-size:13px; margin-bottom:16px; }
-  #startScreen .speechBlock{ font-size:12px; line-height:1.45; padding:10px 12px; margin-bottom:10px; }
-  #startScreen .note{ font-size:10px; margin-top:10px; line-height:1.35; }
-  #startScreen #startBtn{ width:100%; max-width:420px; }
+/* The workshop and level-up rows carry their text in two lines of their own. */
+.shopItem{ flex-direction:column; align-items:stretch; gap:4px; }
+.shopItemTop{ display:flex; justify-content:space-between; gap:8px; font-family:var(--font-px); font-size:8px; line-height:1.6; }
+.shopItemDesc{ font-size:11px; color:var(--ink-2); }
 
-  /* --- the two big boards ------------------------------------
-     Both were sized to survive inside the square. The perimeter's
-     board was 300px wide and its build menu was capped at 136px,
-     which is three touch rows minus one; the honey pot's board was
-     310px. There is room now, so they take it. */
-  #tdCanvas, #potCanvas{ max-width:min(100%, 420px); }
-  #tdBuildMenu{ max-height:none; }
-  /* The board no longer has to shrink to make room for the build
-     menu, and the title no longer has to disappear: that whole
-     trade was a symptom of a 353px window. */
-  #defenseOverlay.building #tdCanvas{ max-width:min(100%, 420px); }
-  #defenseOverlay.building .title{ display:block; }
-  #defenseOverlay, #companyOverlay{ padding-top:calc(16px + env(safe-area-inset-top)); }
+/* Chips. Small labels that are not buttons. */
+.chip{
+  font-family:var(--font-px); font-size:8px; line-height:1.5;
+  padding:6px 9px; border-radius:var(--r-s);
+  background:var(--surface-2); border:1px solid var(--line);
+}
 
-  /* --- the play screen on a short phone -----------------------
-     The other half of the scrolling: on a 360x640 device the board
-     fell 141px below the fold, so the game itself had to be scrolled
-     into view. The old note here said never to couple the layout to
-     viewport height, because an attempt to do it by clamping #app's
-     width collapsed the column to 40px. That ban stands for #app;
-     this clamps the stage instead, and differs in the two ways that
-     made the old attempt dangerous: --chrome is measured from the
-     live layout by game.js rather than estimated, and the floor
-     means the worst case is a small board, never no board. */
-  #stageWrap{
-    max-width: max(220px, calc(100dvh - var(--chrome, 372px)));
-    margin-inline:auto;
-  }
+/* ---------- 5. the shell (the Acts' home screen) ---------- */
+#app{
+  position:relative;
+  width:min(calc(100vw - var(--gutter) * 2), 480px);
+  margin:0 auto;
+  padding-top:calc(8px + env(safe-area-inset-top));
+  padding-bottom:calc(var(--dock-total) + 10px);
+  padding-left:env(safe-area-inset-left);
+  padding-right:env(safe-area-inset-right);
+}
 
-  /* --- short phones ------------------------------------------
-     The clamp above stops the board falling below the fold, but it
-     can only take space the chrome is not using, and the HUD stack
-     measures 426px on a 320x568 device — three quarters of the
-     screen before the game gets any. So on a short viewport the
-     chrome gives some back. Only padding, margins and two fixed
-     row heights: every tap target keeps its size, because the
-     reason for the squeeze is not a place to pay for it. */
-  @media (max-height: 700px){
-    #dialogue{ min-height:34px; padding:6px 9px; font-size:11px; margin-bottom:4px; }
-    #standingRow{ min-height:24px; }
-    #defenseWrap{ height:46px; margin-bottom:4px; }
-    #actBar{ padding-bottom:3px; }
-    #hud{ padding-bottom:2px; }
-    #hudActions{ padding-bottom:4px; }
-    #standingRow, #heroRow, #meterRow, #potRow, #timerRow{ margin-bottom:4px; }
-    /* A 190px board is small, but it is a board. The alternative on
-       this class of device is scrolling the game into view. */
-    #stageWrap{ max-width: max(190px, calc(100dvh - var(--chrome, 372px))); }
-  }
+/* Top bar: where you are, and the four things you open from anywhere. */
+#topBar{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+#actInfo{ flex:1; min-width:0; }
+#actName{ font-size:9px; color:var(--act-a, var(--violet)); line-height:1.6; }
+#questName{ font-size:11px; color:var(--ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-transform:uppercase; letter-spacing:0.4px; }
+#hudActions{ display:flex; gap:4px; flex:0 0 auto; }
+#hudActions button{
+  width:var(--tap); height:var(--tap);
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:17px; background:var(--surface-1); border:1px solid var(--line);
+  border-radius:var(--r-m); cursor:pointer;
+  transition:transform 0.06s ease, background 0.12s ease;
+}
+#hudActions button:active{ transform:translateY(1px); background:var(--surface-3); }
+/* Something waiting for you — an unspent point, a report, a curtain call —
+   is a filled chip that nudges now and then, not a shake that never stops. */
+#hudActions button.alert{ border-color:var(--yellow); background:#241f0c; animation:nudge 2.4s ease-in-out infinite; }
 
-  /* --- sheets whose body should not stretch -------------------
-     The perimeter's scroll region was taking every spare pixel,
-     which pushed the build hint and both actions to the far bottom
-     of the screen and left 300px of nothing between them and the
-     board they belong to. The board group keeps its natural height
-     and the actions take the bottom, which is where a thumb is
-     anyway. */
-  #defenseOverlay #tdScroll{ flex:0 1 auto; }
-  #defenseOverlay #tdActions{ margin-top:auto; }
-  #defenseOverlay #tdBuildMenu{ margin-top:10px; }
-  /* Same for the company: the roster grows, but when it is short the
-     footer should sit under it rather than at the foot of the screen. */
-  #companyOverlay #coList{ flex:0 1 auto; }
-  #companyOverlay #coDoneBtn{ margin-top:auto; }
+/* The narrator. Four voices pass through this one line; the speaker's colour
+   is set on the left edge by Game.say. */
+#dialogue{
+  padding:9px 12px; margin-bottom:8px; min-height:52px;
+  background:var(--surface-1); border:1px solid var(--line); border-left:3px solid var(--goblin);
+  border-radius:var(--r-m);
+  transition:border-color 0.3s;
+}
+#dialogueWho{ font-family:var(--font-px); font-size:8px; letter-spacing:0.6px; margin-bottom:4px; }
+#dialogueText{ font-size:12.5px; line-height:1.4; color:var(--ink); }
+#dialogue.speak{ animation:dialogueIn 0.3s ease; }
 
-  /* --- stickers ----------------------------------------------
-     The title screen used to be two speech blocks and a button in a
-     353px box. On a full sheet it has room to say what is actually
-     in here — four loops, not one game — and the slop house style
-     for "a list of things" is a pile of stickers rather than a list.
-     Rotations are fixed per position rather than random: a layout
-     that reshuffles itself every boot reads as a bug. */
-  .chipRow{
-    display:flex; flex-wrap:wrap; gap:6px 7px; justify-content:center;
-    max-width:340px; margin:14px auto 0;
-  }
-  .chip{
-    font-family:'Press Start 2P',monospace; font-size:8px; line-height:1.5;
-    padding:6px 8px; border-radius:7px;
-    background:#160f24; border:1px solid #2e2440; color:var(--ink);
-    box-shadow:0 2px 0 rgba(0,0,0,0.55);
-    opacity:0.92;
-  }
-  .chip:nth-child(1){ transform:rotate(-2deg);  border-color:#ff2f9e55; color:var(--pink); }
-  .chip:nth-child(2){ transform:rotate(1.4deg); border-color:#2fe1ff55; color:var(--cyan); }
-  .chip:nth-child(3){ transform:rotate(-1deg);  border-color:#ff7a2f55; color:var(--orange); }
-  .chip:nth-child(4){ transform:rotate(2deg);   border-color:#ff2f9e55; color:var(--pink); }
-  .chip:nth-child(5){ transform:rotate(-1.6deg);border-color:#2fe1ff55; color:var(--cyan); }
-  .chip:nth-child(6){ transform:rotate(1.2deg); border-color:#fff02f55; color:var(--yellow); }
-  .chip:nth-child(7){ transform:rotate(-0.8deg);border-color:#7a3cff55; color:var(--violet); }
+/* Status: the buddy, your level, the score and the goo. */
+#statusRow{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+#buddyBtn{
+  flex:0 0 auto; width:var(--tap); height:var(--tap);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+  background:var(--surface-1); border:1px solid var(--line); border-radius:var(--r-m);
+  cursor:pointer;
+}
+#buddyBtn:active{ background:var(--surface-3); }
+#buddyFace{ font-size:18px; line-height:1; }
+#buddyLvl{ font-size:8px; color:var(--ink-3); }
+/* The buddy is the one thing allowed to panic: it is hungry, and that costs
+   you fire rate at the perimeter. */
+#buddyBtn.low{ border-color:var(--pink); animation:panic 0.4s infinite; }
+#heroRow{ flex:1; min-width:0; display:flex; align-items:center; gap:8px; }
+#heroLvl{ font-size:9px; color:var(--yellow); white-space:nowrap; }
+#xpTrack{ flex:1; height:6px; }
+#xpFill{ height:100%; width:0%; background:linear-gradient(90deg,var(--violet),var(--cyan)); opacity:0.8; transition:width 0.3s ease; }
+#scoreWrap{ text-align:right; line-height:1.15; }
+#scoreVal{ font-weight:700; font-size:16px; display:inline-block; }
+#scoreVal.pop, #gooCount.pop{ animation:scorePop 0.3s ease; }
+#roundVal{ font-size:8px; color:var(--ink-3); }
+#gooCount{
+  font-size:11px; color:var(--acid); white-space:nowrap;
+  padding:6px 8px; border-radius:var(--r-s); background:var(--surface-1); border:1px solid var(--line);
+}
 
-  /* The two "pick one" screens have no pinned exit — choosing is the exit — so
-     their list is the whole sheet and reads better centred than top-aligned
-     above 400px of nothing. */
-  #levelOverlay, #draftOverlay{ justify-content:safe center; }
-  #levelOverlay #levelList, #draftOverlay #draftCards{ flex:0 1 auto; }
+/* The boss. The other thing that can be losing, so it is given weight with a
+   border rather than brightness. */
+#bossRow{ margin-bottom:8px; padding:8px 10px; background:#170d15; border:1px solid #4a2036; border-radius:var(--r-m); }
+#bossTop{ display:flex; justify-content:space-between; font-family:var(--font-px); font-size:9px; margin-bottom:6px; }
+#bossName{ color:var(--pink); }
+#bossHpNum{ color:var(--ink-3); }
+#bossHpTrack{ height:9px; }
+#bossHpFill{ height:100%; width:100%; background:linear-gradient(90deg,var(--pink),var(--violet)); transition:width 0.35s ease; }
 
-  /* ============================================================
-     THE ARCHIVE — the card duel
-     ------------------------------------------------------------
-     The only loop with no canvas. Every card is a DOM button, which
-     is the whole reason the hand is five: five 44px targets and an
-     END TURN fit across a 375px screen without anything shrinking
-     below a thumb.
-     ============================================================ */
+/* The round: the clock is the loud one — the only bar with a deadline — so it
+   gets the glow. The meter that builds toward a double round sits under it,
+   quiet, labelled once. */
+#roundRow{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+#timerRow{ flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; }
+#timerTrack{ height:9px; }
+#timerFill{
+  height:100%; width:100%;
+  background:linear-gradient(90deg, var(--acid), var(--cyan));
+  box-shadow:0 0 10px -1px rgba(47,225,255,0.6);
+  transition:width 0.06s linear;
+}
+#meterRow{ display:flex; align-items:center; gap:6px; }
+#meterLabel{ font-size:8px; color:var(--ink-3); }
+#meterTrack{ flex:1; height:4px; }
+#meterFill{ height:100%; width:0%; background:linear-gradient(90deg, var(--pink), var(--yellow)); opacity:0.75; transition:width 0.25s ease; }
+#mutChip{
+  flex:0 0 auto; max-width:40%;
+  font-family:var(--font-px); font-size:8px; line-height:1.5;
+  padding:5px 7px; border-radius:var(--r-s); background:var(--surface-2); border:1px solid var(--line);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+#rerollBtn{
+  flex:0 0 auto; min-width:56px; height:var(--tap); padding:0 10px;
+  font-family:var(--font-px); font-size:9px; color:var(--pink);
+  background:var(--surface-1); border:1px solid #ff2f9e55; border-radius:var(--r-m);
+  cursor:pointer;
+}
+#rerollBtn:active{ background:var(--surface-3); }
 
-  #arcProgress{ font-size:8px; color:var(--cyan); letter-spacing:0.5px; margin-bottom:10px; }
+/* The board. Square, and never allowed to push itself below the fold: on a
+   short phone it gives up size instead. --chrome is measured from the live
+   layout by game.js (everything above the stage), and the floor means the
+   worst case is a small board, never no board. */
+#stageWrap{
+  position:relative; width:100%; aspect-ratio:1/1;
+  max-width:max(190px, calc(100dvh - var(--chrome, 300px) - var(--dock-total) - 12px));
+  margin-inline:auto;
+  border-radius:var(--r-l); overflow:hidden;
+  box-shadow:0 0 0 1px var(--line), 0 18px 50px -24px rgba(255,47,158,0.4);
+  filter:contrast(1.02);
+}
+#stageWrap::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:repeating-linear-gradient(to bottom, rgba(255,255,255,0.05) 0 1px, transparent 1px 3px);
+  mix-blend-mode:overlay; opacity:0.25;
+}
+#stageWrap.mut-invert{ filter:invert(1) hue-rotate(180deg); }
+#stageWrap.mut-quake{ animation:quakeLoop 0.35s infinite; }
 
-  /* --- the shelf --- */
-  #arcList{ display:flex; flex-direction:column; gap:6px; }
-  #arcList button{
-    display:flex; align-items:center; gap:9px; width:100%; min-height:52px;
-    padding:8px 10px; border-radius:8px; cursor:pointer; text-align:left;
-    background:#15111f; border:1px solid #2a2238; color:var(--ink);
-    font-family:'Space Grotesk',system-ui,sans-serif; font-size:11px;
-    transition: transform 0.06s ease, filter 0.12s ease;
-  }
-  #arcList button:active{ transform:translateY(2px); filter:brightness(1.3); }
-  #arcList button:disabled{ opacity:0.35; cursor:default; }
-  #arcList .arcGlyph{ font-size:21px; line-height:1; }
-  #arcList .arcName{ font-family:'Press Start 2P',monospace; font-size:8px; color:var(--pink); }
-  /* A cleared build keeps its label but stops shouting: the open decision is
-     the next one down the shelf. */
-  #arcList button.filed .arcName{ color:var(--ink); opacity:0.7; }
-  #arcList .arcDesc{ opacity:0.6; font-size:10px; line-height:1.3; }
-  #arcList .arcStat{ margin-left:auto; font-family:'Press Start 2P',monospace; font-size:8px; color:var(--acid); white-space:nowrap; text-align:right; }
-  #arcList .arcStat small{ display:block; font-size:7px; opacity:0.7; color:var(--ink); }
+#laneRow{ position:absolute; inset:0; display:flex; gap:4px; }
+#laneRow.mut-giant{ transform:scale(1.16); transform-origin:center; }
+.laneWrap{ position:relative; flex:1; height:100%; display:flex; flex-direction:column; min-width:0; }
+/* The verb persists for the whole round; the banner only flashes it. */
+.laneLabel{ font-size:11px; text-align:center; padding:5px 2px; background:rgba(0,0,0,0.45); letter-spacing:0.5px; }
+.laneCanvas{ flex:1; width:100%; min-height:0; touch-action:none; background:#0c0a15; display:block; }
+/* The instruction: DOM, so it is sized in real pixels; it reads, then leaves. */
+.laneHint{
+  position:absolute; left:0; right:0; bottom:0; z-index:2;
+  padding:8px 10px; text-align:center;
+  font-size:12.5px; line-height:1.25; color:var(--ink);
+  background:linear-gradient(180deg, rgba(8,6,12,0) 0%, rgba(8,6,12,0.88) 42%);
+  text-shadow:0 1px 3px rgba(0,0,0,0.95);
+  pointer-events:none; opacity:0;
+}
+.laneHint.show{ animation:hintRead 1.9s ease forwards; }
+#laneRow.double .laneHint{ font-size:10.5px; padding:6px 4px; }
 
-  /* --- the table --- */
-  #arcBout{ width:100%; max-width:420px; display:flex; flex-direction:column; }
-  #arcFoeRow{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:9px; margin-bottom:4px; }
-  #arcFoeName{ color:var(--pink); }
-  /* The intent is the single most important thing on this screen — the whole
-     game is "what does it do next, and can I afford it" — so it is the one
-     readout allowed to be loud. */
-  #arcIntent{ color:var(--yellow); }
-  #arcFoeTrack{
-    width:100%; height:11px; border-radius:5px; overflow:hidden;
-    background:#15111f; border:1px solid #4a2036;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.7);
-  }
-  #arcFoeFill{ height:100%; width:100%; background:linear-gradient(90deg,var(--pink),var(--violet)); transition:width 0.25s ease; }
-  #arcFoeNum{ font-size:8px; opacity:0.65; text-align:right; margin-top:3px; }
+/* Effects, in the board's own layer. */
+#fxLayer{ position:absolute; inset:0; z-index:var(--z-stage-fx); pointer-events:none; overflow:hidden; }
+.chromaFlash{ position:absolute; inset:0; background:var(--ink); mix-blend-mode:difference; opacity:0.55; animation:chromaOut 0.22s ease-out forwards; }
+.glitchBar{ position:absolute; left:0; right:0; pointer-events:none; mix-blend-mode:difference; animation:glitchFlicker 0.22s steps(3) forwards; }
+.ripple{ position:absolute; border-radius:50%; pointer-events:none; animation:rippleOut 0.4s ease-out forwards; }
+.twinkle{ position:absolute; pointer-events:none; animation:ambientTwinkle 2.6s ease-in-out forwards; }
+.stamp{
+  position:absolute; left:50%; top:50%; font-family:var(--font-px);
+  font-size:14px; white-space:nowrap; color:var(--ink);
+  text-shadow:2px 2px 0 var(--stampColor,#ff2f9e), -2px -2px 0 var(--stampColor2,#2fe1ff);
+  animation:stampIn 0.65s cubic-bezier(.2,1.4,.4,1) forwards;
+}
+/* Lifted off dead centre: most trials put their action in the middle, which
+   is exactly where an announcement would cover it. */
+.verbBanner{
+  position:absolute; left:50%; top:31%; width:90%; text-align:center;
+  font-family:var(--font-px); font-size:26px; color:var(--bannerColor,#ff2f9e);
+  text-shadow:3px 3px 0 #000, -1px -1px 0 rgba(255,255,255,0.3);
+  animation:verbSlam 0.55s cubic-bezier(.2,1.6,.3,1) forwards;
+}
+#laneRow.double .verbBanner{ font-size:19px; }
+.confetti{ position:absolute; width:7px; height:7px; top:0; left:0; text-align:center; line-height:7px; animation:confettiFall linear forwards; }
+.combo{ position:absolute; font-family:var(--font-px); font-size:12px; color:var(--yellow); animation:comboUp 0.7s ease-out forwards; }
 
-  #arcLog{
-    font-size:11px; line-height:1.35; opacity:0.85; text-align:center;
-    min-height:30px; margin:10px 0 8px; padding:6px 8px;
-    border-radius:8px; background:#130f1e;
-  }
+#app.shaking{ animation:shakeAnim 0.32s cubic-bezier(.36,.07,.19,.97) both; }
+#app.shakeBig{ animation:shakeBigAnim 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+.pulseTap{ animation:pulseTap 0.25s ease; }
 
-  #arcYouRow{
-    display:flex; justify-content:space-between; gap:6px; font-size:9px;
-    padding:6px 2px; margin-bottom:8px;
-    border-top:1px solid #241d33; border-bottom:1px solid #241d33;
-  }
-  #arcYouHp{ color:var(--acid); }
-  #arcBlock{ color:var(--cyan); }
-  #arcEnergy{ color:var(--yellow); }
-  #arcPiles{ opacity:0.55; }
+/* ---------- 6. the dock ----------
+   Six loops, one tap each, in the thumb's reach. The tab you are on is the
+   only loop running; each tab carries the one number worth knowing about its
+   loop without opening it. Fixed to the viewport and above every sheet, so it
+   is the way between screens from anywhere — except the questions the Acts
+   ask (title, story, level-up, draft, ending), which cover it on purpose. */
+#dock{
+  position:fixed; left:0; right:0; bottom:0; z-index:var(--z-dock);
+  width:min(100%, 520px); margin-inline:auto;
+  height:var(--dock-total);
+  padding:6px calc(8px + env(safe-area-inset-right)) env(safe-area-inset-bottom) calc(8px + env(safe-area-inset-left));
+  display:flex; gap:4px;
+  background:color-mix(in srgb, var(--surface-1) 92%, transparent);
+  backdrop-filter:blur(8px);
+  border-top:1px solid var(--line);
+}
+#dock.locked{ opacity:0.3; pointer-events:none; }
+.dockTab{
+  --accent:var(--cyan);
+  position:relative; flex:1; min-width:0; height:calc(var(--dock-h) - 12px);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+  background:transparent; border:0; border-radius:var(--r-m);
+  cursor:pointer; color:var(--ink-3);
+  /* No transition: a tab bar switches the moment it is tapped, the way every
+     native one does. An eased hand-off reads as lag under a thumb. */
+}
+.dockTab:active{ background:var(--surface-3); }
+.dockGlyph{ font-size:19px; line-height:1; filter:saturate(0.6); opacity:0.75; }
+.dockLabel{ font-size:8px; line-height:1; white-space:nowrap; overflow:hidden; max-width:100%; }
+.dockTab.active{ background:var(--surface-3); color:var(--accent); }
+.dockTab.active .dockGlyph{ filter:none; opacity:1; }
+/* A bar on the top edge of the tab you are on, in that loop's colour. */
+.dockTab.active::before{
+  content:""; position:absolute; top:-7px; left:22%; right:22%; height:3px;
+  border-radius:0 0 3px 3px; background:var(--accent);
+}
+#actsTab{ --accent:var(--cyan); }
+#turretUpgradeBtn{ --accent:var(--orange); }
+#archiveBtn{ --accent:var(--pink); }
+#bayBtn{ --accent:var(--cyan); }
+#potBtn{ --accent:var(--yellow); }
+#companyBtn{ --accent:var(--violet); }
+/* The pot's number is a meter, because brew is a fill, not a count. */
+.dockMeter{ display:block; width:60%; height:5px; border-radius:99px; background:#130f1d; overflow:hidden; }
+#potFill{ display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--orange),var(--yellow)); transition:width 0.3s ease; }
+/* Something waiting in a loop you are not in: a dot, in that loop's colour. */
+.dockTab.alert::after, .dockTab.ready::after, .dockTab.breached::after{
+  content:""; position:absolute; top:6px; right:calc(50% - 18px);
+  width:8px; height:8px; border-radius:50%;
+  background:var(--accent); box-shadow:0 0 8px var(--accent);
+  animation:nudge 2.4s ease-in-out infinite;
+}
+.dockTab.breached::after{ background:var(--pink); box-shadow:0 0 8px var(--pink); }
 
-  #arcHand{ display:flex; gap:5px; justify-content:center; flex-wrap:wrap; }
-  .arcCard{
-    flex:1 1 0; min-width:62px; max-width:78px; min-height:92px;
-    display:flex; flex-direction:column; align-items:center; gap:4px;
-    padding:7px 4px; border-radius:8px; cursor:pointer;
-    background:#17121f; border:2px solid; color:var(--ink);
-    font-family:'Space Grotesk',system-ui,sans-serif;
-    transition: transform 0.06s ease, filter 0.12s ease;
-  }
-  .arcCard:active{ transform:translateY(2px); filter:brightness(1.3); }
-  /* Unaffordable rather than gone: seeing the card you cannot pay for is how
-     you learn to hold energy for it. */
-  .arcCard:disabled{ opacity:0.32; cursor:default; }
-  .arcCard .arcCost{ font-family:'Press Start 2P',monospace; font-size:9px; color:var(--yellow); }
-  .arcCard .arcCardName{ font-family:'Press Start 2P',monospace; font-size:7px; line-height:1.35; text-align:center; }
-  .arcCard .arcCardText{ font-size:9px; line-height:1.25; opacity:0.72; text-align:center; }
+/* ---------- 7. sheets ----------
+   Every screen that is not the home screen. A sheet is fixed to the viewport,
+   exactly one region of it scrolls (.sheetBody), and its own actions are
+   pinned under that region. Loop screens and the menus over the Acts stop at
+   the dock, which stays usable; the Acts' questions cover it. */
+.overlay{
+  --accent:var(--pink);
+  position:fixed; top:0; left:0; right:0; bottom:var(--dock-total); z-index:var(--z-sheet);
+  width:100%; max-width:520px; margin-inline:auto;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+  padding:calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 12px calc(16px + env(safe-area-inset-left));
+  text-align:center; overflow:hidden;
+  background:
+    radial-gradient(120% 60% at 50% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%),
+    var(--bg);   /* opaque: at 98.5% the board behind a sheet bled through as a ghost of its own label */
+}
+.overlay > *{ flex:0 0 auto; max-width:min(100%, 440px); width:100%; }
+#startScreen, #storyOverlay, #levelOverlay, #draftOverlay, #victoryOverlay{
+  bottom:0; z-index:var(--z-modal);
+  padding-bottom:calc(16px + env(safe-area-inset-bottom));
+  justify-content:safe center;
+}
 
-  /* --- the draft, after a clear --- */
-  #arcDraft{ display:flex; flex-direction:column; gap:6px; margin-top:10px; }
-  #arcDraft .arcDraftHead{
-    font-family:'Press Start 2P',monospace; font-size:8px; color:var(--acid);
-    text-align:center; line-height:1.6;
-  }
-  #arcDraft button{
-    display:flex; align-items:center; gap:8px; width:100%; min-height:46px;
-    padding:7px 10px; border-radius:8px; cursor:pointer; text-align:left;
-    background:#15111f; border:1px solid #2a2238; color:var(--ink);
-    font-family:'Space Grotesk',system-ui,sans-serif; font-size:11px;
-  }
-  #arcDraft button:active{ transform:translateY(2px); filter:brightness(1.3); }
-  #arcDraft .arcCost{ font-family:'Press Start 2P',monospace; font-size:9px; color:var(--yellow); }
-  #arcDraft .arcCardName{ font-family:'Press Start 2P',monospace; font-size:8px; }
-  #arcDraft .arcOwned{ margin-left:auto; font-size:9px; opacity:0.5; white-space:nowrap; }
+/* Sheet headers: one clear title in the screen's colour. The stacked pink,
+   cyan and yellow shadow is the wordmark's, and only the wordmark's — at a
+   header's size it read as a misprint. */
+.title{
+  font-family:var(--font-px); font-size:14px; line-height:1.5; letter-spacing:0.5px;
+  color:var(--accent); margin:0 0 6px;
+  text-shadow:2px 2px 0 rgba(0,0,0,0.6);
+}
+.subtitle{ font-size:12px; color:var(--ink-2); margin:0 auto 12px; line-height:1.45; }
+.note{ font-size:10px; color:var(--ink-3); margin:12px auto 0; line-height:1.4; }
+.sheetBody{ flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding-bottom:2px; }
+/* A status line under a title — wave, rates, progress. */
+#tdStatus, #coRates, #arcProgress, #bayProgress{
+  font-family:var(--font-px); font-size:8px; line-height:1.7; letter-spacing:0.4px;
+  color:var(--accent); margin-bottom:10px;
+}
 
-  #arcActions{ display:flex; gap:8px; margin-top:auto; padding-top:12px; justify-content:center; }
-  #arcActions .btn{ font-size:10px; padding:11px 14px; }
-  #arcEndBtn{ background:var(--yellow); box-shadow:0 6px 0 #a39a12; color:#14120a; }
-  #arcEndBtn:active{ box-shadow:0 2px 0 #a39a12; }
-  #arcEndBtn:disabled{ opacity:0.35; box-shadow:none; cursor:default; }
-  #arcFleeBtn{ background:var(--cyan); box-shadow:0 6px 0 #0e7a91; }
-  #arcFleeBtn:active{ box-shadow:0 2px 0 #0e7a91; }
+.speechBlock{
+  text-align:left; padding:10px 12px; margin-bottom:10px;
+  background:var(--surface-1); border:0; border-left:3px solid; border-radius:0 var(--r-m) var(--r-m) 0;
+  font-size:12.5px; line-height:1.45;
+}
+.speechWho{ font-family:var(--font-px); font-size:8px; margin-bottom:5px; letter-spacing:0.5px; }
+/* Static speech blocks (the title screen) name their speaker with a class;
+   blocks built at runtime get the colour inline from Game.renderSpeechInto. */
+.speechBlock.artificer{ border-color:var(--artificer); } .speechBlock.artificer .speechWho{ color:var(--artificer); }
+.speechBlock.goblin{ border-color:var(--goblin); }       .speechBlock.goblin .speechWho{ color:var(--goblin); }
 
-  #archiveOverlay{ justify-content:flex-start; }
-  /* The shelf grows and the table does not, so only the shelf takes the
-     scrolling — the hand must never be the thing below the fold. */
-  #archiveOverlay #arcList{ flex:0 1 auto; }
+/* Actions, pinned at the bottom of a sheet. */
+#sheetCloseBtn, #codexCloseBtn, #shopCloseBtn, #settingsCloseBtn,
+#storyContinueBtn, #draftSkipBtn, #victoryBtn{ margin-top:12px; width:100%; }
+#tdActions, #potActions, #arcActions, #bayActions{
+  display:flex; gap:8px; justify-content:center; margin-top:auto; padding-top:12px;
+}
+#tdActions .btn, #potActions .btn, #arcActions .btn{ flex:1; max-width:200px; padding:0 10px; }
 
-  /* The hand belongs at the bottom of the screen, not under the enemy: it is
-     the only part of this loop a thumb touches forty times a bout, and the
-     foe's health and intent are the parts you read. So the table splits —
-     readouts at the top, hand above the actions. */
-  #archiveOverlay #arcBout{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
-  #arcYouRow{ margin-top:auto; }
-  /* The energy cost sits in the card's corner, so it needs no unit next to it
-     — the pip colour is the unit. */
-  .arcCard .arcCost, #arcDraft .arcCost{
-    align-self:flex-start; padding:1px 5px; border-radius:5px;
-    background:#241f0d; color:var(--yellow);
-  }
+/* ---------- 8. screens ---------- */
 
-  /* The build, large, in the dead space the table would otherwise have. It
-     flinches on the turn it acts — the only animation in this loop, because a
-     turn-based screen with nothing moving reads as a frozen one. */
-  #arcFoeArt{
-    font-size:64px; line-height:1; text-align:center;
-    margin:auto 0; opacity:0.45; filter:saturate(0.85);
-  }
-  #arcFoeArt.act{ animation: arcFlinch 0.45s ease; }
-  @keyframes arcFlinch{
-    0%{ transform:scale(1) rotate(0deg); opacity:0.45; }
-    30%{ transform:scale(1.18) rotate(-4deg); opacity:0.95; }
-    100%{ transform:scale(1) rotate(0deg); opacity:0.45; }
-  }
-  @media (prefers-reduced-motion: reduce){ #arcFoeArt.act{ animation:none; } }
+/* Title. The wordmark keeps the stacked shadow; it is the brand. */
+#startScreen{ --accent:var(--pink); }
+#startScreen .title{
+  font-size:44px; color:var(--pink); margin-bottom:4px;
+  text-shadow:3px 3px 0 var(--cyan), 6px 6px 0 var(--yellow);
+}
+#startScreen .subtitle{ font-size:13px; margin-bottom:18px; }
+#startScreen .speechBlock{ font-size:12.5px; }
+#startBtn, #continueBtn{ width:100%; margin-top:6px; }
+#continueBtn{ --accent:var(--acid); margin-bottom:6px; }
+#continueMeta{ margin-top:0; margin-bottom:10px; }
+.chipRow{ display:flex; flex-wrap:wrap; gap:6px 7px; justify-content:center; margin:16px auto 0; }
+/* Rotations are fixed per position rather than random: a layout that
+   reshuffles itself on every boot reads as a bug. */
+.chipRow .chip:nth-child(1){ transform:rotate(-2deg);   color:var(--pink);   border-color:#ff2f9e55; }
+.chipRow .chip:nth-child(2){ transform:rotate(1.4deg);  color:var(--cyan);   border-color:#2fe1ff55; }
+.chipRow .chip:nth-child(3){ transform:rotate(-1deg);   color:var(--orange); border-color:#ff7a2f55; }
+.chipRow .chip:nth-child(4){ transform:rotate(2deg);    color:var(--pink);   border-color:#ff2f9e55; }
+.chipRow .chip:nth-child(5){ transform:rotate(-1.6deg); color:var(--cyan);   border-color:#2fe1ff55; }
+.chipRow .chip:nth-child(6){ transform:rotate(1.2deg);  color:var(--yellow); border-color:#fff02f55; }
+.chipRow .chip:nth-child(7){ transform:rotate(-0.8deg); color:var(--violet); border-color:#7a3cff55; }
 
-  /* Four readouts on one 375px line: the labels are abbreviated so none of
-     them wraps into the one beside it. */
-  #arcYouRow{ font-size:8px; margin-top:0; }
-  #arcLog{ margin-top:auto; }
+/* Story beats, the ending. */
+#storyOverlay, #victoryOverlay{ --accent:var(--violet); }
+#storyOverlay .title{ font-size:18px; }
+#victoryOverlay .title{ font-size:24px; color:var(--acid); }
 
-  /* Wrapping rather than clipping. Seven 42px glyphs plus their gaps are 324px
-     and the column is 301px on a 320-wide phone, so without this the row
-     overflowed to the LEFT and put the first button at x=-18 — present, and
-     tappable by nobody. A second line costs height only on the screens that
-     cannot fit one line, which is the right place to pay it. */
-  #hudActions{ flex-wrap:wrap; }
+/* Level-up and the goblin's draft: the only places the Acts ask a real
+   question, so the list is the whole sheet and it is centred. */
+#levelOverlay{ --accent:var(--yellow); }
+#draftOverlay{ --accent:var(--acid); }
+#levelList, #draftCards{ display:flex; flex-direction:column; gap:8px; flex:0 1 auto; }
+.draftCard{
+  font-family:var(--font-px); font-size:9px; line-height:1.5;
+  padding:12px; text-align:center; cursor:pointer;
+  background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-m);
+}
+.draftCardSub{ font-family:var(--font-ui); font-size:11px; color:var(--ink-2); margin-top:5px; }
+#draftSkipBtn{ --accent:var(--cyan); }
 
-  /* ============================================================
-     THE HONEY POT — the goblin's arcade
-     ------------------------------------------------------------
-     The board is a canvas; everything around it is DOM, for the
-     same reason the perimeter's build menu is: the upgrade rows
-     are things a thumb presses, and hit-testing them on a canvas
-     would cost them their size.
-     ============================================================ */
-  #potStats{
-    display:flex; justify-content:space-between; gap:8px; width:100%;
-    max-width:min(100%, 420px); font-size:8px; margin-top:8px;
-    padding:6px 2px; border-top:1px solid #241d33; border-bottom:1px solid #241d33;
-  }
-  #potHoney{ color:var(--yellow); }
-  #potCombo{ color:var(--acid); }
-  #potCracks{ color:var(--orange); }
-  /* One line of feedback, replaced in place rather than stacked: the board is
-     small and a log would cover it. */
-  #potFlash{
-    font-size:11px; min-height:16px; opacity:0.8; text-align:center;
-    margin:5px 0 3px; color:var(--yellow);
-  }
-  #potShop{ display:flex; flex-direction:column; gap:5px; max-width:min(100%, 420px); }
-  #potShop button{
-    display:flex; align-items:center; gap:8px; width:100%; min-height:44px;
-    padding:6px 10px; border-radius:8px; cursor:pointer; text-align:left;
-    background:#15111f; border:1px solid #2a2238; color:var(--ink);
-    font-family:'Space Grotesk',system-ui,sans-serif; font-size:11px;
-    transition: transform 0.06s ease, filter 0.12s ease;
-  }
-  #potShop button:active{ transform:translateY(2px); filter:brightness(1.3); }
-  #potShop button:disabled{ opacity:0.38; cursor:default; }
-  #potShop button.maxed{ border-color:#3a5a12; opacity:0.55; }
-  #potShop .potGlyph{ font-size:18px; line-height:1; }
-  #potShop .potName{ font-family:'Press Start 2P',monospace; font-size:8px; color:var(--yellow); }
-  #potShop .potDesc{ opacity:0.6; font-size:10px; line-height:1.25; }
-  #potShop .potCost{ margin-left:auto; font-family:'Press Start 2P',monospace; font-size:8px; color:var(--acid); white-space:nowrap; }
+/* The menus over the Acts. */
+#sheetOverlay{ --accent:var(--yellow); }
+#standingRow{ display:flex; gap:8px; margin-bottom:8px; padding:10px 12px; background:var(--surface-1); border-radius:var(--r-m); }
+.standing{ flex:1; min-width:0; display:flex; flex-direction:column; gap:5px; }
+.standingTag{ font-size:8px; text-align:left; }
+.standingTrack{ height:6px; }
+.standingFill{ height:100%; width:0%; transition:width 0.4s ease; }
+.standing:nth-child(1) .standingTag{ color:var(--artificer); } .standing:nth-child(1) .standingFill{ background:var(--artificer); }
+.standing:nth-child(2) .standingTag{ color:var(--goblin); }    .standing:nth-child(2) .standingFill{ background:var(--goblin); }
+.standing:nth-child(3) .standingTag{ color:var(--crab); }      .standing:nth-child(3) .standingFill{ background:var(--crab); }
+.standing:nth-child(4) .standingTag{ color:var(--understudy); }.standing:nth-child(4) .standingFill{ background:var(--understudy); }
+#statsMini{ font-size:8px; color:var(--ink-3); text-align:left; margin-bottom:8px; }
+#sheetBody, #codexBody{ text-align:left; font-size:12.5px; line-height:1.55; }
+#codexBtn{ width:100%; margin-top:12px; }
+#shopOverlay{ --accent:var(--cyan); }
+#codexOverlay{ --accent:var(--cyan); }
+#shopList{ display:flex; flex-direction:column; gap:8px; }
+#settingsOverlay{ --accent:var(--acid); justify-content:safe center; }
+#chaosButtons{ display:flex; gap:8px; margin-bottom:16px; }
+#chaosButtons .draftCard{ flex:1; }
+#resetBtn{ width:100%; color:var(--pink); margin-bottom:6px; }
 
-  /* The pot sheet has a board AND a shop now, so it stops being centred and
-     starts behaving like the perimeter: fixed board at the top, the list
-     taking what is left, actions pinned. */
-  #potOverlay{ justify-content:flex-start; }
-  #potOverlay #potShop{ flex:1 1 auto; min-height:0; overflow-y:auto; }
-  #potOverlay > div[style*="display:flex"]{ margin-top:10px; }
+/* THE PERIMETER — the Crab's. */
+#defenseOverlay{ --accent:var(--crab); }
+#tdScroll{ display:flex; flex-direction:column; align-items:center; flex:0 1 auto; }
+#tdIntegrityTrack{ width:100%; height:8px; margin-bottom:10px; }
+/* Colour carries the warning: set from JS, orange through yellow to pink. */
+#tdIntegrityFill{ height:100%; width:100%; background:var(--orange); transition:width 0.3s ease, background 0.3s ease; }
+#tdCanvas{
+  width:100%; aspect-ratio:4/3; display:block; touch-action:none;
+  border-radius:var(--r-m); border:1px solid #3a2417;
+  background:linear-gradient(180deg,#0c0a15,#120d1c);
+}
+#tdBuildMenu{ display:flex; flex-direction:column; gap:6px; margin-top:10px; }
+#tdBuildMenu:empty{ display:none; }
+#tdBuildMenu .tdHint{ font-size:11px; color:var(--ink-3); text-align:center; padding:6px 0; line-height:1.4; }
+#tdDoctrine{ display:flex; flex-direction:column; gap:6px; margin-top:10px; }
+#tdDoctrine:empty{ display:none; }
+.tdDocHead{ font-family:var(--font-px); font-size:8px; color:var(--acid); padding:2px 0; }
+#tdDoctrine button{ border-color:#3a5a12; background:#131b0e; }
+#tdDoctrine .tdName{ color:var(--acid); }
+#tdReinforceBtn{ --accent:var(--orange); }
+#tdCallBtn{ --accent:var(--yellow); }
 
-  /* --- productions: the company's sink ------------------------
-     The decision sits above the roster, because the roster is the
-     investment that unlocks it and this is what the investment is
-     for. A running show gets a card with a clock; an idle company
-     gets the shelf of things it could be doing instead. */
-  #coStage{ width:100%; max-width:min(100%, 420px); display:flex; flex-direction:column; gap:5px; margin-bottom:9px; }
-  #coStage:empty{ display:none; }
-  .coShowHead{
-    font-family:'Press Start 2P',monospace; font-size:8px; color:var(--violet);
-    letter-spacing:0.5px; text-align:center; padding:2px 0 4px;
-  }
-  .coShow{
-    border-radius:0 8px 8px 0; border-left:3px solid var(--violet);
-    background:#160f24; padding:8px 10px; text-align:left;
-  }
-  .coShow.ready{ border-left-color:var(--acid); background:#16200f; }
-  .coShowTop{ display:flex; justify-content:space-between; gap:8px; align-items:baseline; margin-bottom:5px; }
-  .coShowName{ font-family:'Press Start 2P',monospace; font-size:8px; color:var(--violet); }
-  .coShow.ready .coShowName{ color:var(--acid); }
-  .coShowTime{ font-family:'Press Start 2P',monospace; font-size:8px; color:var(--yellow); }
-  .coShowTrack{ height:7px; border-radius:4px; background:#15111f; overflow:hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.7); }
-  .coShowFill{ height:100%; background:linear-gradient(90deg,var(--violet),var(--acid)); transition:width 0.9s linear; }
-  .coShowPay{ font-size:10px; opacity:0.6; margin-top:5px; line-height:1.3; }
-  .coCollect{
-    width:100%; margin-top:7px; font-size:10px; padding:11px 14px;
-    background:var(--acid); box-shadow:0 6px 0 #7fa81c; color:#12170a;
-  }
-  .coCollect:active{ box-shadow:0 2px 0 #7fa81c; }
-  .coCollect:disabled{ opacity:0.4; box-shadow:none; cursor:default; }
-  .coShowBtn{
-    display:flex; align-items:center; gap:8px; width:100%; min-height:46px;
-    padding:7px 10px; border-radius:8px; cursor:pointer; text-align:left;
-    background:#15111f; border:1px solid #2a2238; color:var(--ink);
-    font-family:'Space Grotesk',system-ui,sans-serif; font-size:11px;
-    transition: transform 0.06s ease, filter 0.12s ease;
-  }
-  .coShowBtn:active{ transform:translateY(2px); filter:brightness(1.3); }
-  .coShowBtn:disabled{ opacity:0.38; cursor:default; }
-  /* Already staged once: it still pays, but the permanent bonus is spent, so
-     it stops being the thing the eye goes to. */
-  .coShowBtn.done{ opacity:0.75; border-color:#241d33; }
-  .coShowBtn .coCost small{ display:block; font-size:7px; opacity:0.65; color:var(--ink); }
+/* THE HONEY POT — the goblin's. */
+#potOverlay{ --accent:var(--yellow); }
+#potGameWrap{ position:relative; }
+#potCanvas{
+  width:100%; aspect-ratio:4/3; display:block; touch-action:none;
+  border-radius:var(--r-m); border:1px solid #3a2f1a; background:#150f22;
+}
+#potHarvestFlash{
+  position:absolute; top:50%; left:50%; font-size:15px; white-space:nowrap;
+  color:var(--yellow); text-shadow:2px 2px 0 var(--pink); pointer-events:none; opacity:0;
+}
+#potHarvestFlash.show{ animation:harvestFlash 1.1s ease forwards; }
+#potGameMeterRow{ margin-top:8px; }
+#potGameMeterTrack{ height:6px; }
+#potGameMeterFill{ height:100%; width:0%; background:linear-gradient(90deg,var(--orange),var(--yellow)); transition:width 0.25s ease; }
+#potStats{
+  display:flex; justify-content:space-between; gap:8px; margin-top:8px; padding:7px 2px;
+  font-size:8px; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+}
+#potHoney{ color:var(--yellow); } #potCombo{ color:var(--acid); } #potCracks{ color:var(--orange); }
+#potFlash{ font-size:11px; min-height:16px; color:var(--yellow); margin:6px 0 4px; }
+#potShop{ display:flex; flex-direction:column; gap:6px; }
+#potShop button.maxed{ border-color:#3a5a12; opacity:0.55; }
+#potShop .potName{ color:var(--yellow); }
+#potShop .potCost{ color:var(--acid); }
+#potHarvestBtn{ --accent:var(--yellow); }
+#potNewJarBtn{ --accent:var(--acid); }
 
-  /* --- doctrine: the between-wave decision -------------------
-     Two cards, and the perimeter is not moving until one of them
-     is tapped. Given the acid edge the rest of the Crab's screen
-     does not use, so "the line is waiting for you" cannot be
-     mistaken for another build menu. */
-  #tdDoctrine{ width:100%; max-width:min(100%, 420px); display:flex; flex-direction:column; gap:5px; margin-top:8px; }
-  #tdDoctrine:empty{ display:none; }
-  .tdDocHead{
-    font-family:'Press Start 2P',monospace; font-size:8px; color:var(--acid);
-    text-align:center; padding:3px 0 2px; letter-spacing:0.5px;
-  }
-  #tdDoctrine button{
-    display:flex; align-items:center; gap:8px; width:100%; min-height:48px;
-    padding:8px 10px; border-radius:8px; cursor:pointer; text-align:left;
-    background:#16200f; border:1px solid #3a5a12; color:var(--ink);
-    font-family:'Space Grotesk',system-ui,sans-serif; font-size:11px;
-    transition: transform 0.06s ease, filter 0.12s ease;
-  }
-  #tdDoctrine button:active{ transform:translateY(2px); filter:brightness(1.3); }
-  #tdDoctrine .tdName{ color:var(--acid); }
-  #tdCallBtn{
-    background:var(--yellow); box-shadow:0 6px 0 #a39a12; color:#14120a;
-  }
-  #tdCallBtn:active{ box-shadow:0 2px 0 #a39a12; }
-  /* The status line carries a whole sentence once SPOTTERS is taken, so it
-     stops being a single 8px line and is allowed to wrap. */
-  #tdStatus{ line-height:1.5; max-width:min(100%, 420px); }
+/* THE COMPANY — the Understudy's. */
+#companyOverlay{ --accent:var(--understudy); }
+#coReport{
+  text-align:left; margin-bottom:10px; padding:10px 12px;
+  border-left:3px solid var(--violet); border-radius:0 var(--r-m) var(--r-m) 0;
+  background:#160f24; font-size:12px; line-height:1.45;
+}
+#coReport .coReportHead{ font-family:var(--font-px); font-size:8px; color:var(--violet); margin-bottom:5px; }
+#coReport b{ color:var(--acid); }
+#coStage{ display:flex; flex-direction:column; gap:6px; margin-bottom:10px; flex:0 1 auto; min-height:0; overflow-y:auto; }
+#coStage:empty{ display:none; }
+.coShowHead{ font-family:var(--font-px); font-size:8px; color:var(--violet); padding:2px 0 2px; }
+.coShow{ text-align:left; padding:10px 12px; background:#160f24; border-left:3px solid var(--violet); border-radius:0 var(--r-m) var(--r-m) 0; }
+.coShow.ready{ border-left-color:var(--acid); background:#131b0e; }
+.coShowTop{ display:flex; justify-content:space-between; gap:8px; margin-bottom:6px; }
+.coShowName{ font-family:var(--font-px); font-size:8px; color:var(--violet); }
+.coShow.ready .coShowName{ color:var(--acid); }
+.coShowTime{ font-family:var(--font-px); font-size:8px; color:var(--yellow); }
+.coShowTrack{ height:7px; }
+.coShowFill{ height:100%; background:linear-gradient(90deg,var(--violet),var(--acid)); transition:width 0.9s linear; }
+.coShowPay{ font-size:11px; color:var(--ink-3); margin-top:6px; }
+.coCollect{ --accent:var(--acid); width:100%; margin-top:8px; }
+.coShowBtn.done{ opacity:0.75; }
+#coList{ display:flex; flex-direction:column; gap:6px; flex:1 1 auto; }
+#coList button.enlisted{ background:var(--surface-1); }
+#coFooter{ font-size:11px; color:var(--ink-3); margin-top:10px; line-height:1.4; }
 
-  /* --- relics and thinning -----------------------------------
-     The shelf carries three things now: what you hold, what you
-     can fight, and what you can cut. The first is a strip rather
-     than a list — relics are read once and then remembered. */
-  .arcRelicRow{ display:flex; flex-wrap:wrap; gap:4px; padding:2px 0 4px; }
-  .arcRelic{
-    font-family:'Press Start 2P',monospace; font-size:7px; line-height:1.6;
-    padding:4px 6px; border-radius:6px; background:#16200f;
-    border:1px solid #3a5a12; color:var(--acid);
-  }
-  .arcRelicNone{ font-size:10px; opacity:0.45; line-height:1.4; }
-  #arcList button.endless{ border-color:#7a3cff88; background:#170f24; }
-  #arcList button.endless .arcName{ color:var(--violet); }
-  #arcList button.arcThin{ border-style:dashed; opacity:0.9; }
-  #arcDraft button.arcRelicPick{ border-color:#3a5a12; background:#16200f; }
+/* THE ARCHIVE — the goblin's duel on the Artificer's shelf. */
+#archiveOverlay{ --accent:var(--pink); }
+#arcList{ display:flex; flex-direction:column; gap:6px; flex:0 1 auto; }
+#arcList button.filed .arcName{ color:var(--ink-2); }
+#arcList button.endless{ border-color:#7a3cff88; background:#170f24; }
+#arcList button.endless .arcName{ color:var(--violet); }
+#arcList button.arcThin{ border-style:dashed; }
+.arcRelicRow{ display:flex; flex-wrap:wrap; gap:4px; padding:0 0 6px; }
+.arcRelic{ font-family:var(--font-px); font-size:8px; line-height:1.6; padding:4px 7px; border-radius:var(--r-s); background:#131b0e; border:1px solid #3a5a12; color:var(--acid); }
+.arcRelicNone{ font-size:11px; color:var(--ink-3); }
+#arcBout{ display:flex; flex-direction:column; flex:1 1 auto; min-height:0; }
+#arcFoeRow{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:9px; margin-bottom:6px; }
+#arcFoeName{ color:var(--pink); }
+/* The intent is the one loud readout on this screen: the whole game is "what
+   does it do next, and can I afford it". */
+#arcIntent{ color:var(--yellow); }
+#arcFoeTrack{ height:10px; }
+#arcFoeFill{ height:100%; width:100%; background:linear-gradient(90deg,var(--pink),var(--violet)); transition:width 0.25s ease; }
+#arcFoeNum{ font-size:8px; color:var(--ink-3); text-align:right; margin-top:4px; }
+#arcFoeArt{ font-size:64px; line-height:1; text-align:center; margin:auto 0; opacity:0.45; }
+#arcFoeArt.act{ animation:arcFlinch 0.45s ease; }
+#arcLog{ font-size:12px; color:var(--ink-2); min-height:34px; margin:10px 0 8px; padding:8px 10px; border-radius:var(--r-s); background:var(--surface-1); }
+#arcYouRow{ display:flex; justify-content:space-between; gap:6px; font-size:8px; padding:7px 2px; margin-bottom:8px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+#arcYouHp{ color:var(--acid); } #arcBlock{ color:var(--cyan); } #arcEnergy{ color:var(--yellow); } #arcPiles{ color:var(--ink-3); }
+#arcHand{ display:flex; gap:6px; justify-content:center; }
+.arcCard{
+  flex:1 1 0; min-width:0; max-width:80px; min-height:96px;
+  display:flex; flex-direction:column; align-items:center; gap:5px;
+  padding:8px 4px; cursor:pointer; color:var(--ink);
+  background:var(--surface-2); border:2px solid; border-radius:var(--r-m);
+  transition:transform 0.06s ease, background 0.12s ease;
+}
+.arcCard:active{ transform:translateY(2px); background:var(--surface-3); }
+/* Unaffordable rather than gone: seeing the card you cannot pay for is how
+   you learn to hold energy for it. */
+.arcCard:disabled{ opacity:0.32; cursor:default; }
+.arcCost{ align-self:flex-start; padding:1px 6px; border-radius:5px; background:#241f0c; color:var(--yellow); font-family:var(--font-px); font-size:9px; }
+.arcCardName{ font-family:var(--font-px); font-size:8px; line-height:1.4; text-align:center; }
+.arcCardText{ font-size:10px; line-height:1.25; color:var(--ink-2); text-align:center; }
+#arcDraft{ display:flex; flex-direction:column; gap:6px; margin-top:10px; }
+.arcDraftHead{ font-family:var(--font-px); font-size:8px; color:var(--acid); line-height:1.6; }
+#arcDraft .arcOwned{ margin-left:auto; font-size:10px; color:var(--ink-3); white-space:nowrap; }
+#arcDraft button.arcRelicPick{ border-color:#3a5a12; background:#131b0e; }
+#arcEndBtn{ --accent:var(--yellow); }
+#arcFleeBtn{ --accent:var(--cyan); }
 
-  /* The company grew a second list — six productions above the roster — and on
-     a 320x568 screen the two together pushed LET THEM WORK off the bottom. The
-     roster alone can no longer absorb that, so on a short viewport the
-     production panel shrinks and scrolls as well. Two scroll regions bends the
-     one-region rule; an exit below the fold breaks the rule that matters. */
-  @media (max-height: 700px){
-    #companyOverlay #coStage{ flex:0 1 auto; min-height:0; overflow-y:auto; }
-    #companyOverlay #coList{ flex:1 1 40%; }
-    #potOverlay #potShop{ flex:1 1 auto; }
-  }
+/* THE PATCH BAY — the Artificer's. */
+#bayOverlay{ --accent:var(--artificer); }
+#bayShelf{ display:flex; flex-direction:column; gap:6px; flex:0 1 auto; }
+#bayShelf button.done{ border-color:#2fe1ff55; }
+#bayShelf button.crawl{ border-color:#7a3cff88; background:#170f24; }
+#bayShelf button.crawl .bayName{ color:var(--violet); }
+#bayBoardWrap{ display:flex; flex-direction:column; align-items:center; }
+#bayHead{ width:100%; display:flex; justify-content:space-between; gap:8px; font-size:8px; margin-bottom:8px; }
+#bayRack{ color:var(--cyan); } #bayTurns{ color:var(--yellow); }
+#bayCanvas{ width:100%; aspect-ratio:1/1; display:block; touch-action:none; border-radius:var(--r-m); border:1px solid #1e3a44; }
+#bayResult{ font-size:12px; min-height:18px; margin:10px 0 4px; color:var(--ink-3); }
+#bayResult.solved{ color:var(--acid); font-family:var(--font-px); font-size:9px; line-height:1.6; }
+#bayNav{ display:flex; gap:8px; justify-content:center; width:100%; margin-top:4px; }
+#bayNav .btn{ color:var(--cyan); min-width:var(--tap); }
+#bayNav .btn.go{ --accent:var(--acid); background:var(--acid); color:#12170a; box-shadow:0 4px 0 #6f8f18; }
+#bayDoneBtn{ --accent:var(--cyan); }
 
-  /* ============================================================
-     THE PATCH BAY — the Artificer's routing puzzle
-     ------------------------------------------------------------
-     Cyan throughout: this is his, and it is the one loop where the
-     colour of the pipes is also the state of the game — lit means
-     powered, grey means not yet.
-     ============================================================ */
-  #bayProgress{ font-size:8px; color:var(--cyan); letter-spacing:0.5px; margin-bottom:10px; }
+/* ---------- 9. motion ---------- */
+@keyframes bgBreathe{ 0%,100%{ filter:hue-rotate(0deg); } 50%{ filter:hue-rotate(10deg); } }
+@keyframes grainDrift{ 0%,100%{ transform:translate3d(0,0,0); } 50%{ transform:translate3d(-14px,10px,0); } }
+@keyframes shakeAnim{
+  10%,90%{ transform:translate3d(-1px,0,0) rotate(-0.3deg); }
+  20%,80%{ transform:translate3d(3px,0,0) rotate(0.4deg); }
+  30%,50%,70%{ transform:translate3d(-7px,0,0) rotate(-0.8deg); }
+  40%,60%{ transform:translate3d(7px,0,0) rotate(0.8deg); }
+}
+@keyframes shakeBigAnim{
+  10%,90%{ transform:translate3d(-3px,0,0) rotate(-1deg); }
+  20%,80%{ transform:translate3d(6px,0,0) rotate(1.4deg); }
+  30%,50%,70%{ transform:translate3d(-14px,0,0) rotate(-2deg); }
+  40%,60%{ transform:translate3d(14px,0,0) rotate(2deg); }
+}
+@keyframes quakeLoop{ 0%,100%{ transform:translate(0,0); } 25%{ transform:translate(-2px,1px); } 50%{ transform:translate(2px,-1px); } 75%{ transform:translate(-1px,-2px); } }
+@keyframes scorePop{ 0%{ transform:scale(1); } 35%{ transform:scale(1.35) rotate(-4deg); } 100%{ transform:scale(1); } }
+@keyframes panic{ 0%,100%{ transform:scale(1) rotate(0deg); } 50%{ transform:scale(1.12) rotate(-6deg); } }
+@keyframes pulseTap{ 0%{ transform:scale(1); } 40%{ transform:scale(1.25); } 100%{ transform:scale(1); } }
+@keyframes nudge{ 0%,88%,100%{ transform:translateY(0); } 94%{ transform:translateY(-3px); } }
+@keyframes dialogueIn{ from{ transform:translateX(-6px); opacity:0.3; } to{ transform:translateX(0); opacity:1; } }
+@keyframes chromaOut{ from{ opacity:0.55; } to{ opacity:0; } }
+@keyframes glitchFlicker{ 0%{ opacity:0.65; } 50%{ opacity:0.15; } 100%{ opacity:0; } }
+@keyframes rippleOut{ from{ transform:scale(0.6); opacity:1; } to{ transform:scale(3.4); opacity:0; } }
+@keyframes ambientTwinkle{
+  0%{ opacity:0; transform:scale(0.5) translateY(0); }
+  30%{ opacity:0.85; transform:scale(1) translateY(-6px); }
+  100%{ opacity:0; transform:scale(0.8) translateY(-20px); }
+}
+@keyframes stampIn{
+  0%{ transform:translate(-50%,-50%) rotate(var(--rot,0deg)) scale(0.2); opacity:0; }
+  35%{ transform:translate(-50%,-50%) rotate(var(--rot,0deg)) scale(1.15); opacity:1; }
+  70%{ transform:translate(-50%,-50%) rotate(var(--rot,0deg)) scale(1); opacity:1; }
+  100%{ transform:translate(-50%,-50%) rotate(var(--rot,0deg)) scale(1); opacity:0; }
+}
+@keyframes verbSlam{
+  0%{ transform:translate(-50%,-50%) scale(3) rotate(-6deg); opacity:0; }
+  45%{ transform:translate(-50%,-50%) scale(0.92) rotate(2deg); opacity:1; }
+  65%{ transform:translate(-50%,-50%) scale(1.05) rotate(-1deg); opacity:1; }
+  100%{ transform:translate(-50%,-50%) scale(1) rotate(0deg); opacity:0; }
+}
+@keyframes confettiFall{
+  from{ transform:translate(var(--x0), var(--y0)) rotate(0deg); opacity:1; }
+  to{ transform:translate(var(--x1), var(--y1)) rotate(720deg); opacity:0; }
+}
+@keyframes comboUp{ from{ transform:translateY(0); opacity:1; } to{ transform:translateY(-38px); opacity:0; } }
+@keyframes hintRead{ 0%{ opacity:0; transform:translateY(6px); } 9%{ opacity:1; transform:translateY(0); } 68%{ opacity:1; } 100%{ opacity:0; } }
+@keyframes harvestFlash{
+  0%{ opacity:0; transform:translate(-50%,-50%) scale(0.6); }
+  25%{ opacity:1; transform:translate(-50%,-50%) scale(1.15); }
+  80%{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+  100%{ opacity:0; transform:translate(-50%,-50%) scale(1); }
+}
+@keyframes arcFlinch{
+  0%{ transform:scale(1) rotate(0deg); opacity:0.45; }
+  30%{ transform:scale(1.18) rotate(-4deg); opacity:0.95; }
+  100%{ transform:scale(1) rotate(0deg); opacity:0.45; }
+}
 
-  #bayShelf{ display:flex; flex-direction:column; gap:6px; }
-  #bayShelf button{
-    display:flex; align-items:center; gap:9px; width:100%; min-height:52px;
-    padding:8px 10px; border-radius:8px; cursor:pointer; text-align:left;
-    background:#15111f; border:1px solid #2a2238; color:var(--ink);
-    font-family:'Space Grotesk',system-ui,sans-serif; font-size:11px;
-    transition: transform 0.06s ease, filter 0.12s ease;
-  }
-  #bayShelf button:active{ transform:translateY(2px); filter:brightness(1.3); }
-  #bayShelf button:disabled{ opacity:0.35; cursor:default; }
-  #bayShelf button.done{ border-color:#2fe1ff55; }
-  #bayShelf button.crawl{ border-color:#7a3cff88; background:#170f24; }
-  #bayShelf .bayGlyph{ font-size:20px; line-height:1; }
-  #bayShelf .bayName{ font-family:'Press Start 2P',monospace; font-size:8px; color:var(--cyan); }
-  #bayShelf button.crawl .bayName{ color:var(--violet); }
-  #bayShelf .bayDesc{ opacity:0.6; font-size:10px; line-height:1.3; }
-  #bayShelf .bayStat{ margin-left:auto; font-family:'Press Start 2P',monospace; font-size:8px; color:var(--yellow); white-space:nowrap; text-align:right; }
-  #bayShelf .bayStat small{ display:block; font-size:7px; opacity:0.65; color:var(--ink); }
+@media (prefers-reduced-motion: reduce){
+  /* The always-on motion goes; the motion a player caused stays. The hint
+     stays put rather than animating away from someone who asked for less. */
+  #bgLayer, #bgLayer::before, #stageWrap.mut-quake, #hudActions button.alert,
+  .dockTab.alert::after, .dockTab.ready::after, .dockTab.breached::after,
+  #buddyBtn.low, #arcFoeArt.act{ animation:none; }
+  .laneHint.show{ animation:none; opacity:1; }
+}
 
-  #bayBoardWrap{ width:100%; max-width:min(100%, 420px); display:flex; flex-direction:column; align-items:center; }
-  #bayHead{ width:100%; display:flex; justify-content:space-between; gap:8px; font-size:8px; margin-bottom:6px; }
-  #bayRack{ color:var(--cyan); }
-  #bayTurns{ color:var(--yellow); }
-  #bayCanvas{
-    width:100%; aspect-ratio:1/1; display:block; touch-action:none;
-    border-radius:10px; border:1px solid #1e3a44;
-  }
-  #bayResult{
-    font-size:11px; min-height:18px; margin:8px 0 4px; text-align:center; opacity:0.7;
-  }
-  /* A routed board says so in the one colour nothing else on this screen uses. */
-  #bayResult.solved{ color:var(--acid); opacity:1; font-family:'Press Start 2P',monospace; font-size:9px; line-height:1.6; }
-  #bayNav{ display:flex; gap:8px; justify-content:center; width:100%; margin-top:4px; }
-  #bayNav .btn{ font-size:10px; padding:10px 14px; background:#1a2a33; box-shadow:0 6px 0 #0d161b; color:var(--cyan); }
-  #bayNav .btn:active{ box-shadow:0 2px 0 #0d161b; }
-  #bayNav .btn:disabled{ opacity:0.3; box-shadow:none; cursor:default; }
-  #bayActions{ margin-top:auto; padding-top:12px; }
-  #bayDoneBtn{ background:var(--cyan); box-shadow:0 6px 0 #0e7a91; font-size:10px; padding:11px 16px; }
-  #bayDoneBtn:active{ box-shadow:0 2px 0 #0e7a91; }
-  #bayOverlay{ justify-content:flex-start; }
-  #bayOverlay #bayShelf{ flex:0 1 auto; }
+/* ---------- 10. short phones ----------
+   What gives on a short display is padding and the narrator's second line —
+   never a touch target, never the board below its floor. */
+@media (max-height: 700px){
+  :root{ --dock-h:58px; }
+  #dialogue{ min-height:0; padding:7px 10px; margin-bottom:6px; }
+  #dialogueText{ font-size:11.5px; }
+  #topBar, #statusRow, #roundRow{ margin-bottom:6px; }
+  .overlay{ padding-top:calc(12px + env(safe-area-inset-top)); }
+  .title{ margin-bottom:4px; }
+  #startScreen .title{ font-size:34px; }
+  #arcFoeArt{ font-size:44px; }
+}
 
-  /* The codex's door moved into the hero sheet; it is a secondary action
-     there, so it does not wear the primary button's pink. */
-  #codexBtn{ font-size:10px; padding:10px 16px; margin-top:12px; background:#1a1628; box-shadow:0 6px 0 #0c0a12; color:var(--ink); }
-  #codexBtn:active{ box-shadow:0 2px 0 #0c0a12; }
-  #bayNav .btn.go{ background:var(--acid); box-shadow:0 6px 0 #7fa81c; color:#12170a; }
-  #bayNav .btn.go:active{ box-shadow:0 2px 0 #7fa81c; }
+/* ---------- the play area sits by the thumb ----------
+   On a tall phone the board is limited by width, and the height left over used
+   to sit as dead space between the board and the dock. It is moved above the
+   round row instead, so the board and its clock are always at the bottom of
+   the screen, where a thumb already is, and the information stays at the top
+   where an eye goes first. game.js measures the rows rather than the board's
+   position for exactly this reason (see measureChrome). */
+/* 100dvh, not 100dvh minus the dock: #app is border-box and its bottom padding
+   already reserves the dock, so subtracting it here counted the dock twice
+   and left a dock-sized gap under the board. */
+#app{ display:flex; flex-direction:column; min-height:100dvh; }
+#bossRow, #roundRow{ margin-top:auto; }
+#bossRow:not(.hidden) + #roundRow{ margin-top:0; }
+#stageWrap{ flex:0 0 auto; }
+
+/* The story beat and the ending are short, and read better as one centred
+   block than as text pinned to the top with a gap above the button. */
+#storySpeech, #victorySpeech{ flex:0 1 auto; }
+/* Level-up rows are workshop rows, and read left to right like every other
+   list — the id selector on the shared row rule had been centring them. */
+#levelList .shopItem{ align-items:stretch; }
+
+/* The pot is a board AND a shop, and on a 640px-tall phone a full-width 4:3
+   board left the shop two rows of room (one at 568). Capping the board's
+   height gives the shop the space instead; the board keeps its shape, and
+   game.js maps touches from the canvas's real size, so aim is unaffected. */
+@media (max-height: 700px){
+  #potGameWrap{ width:auto; margin-inline:auto; }
+  #potCanvas{ width:auto; max-width:100%; height:min(30vh, 220px); }
+  #tdCanvas{ width:auto; max-width:100%; height:min(32vh, 240px); margin-inline:auto; }
+}

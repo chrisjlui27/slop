@@ -541,6 +541,35 @@ async function runChecks() {
   const left = G.deadline - performance.now();
   check("a live round resumes with the time it had", left > 1500 && left <= 2000);
 
+  /* ---- THE DOCK: the only way between screens ----
+     Driven by real clicks on the tabs, because the dock is a DOM contract as
+     much as a function: six tabs, one screen up at a time, and a menu over
+     the Acts closed on the way rather than left stranding the round. */
+  const tabOf = id => window.document.querySelector('#dock [data-loop="' + id + '"]');
+  const sheetsUp = () => [...window.document.querySelectorAll('.overlay')].filter(o => !o.classList.contains('hidden')).length;
+  check("the dock has six tabs", window.document.querySelectorAll('#dock .dockTab').length === 6);
+  // Earlier blocks force G.state without dismissing what the campaign left up.
+  window.document.querySelectorAll(".overlay").forEach(o => o.classList.add("hidden"));
+  G.state = "playing"; G.pausedState = null; G.deadline = performance.now() + 3000;
+  const tabStates = { perimeter: "tdgame", archive: "archive", bay: "patchbay", pot: "potgame", company: "company" };
+  let wrongTab = [];
+  Object.keys(tabStates).forEach(id => {
+    tabOf(id).click();
+    if (G.state !== tabStates[id] || sheetsUp() !== 1 || !tabOf(id).classList.contains("active")) wrongTab.push(id);
+  });
+  check("every tab opens its loop, alone: " + (wrongTab[0] || "all"), wrongTab.length === 0);
+  tabOf("acts").click();
+  check("the acts tab goes home and resumes the round", G.state === "playing" && sheetsUp() === 0);
+  window.document.getElementById("sheetBtn").click();
+  tabOf("archive").click();
+  check("a tab closes the menu over the Acts on the way", G.state === "archive" && sheetsUp() === 1);
+  tabOf("acts").click();
+  check("and home from there still resumes the round", G.state === "playing");
+  G.state = "story";
+  check("the dock refuses while the Acts ask something", G.goTo("pot") === false && G.state === "story");
+  check("and says so", window.document.getElementById("dock").classList.contains("locked"));
+  G.state = "playing"; G.updateDock();
+
   /* ---- THE PATCH BAY: the routing puzzle ----
      The loop whose whole promise is a guarantee: every board is solvable, par
      is honest, and a seed is the same board everywhere. Those are checked

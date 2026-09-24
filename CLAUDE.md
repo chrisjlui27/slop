@@ -99,7 +99,8 @@ have to be.
 | Change how the honey pot plays | `src/pot.js` |
 | Change screen effects | `src/fx.js` |
 | Change layout or styling | `styles/main.css`, `index.html` |
-| Change how a menu is laid out | the SHEET PASS in `styles/main.css` — see `docs/DESIGN.md` |
+| Change how a screen is laid out | sections 5–8 of `styles/main.css` — see `docs/DESIGN.md` |
+| Add a loop to the dock, or change how screens switch | `#dock` in `index.html`, `Game.goTo()` — see `docs/DESIGN.md` |
 | Add a font, image or sound file | `assets/`, then `sw.js`'s `SHELL` — see `docs/DESIGN.md` |
 
 `src/game.js` is large (~1000 lines) and deliberately monolithic — it is the
@@ -202,10 +203,14 @@ voices wrong is the most common way to damage this project.
   card you would have drafted. It is a wall you may walk into as often as you
   like. Giving it a real cost would make it the second losable stake in the
   game, which is a canon decision rather than a balance tweak.
-- **A `filter` on an ancestor breaks every sheet.** The menus are
+- **`Game.goTo()` is the only way between screens.** The dock calls it, and
+  it knows how to leave a loop, close a menu over the Acts, and enter the next
+  loop in the right order. Opening a loop from anywhere else can strand a
+  paused round under a menu that is no longer on screen.
+- **A `filter` on an ancestor breaks every sheet and the dock.** Both are
   `position:fixed` siblings of `#app`, and any filtered ancestor becomes
-  their containing block — which silently re-anchors a full-screen sheet to the
-  480px column. That is why the page's hue drift lives on `#bgLayer` and the
+  their containing block — which silently re-anchors them to the 480px
+  column. That is why the page's hue drift lives on `#bgLayer` and the
   contrast tweak sits on `#stageWrap`. Do not move either back onto `body`
   or `#app`.
 - **`sw.js`'s `SHELL` is a contract too.** Every file the game fetches at

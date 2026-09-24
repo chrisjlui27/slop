@@ -93,32 +93,74 @@ that says how much of the pool you actually know.
 Before adding another, check what the pool leans on — `add-microgame` says the
 same thing and is the workflow to use.
 
-## Sheets
+## The console: the dock, the home screen, the sheets
 
-The UI contract for every menu in the game. It replaced a layout where each
-menu was drawn inside `#stageWrap`, which is square: on a 375x812 phone that
-meant a 353x353 window holding a shop list 478px long. Every menu scrolled;
-the Workshop showed 40% of itself.
+The UI contract. It replaced two earlier layouts in turn: menus drawn inside
+the square board (a 353px window over a 478px shop list), and then a home
+screen with eleven stacked HUD rows above the board — standing, hero, glyphs,
+meter, pot, a live perimeter lane, timer — where the board started 442px down
+a 812px screen.
 
-1. **A sheet is fixed to the viewport**, not to the board. It is a sibling of
-   `#app`, not a child of the stage. (Anything with a `filter` on it becomes
-   the containing block for `position:fixed` descendants — which is why the
-   page's hue drift lives on `#bgLayer` and the contrast tweak moved onto
-   `#stageWrap`. Put a filter on `body` or `#app` again and every sheet
-   silently re-anchors to the column.)
-2. **Exactly one region of a sheet scrolls**, marked `class="sheetBody"`, and
-   only when its content genuinely exceeds the screen. No fixed-pixel scroll
-   boxes: a `max-height: 250px` is how a 812px screen ends up showing 250px.
-3. **The way out is always on screen**, pinned below the scrolling region. A
-   screen whose exit is below the fold reads as a trap.
-4. **Touch targets stay at 44px** through every squeeze. When something has to
-   give on a short screen, it is padding and margins, never a tap target and
-   never the narrators' authored text.
+**The dock is the only way between screens.** Six tabs along the bottom, in
+the thumb's reach — ACTS, PERIMETER, ARCHIVE, PATCH BAY, HONEY POT, COMPANY —
+each carrying the one number worth knowing about its loop without opening it:
+integrity, builds filed, stars, brew, the company's rate or the show's clock.
+The tab you are on is the only loop running (rule 2). Every switch goes through
+`Game.goTo()`, which leaves the current loop, closes any menu over the Acts,
+and enters the next; loop screens have no exit buttons of their own, because a
+second "leave" inside every screen is a second way to say the same thing. The
+dock is locked — and covered — while the Acts are asking you something: the
+title, a story beat, a level-up, a draft, the ending.
 
-The play screen has its own version of rule 3: the board is clamped against
-`100dvh - var(--chrome)`, where `--chrome` is measured from the live layout by
-`game.js` rather than estimated. A 320x568 device gets a small board; it does
-not get a game it has to scroll into view.
+**The home screen puts the eye at the top and the thumb at the bottom.** Top
+bar (act, quest, and the four things you open from anywhere: hero sheet,
+workshop, settings, sound), the narrator, a status row (buddy, level, score,
+goo), then — pushed down to sit on the dock — the round strip and the board.
+On a tall phone the spare height goes between the two groups, never between
+the board and the thumb. Chrome above the board went from 442px to 242px; the
+board is full width at 360 and up, and 271px at 320x568 where it used to hit
+its 190px floor.
+
+The board is clamped against `100dvh - var(--chrome) - var(--dock-total)`.
+`--chrome` is the rows above the board **summed**, not the board's top edge —
+the board is pushed down on purpose, and measuring its edge would count the
+free space as chrome, shrink the board, free more space, and chase itself to
+the floor.
+
+**Sheets**, for every screen that is not home:
+
+1. **A sheet is fixed to the viewport.** Loop screens and the menus over the
+   Acts stop at the dock, which stays usable; the Acts' questions cover it.
+   Nothing with a `filter` may sit above a sheet or the dock — a filtered
+   ancestor becomes the containing block for `position:fixed` — which is why
+   the page's hue drift lives on `#bgLayer` and the contrast tweak on
+   `#stageWrap`.
+2. **Exactly one region scrolls**, marked `class="sheetBody"`, and only when
+   its content genuinely exceeds the screen. On a 320px phone a sheet with two
+   lists may scroll both; an exit below the fold is never acceptable.
+3. **The way out is always on screen** — the dock for loop screens, a pinned
+   button for the menus and the questions.
+4. **Touch targets stay at 44px** through every squeeze. What gives on a short
+   screen is padding, the narrator's second line, and the pot and perimeter
+   boards, which cap their height so their lists keep their room.
+5. **Sheets are opaque.** At 98.5% the board behind one bled through as a ghost
+   of its own label.
+
+**One design system, in one file.** `styles/main.css` is ordered by layer —
+fonts, tokens, base, components, the shell, the dock, sheets, screens, motion,
+short phones — and every screen draws from the same parts: one title style in
+the screen's owner's colour (the stacked pink-cyan-yellow shadow is the
+wordmark's alone), one button shape whose colour says what it does, one row
+component for every list in the game, one recessed track for every meter. It
+replaced 1,300 lines of stacked "passes", each overriding the last, where the
+value a rule ended up with depended on where it sat.
+
+Moved rather than removed: the four standing bars and the stat line live in the
+hero sheet now, next to the text that explains them; the codex opens from the
+hero sheet; RESET lives in settings. Removed outright: the live perimeter lane
+on the HUD (the perimeter only runs on its own screen now, so it would have
+been a picture of something paused), and the perpetual wiggle on buttons that
+were not asking for anything.
 
 ## Assets, and the slop feel
 
